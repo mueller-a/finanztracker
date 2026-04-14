@@ -1,0 +1,88 @@
+{
+  "categories": [
+    {
+      "id": "cat_1",
+      "name": "Hausrat",
+      "icon": "home",
+      "color": "#6366f1",
+      "description": "Hausratversicherung – Schutz für Wohnungsinhalt",
+      "entries": [
+        { "id": "e_1_1", "year": 2020, "premium": 118, "provider": "Allianz" },
+        { "id": "e_1_2", "year": 2021, "premium": 124, "provider": "Allianz" },
+        { "id": "e_1_3", "year": 2022, "premium": 139, "provider": "HUK-COBURG" },
+        { "id": "e_1_4", "year": 2023, "premium": 145, "provider": "HUK-COBURG" },
+        { "id": "e_1_5", "year": 2024, "premium": 152, "provider": "HUK-COBURG" }
+      ]
+    },
+    {
+      "id": "cat_2",
+      "name": "Haftpflicht",
+      "icon": "shield",
+      "color": "#06b6d4",
+      "description": "Private Haftpflichtversicherung",
+      "entries": [
+        { "id": "e_2_1", "year": 2020, "premium": 68, "provider": "DEVK" },
+        { "id": "e_2_2", "year": 2021, "premium": 68, "provider": "DEVK" },
+        { "id": "e_2_3", "year": 2022, "premium": 75, "provider": "DEVK" },
+        { "id": "e_2_4", "year": 2023, "premium": 78, "provider": "Zurich" },
+        { "id": "e_2_5", "year": 2024, "premium": 82, "provider": "Zurich" }
+      ]
+    },
+    {
+      "id": "cat_3",
+      "name": "KFZ",
+      "icon": "car",
+      "color": "#f59e0b",
+      "description": "Kraftfahrzeugversicherung (Haftpflicht + Teilkasko)",
+      "entries": [
+        { "id": "e_3_1", "year": 2020, "premium": 520, "provider": "ADAC" },
+        { "id": "e_3_2", "year": 2021, "premium": 498, "provider": "ADAC" },
+        { "id": "e_3_3", "year": 2022, "premium": 545, "provider": "HUK24" },
+        { "id": "e_3_4", "year": 2023, "premium": 610, "provider": "HUK24" },
+        { "id": "e_3_5", "year": 2024, "premium": 672, "provider": "HUK24" }
+      ]
+    },
+    {
+      "id": "cat_4",
+      "name": "Kranken-Zusatz",
+      "icon": "heart",
+      "color": "#10b981",
+      "description": "Private Krankenzusatzversicherung",
+      "entries": [
+        { "id": "e_4_1", "year": 2020, "premium": 240, "provider": "DKV" },
+        { "id": "e_4_2", "year": 2021, "premium": 258, "provider": "DKV" },
+        { "id": "e_4_3", "year": 2022, "premium": 275, "provider": "DKV" },
+        { "id": "e_4_4", "year": 2023, "premium": 290, "provider": "AXA" },
+        { "id": "e_4_5", "year": 2024, "premium": 312, "provider": "AXA" }
+      ]
+    },
+    {
+      "id": "cat_5",
+      "name": "Berufsunfähigkeit",
+      "icon": "briefcase",
+      "color": "#8b5cf6",
+      "description": "Berufsunfähigkeitsversicherung",
+      "entries": [
+        { "id": "e_5_1", "year": 2020, "premium": 780, "provider": "Generali" },
+        { "id": "e_5_2", "year": 2021, "premium": 780, "provider": "Generali" },
+        { "id": "e_5_3", "year": 2022, "premium": 810, "provider": "Generali" },
+        { "id": "e_5_4", "year": 2023, "premium": 810, "provider": "Generali" },
+        { "id": "e_5_5", "year": 2024, "premium": 840, "provider": "Generali" }
+      ]
+    },
+    {
+      "id": "cat_6",
+      "name": "Rechtsschutz",
+      "icon": "gavel",
+      "color": "#ef4444",
+      "description": "Rechtsschutzversicherung",
+      "entries": [
+        { "id": "e_6_1", "year": 2020, "premium": 195, "provider": "Roland" },
+        { "id": "e_6_2", "year": 2021, "premium": 210, "provider": "Roland" },
+        { "id": "e_6_3", "year": 2022, "premium": 210, "provider": "ARAG" },
+        { "id": "e_6_4", "year": 2023, "premium": 225, "provider": "ARAG" },
+        { "id": "e_6_5", "year": 2024, "premium": 235, "provider": "ARAG" }
+      ]
+    }
+  ]
+}

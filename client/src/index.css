@@ -1,0 +1,29 @@
+/* Finanztracker — globale Styles
+ * Alle Komponenten-Styles laufen über MUI ThemeProvider + sx Props.
+ * Nur Scrollbar-Styling und minimale Font-Optimierungen bleiben hier. */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 148, 180, 0.4);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 148, 180, 0.6);
+}
