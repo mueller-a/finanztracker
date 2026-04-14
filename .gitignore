@@ -7,3 +7,4 @@ client/build/
 .DS_Store
 *.log
 .vercel
+SKILL.md
