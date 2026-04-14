@@ -76,8 +76,13 @@ function getEffectiveTarife(yearOverrides, baseTarife, year, startYear) {
   return baseTarife;
 }
 
-function getMonthlyAtAgeFor(age, gf, yTarife, senkungen, rzActive, rzFromAge, rzRente) {
-  const gzActive = age < 61;
+// Brutto-PKV-Beitrag pro Monat:  Σ(Tarif × (1+GZ)) − Senkungen.
+// Zuschüsse (AG bzw. KVdR) werden NICHT hier abgezogen, damit sie außen
+// separat ausgewiesen werden können — analog zum Arbeitgeber-Zuschuss.
+function getMonthlyAtAgeFor(age, gf, yTarife, senkungen) {
+  // §149 VAG: Gesetzlicher Zuschlag (10 %) wird bis zum vollendeten 60. Lebensjahr
+  // erhoben — d.h. ab Alter 60 entfällt er.
+  const gzActive = age < 60;
   let total = 0;
   yTarife.forEach((t) => {
     if (t.dropAtAge !== null && age >= t.dropAtAge) return;
@@ -88,8 +93,7 @@ function getMonthlyAtAgeFor(age, gf, yTarife, senkungen, rzActive, rzFromAge, rz
   senkungen.forEach((s) => {
     if (age >= s.fromAge) total = Math.max(0, total - s.amount);
   });
-  const rz = getRentenzuschuss(age, total, rzActive, rzFromAge, rzRente);
-  return Math.max(0, total - rz);
+  return Math.max(0, total);
 }
 
 function getRentenzuschuss(age, pkvMonthly, rzActive, rzFromAge, rzRente) {
@@ -101,7 +105,7 @@ function getRentenzuschuss(age, pkvMonthly, rzActive, rzFromAge, rzRente) {
 }
 
 function getGzMonthlyFor(age, gf, yTarife) {
-  if (age >= 61) return 0;
+  if (age >= 60) return 0;
   let gz = 0;
   yTarife.forEach((t) => {
     if (!t.gz) return;
@@ -113,7 +117,7 @@ function getGzMonthlyFor(age, gf, yTarife) {
 }
 
 function getSteuerBasisMonthlyFor(age, gf, yTarife) {
-  const gzActive = age < 61;
+  const gzActive = age < 60;
   let total = 0;
   yTarife.forEach((t) => {
     if (t.dropAtAge !== null && age >= t.dropAtAge) return;
@@ -148,8 +152,9 @@ function calcPkvData(pkv) {
   if (years <= 0) return [];
 
   const data = [];
-  let cumulative   = 0;
-  let cumTaxSaving = 0;
+  let cumulative      = 0;
+  let cumulativeEigen = 0;
+  let cumTaxSaving    = 0;
 
   for (let i = 0; i < years; i++) {
     const year = startYear + i;
@@ -161,12 +166,13 @@ function calcPkvData(pkv) {
 
     let monthly;
     if (manualOverrides[year] !== undefined) {
+      // manualOverrides enthalten den Brutto-PKV-Beitrag (vor AG- und KVdR-Zuschuss).
       monthly = manualOverrides[year];
     } else {
-      monthly = getMonthlyAtAgeFor(age, gf, yTarife, senkungen, rzActive, rzFromAge, rzRente);
+      monthly = getMonthlyAtAgeFor(age, gf, yTarife, senkungen);
     }
 
-    const gzActive  = age < 61;
+    const gzActive  = age < 60;
     const gzScaled  = getGzMonthlyFor(age, gf, yTarife);
     const steuerMonthly = getSteuerBasisMonthlyFor(age, gf, yTarife);
     const activeTaxRate = age >= rzFromAge ? taxRetireDec : taxWorkDec;
@@ -180,11 +186,15 @@ function calcPkvData(pkv) {
     cumulative      += annual;
     cumTaxSaving    += taxDed;
 
+    // Zuschüsse — AG (Arbeitsphase) bzw. KVdR (Rentenphase). Greifen nie
+    // gleichzeitig: AG gilt nur `age < rzFromAge`, KVdR nur `age >= rzFromAge`.
     const agZuschuss = (employmentStatus === 'angestellt' && age < rzFromAge)
       ? Math.min(monthly * 0.5, MAX_AG_ZUSCHUSS)
       : 0;
-    const nettoMonthly = Math.max(0, monthly - agZuschuss);
-    const rzBd = getRentenzuschuss(age, monthly + (getRentenzuschuss(age, 0, rzActive, rzFromAge, rzRente) > 0 ? 0 : 0), rzActive, rzFromAge, rzRente);
+    const rzBd = getRentenzuschuss(age, monthly, rzActive, rzFromAge, rzRente);
+    const nettoMonthly = Math.max(0, monthly - agZuschuss - rzBd);
+    const annualEigen  = nettoMonthly * monthsInYear;
+    cumulativeEigen   += annualEigen;
 
     // Breakdown for tooltip
     const breakdown = [];
@@ -206,7 +216,8 @@ function calcPkvData(pkv) {
       monthsInYear, freeMonthsVal: freeMo,
       gz: gzScaled, gzActive,
       taxDeduction: taxDed, steuerMonthly,
-      cumulative, cumTaxSaving,
+      cumulative, cumulativeEigen, cumTaxSaving,
+      annualEigen,
       brkYear, gzTotalBd, gf,
       isFuture:    year > todayYear,
       isCurrent:   year === todayYear,
@@ -311,23 +322,44 @@ function KpiCard({ label, value, sub, color = '#7c3aed' }) {
 }
 
 // ─── Chart components ─────────────────────────────────────────────────────────
-function PkvLineChart({ data, mode, showInflation, inflationRate, employmentStatus, isDark }) {
+// Zeigt zwei Serien gleichzeitig:
+//   - "Gesamtbeitrag" (Brutto-PKV-Beitrag, gold)
+//   - "Eigenanteil"   (Cashflow nach AG-/KVdR-Zuschuss, grün)
+// Im "Kumuliert"-Modus zwei Linien, sonst gruppierte Bars.
+function PkvLineChart({ data, mode, showInflation, inflationRate, isDark }) {
   const chartData = useMemo(() => {
     const todayYear = CURRENT_YEAR;
     return data.map((d) => {
-      let v;
-      if (mode === 'monthly')    v = employmentStatus === 'angestellt' ? d.nettoMonthly : d.monthly;
-      else if (mode === 'annual') v = employmentStatus === 'angestellt' ? Math.max(0, d.annual - d.agZuschuss * d.monthsInYear) : d.annual;
-      else                       v = d.cumulative;
-      if (showInflation && d.isFuture && inflationRate > 0) {
-        v = v / Math.pow(1 + inflationRate / 100, d.year - todayYear);
+      let brutto, eigen;
+      if (mode === 'monthly') {
+        brutto = d.gesamtbeitragMtl;
+        eigen  = d.eigenanteilMtl;
+      } else if (mode === 'annual') {
+        brutto = d.annual;
+        eigen  = d.annualEigen;
+      } else {
+        brutto = d.cumulative;
+        eigen  = d.cumulativeEigen;
       }
-      return { year: d.year, value: Math.round(v * 100) / 100, isFuture: d.isFuture };
+      if (showInflation && d.isFuture && inflationRate > 0) {
+        const f = Math.pow(1 + inflationRate / 100, d.year - todayYear);
+        brutto /= f;
+        eigen  /= f;
+      }
+      return {
+        year:   d.year,
+        brutto: Math.round(brutto * 100) / 100,
+        eigen:  Math.round(eigen  * 100) / 100,
+        isFuture: d.isFuture,
+      };
     });
-  }, [data, mode, showInflation, inflationRate, employmentStatus]);
+  }, [data, mode, showInflation, inflationRate]);
 
-  const color = mode === 'monthly' ? '#e8b84b' : mode === 'annual' ? '#5b8dee' : '#4ec98e';
-  const sub   = isDark ? '#a5a0c8' : '#6d6a8a';
+  const colorBrutto = '#e8b84b'; // Gold — konsistent zur "Gesamtbeitrag"-Spalte in der Tabelle
+  const colorEigen  = '#10b981'; // Grün — konsistent zur "Eigenanteil"-Spalte
+  const sub         = isDark ? '#a5a0c8' : '#6d6a8a';
+  const tickFormat  = (v) => mode === 'cumulative' ? (v / 1000).toFixed(0) + 'k €' : v + ' €';
+  const seriesLabel = (k) => k === 'brutto' ? 'Gesamtbeitrag' : 'Eigenanteil';
 
   return (
     <ResponsiveContainer width="100%" height={260}>
@@ -335,23 +367,28 @@ function PkvLineChart({ data, mode, showInflation, inflationRate, employmentStat
         <LineChart data={chartData} margin={{ top: 4, right: 12, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)'} />
           <XAxis dataKey="year" tick={{ fill: sub, fontSize: 10 }} />
-          <YAxis tick={{ fill: sub, fontSize: 10 }} tickFormatter={(v) => (v / 1000).toFixed(0) + 'k €'} />
+          <YAxis tick={{ fill: sub, fontSize: 10 }} tickFormatter={tickFormat} />
           <RechartTooltip
-            formatter={(v) => [fmt(v, 2), 'Kumuliert']}
+            formatter={(v, k) => [fmt(v, 2), seriesLabel(k)]}
             contentStyle={{ background: isDark ? '#1a1744' : '#fff', border: `1px solid ${isDark ? '#2d2a5e' : '#e8e4f8'}`, borderRadius: 8, fontSize: 12 }}
           />
-          <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2} dot={false} fill={`${color}18`} />
+          <Legend formatter={seriesLabel} wrapperStyle={{ fontSize: 11, paddingTop: 4, color: sub }} iconType="circle" iconSize={8} />
+          <Line type="monotone" dataKey="brutto" stroke={colorBrutto} strokeWidth={2} dot={false} />
+          <Line type="monotone" dataKey="eigen"  stroke={colorEigen}  strokeWidth={2} dot={false} />
         </LineChart>
       ) : (
-        <BarChart data={chartData} margin={{ top: 4, right: 12, bottom: 0, left: 0 }}>
+        <BarChart data={chartData} margin={{ top: 4, right: 12, bottom: 0, left: 0 }} barGap={2}>
           <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)'} />
           <XAxis dataKey="year" tick={{ fill: sub, fontSize: 10 }} />
-          <YAxis tick={{ fill: sub, fontSize: 10 }} tickFormatter={(v) => v + ' €'} />
+          <YAxis tick={{ fill: sub, fontSize: 10 }} tickFormatter={tickFormat} />
           <RechartTooltip
-            formatter={(v) => [fmt(v, 2), mode === 'monthly' ? 'Monatsbeitrag' : 'Jahresbeitrag']}
+            formatter={(v, k) => [fmt(v, 2), seriesLabel(k)]}
             contentStyle={{ background: isDark ? '#1a1744' : '#fff', border: `1px solid ${isDark ? '#2d2a5e' : '#e8e4f8'}`, borderRadius: 8, fontSize: 12 }}
+            cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
           />
-          <Bar dataKey="value" fill={color} radius={[2, 2, 0, 0]} />
+          <Legend formatter={seriesLabel} wrapperStyle={{ fontSize: 11, paddingTop: 4, color: sub }} iconType="square" iconSize={10} />
+          <Bar dataKey="brutto" fill={colorBrutto} radius={[2, 2, 0, 0]} />
+          <Bar dataKey="eigen"  fill={colorEigen}  radius={[2, 2, 0, 0]} />
         </BarChart>
       )}
     </ResponsiveContainer>
@@ -416,17 +453,17 @@ export default function PkvCalculatorPage({ isDark = false }) {
         }));
       } catch {}
       // ── PKV projection for Ruhestandsplanung ──────────────────────────────
-      // Compute net PKV monthly at retirement age (after Rentenzuschuss).
-      // getRentenzuschuss is already applied inside getMonthlyAtAgeFor — no double-counting.
+      // Netto-PKV-Beitrag bei Rentenbeginn = Brutto-Beitrag minus KVdR-Zuschuss.
+      // (AG-Zuschuss entfällt im Rentenalter ohnehin.)
       try {
         const yearsToRente    = Math.max(0, (pkv.rzFromAge || 67) - (pkv.currentAge || 45));
         const gfAtRente       = Math.pow(1 + (pkv.growthRate || 5) / 100, yearsToRente);
         const retirementYear  = CURRENT_YEAR + yearsToRente;
         const yTarifeAtRente  = getEffectiveTarife(pkv.yearOverrides, pkv.tarife, retirementYear, CURRENT_YEAR);
-        const nettoMonatlich  = getMonthlyAtAgeFor(
-          pkv.rzFromAge || 67, gfAtRente, yTarifeAtRente,
-          pkv.senkungen, pkv.rzActive, pkv.rzFromAge || 67, pkv.rzRente || 0
-        );
+        const atAge           = pkv.rzFromAge || 67;
+        const bruttoMonatlich = getMonthlyAtAgeFor(atAge, gfAtRente, yTarifeAtRente, pkv.senkungen);
+        const rzAtRente       = getRentenzuschuss(atAge, bruttoMonatlich, pkv.rzActive, atAge, pkv.rzRente || 0);
+        const nettoMonatlich  = Math.max(0, bruttoMonatlich - rzAtRente);
         savePkvProjection({
           nettoMonatlich: Math.round(nettoMonatlich * 100) / 100,
           rzRente:        pkv.rzRente || 0,
@@ -685,7 +722,7 @@ export default function PkvCalculatorPage({ isDark = false }) {
                   <Stack>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>GZ-pflichtig</Typography>
                     <Typography variant="caption" color="text.secondary">
-                      10 % Gesetzl. Zuschlag bis Alter 60
+                      10 % Gesetzl. Zuschlag bis Alter 59
                     </Typography>
                   </Stack>
                   <Switch
@@ -879,17 +916,29 @@ export default function PkvCalculatorPage({ isDark = false }) {
     const brkVal  = pkv.brkAmounts[d.year] || 0;
     const freeVal = pkv.freeMonths[d.year] || 0;
 
+    // Tarife ausblenden, die laut `dropAtAge` in diesem Jahr bereits entfallen
+    // sind. Sie werden so aus ALLEN Anzeigen und Interaktionen dieser Zeile
+    // entfernt — konsistent mit den Projektions-Berechnungen (Zeile 83/108/119/193).
+    // `origIdx` zeigt auf die Position im ungefilterten `yo`-Array, damit Edits
+    // weiterhin die richtige Zeile im Override-State treffen.
+    const visibleTarife = yo
+      .map((t, origIdx) => ({ t, origIdx }))
+      .filter(({ t }) => t.dropAtAge === null || t.dropAtAge === undefined || d.age < t.dropAtAge);
+    const droppedCount = yo.length - visibleTarife.length;
+
     const inpSt = { padding: '4px 8px', borderRadius: 6, border: `1px solid ${bdr}`, background: isDark ? '#0f0d2e' : '#fff', color: text, fontSize: '0.78rem', fontFamily: 'monospace' };
     const chkSt = { accentColor: accent, width: 13, height: 13 };
     const lblSt = { color: muted, fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.05em' };
 
-    function updateTarif(idx, field, val) {
-      const copy = yo.map((t, i) => i === idx ? { ...t, [field]: val } : t);
+    function updateTarif(origIdx, field, val) {
+      const copy = yo.map((t, i) => i === origIdx ? { ...t, [field]: val } : t);
       setYearOverride(d.year, copy);
     }
-    function removeTarif(idx) {
-      if (yo.length <= 1) return;
-      setYearOverride(d.year, yo.filter((_, i) => i !== idx));
+    function removeTarif(origIdx) {
+      // Mindestens 1 sichtbarer Tarif muss übrig bleiben — bezieht sich auf
+      // die sichtbare Liste, nicht auf die Gesamtzahl im Override.
+      if (visibleTarife.length <= 1) return;
+      setYearOverride(d.year, yo.filter((_, i) => i !== origIdx));
     }
     function addTarif() {
       const newId = Date.now();
@@ -935,27 +984,40 @@ export default function PkvCalculatorPage({ isDark = false }) {
                 <span style={lblSt}>Absetzbar</span>
                 <span />
               </div>
-              {yo.map((t, idx) => (
-                <div key={t.id || idx} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 50px 50px 60px 28px', gap: 6, alignItems: 'center', padding: '3px 2px', borderRadius: 6, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
-                  <input type="text" value={t.name} onChange={(e) => updateTarif(idx, 'name', e.target.value)}
+              {visibleTarife.map(({ t, origIdx }) => (
+                <div key={t.id || origIdx} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 50px 50px 60px 28px', gap: 6, alignItems: 'center', padding: '3px 2px', borderRadius: 6, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
+                  <input type="text" value={t.name} onChange={(e) => updateTarif(origIdx, 'name', e.target.value)}
                     style={{ ...inpSt, width: '100%' }} />
-                  <input type="number" step="0.01" value={t.amount} onChange={(e) => updateTarif(idx, 'amount', parseFloat(e.target.value) || 0)}
+                  <input type="number" step="0.01" value={t.amount} onChange={(e) => updateTarif(origIdx, 'amount', parseFloat(e.target.value) || 0)}
                     style={{ ...inpSt, width: '100%', textAlign: 'right' }} />
                   <div style={{ display: 'flex', justifyContent: 'center' }}>
-                    <input type="checkbox" checked={!!t.gz} onChange={(e) => updateTarif(idx, 'gz', e.target.checked)} style={chkSt} title="Gesetzlicher Zuschlag 10%" />
+                    <input type="checkbox" checked={!!t.gz} onChange={(e) => updateTarif(origIdx, 'gz', e.target.checked)} style={chkSt} title="Gesetzlicher Zuschlag 10%" />
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'center' }}>
-                    <input type="checkbox" checked={!!t.steuer} onChange={(e) => updateTarif(idx, 'steuer', e.target.checked)} style={chkSt} title="Basisabsicherung (steuerlich absetzbar)" />
+                    <input type="checkbox" checked={!!t.steuer} onChange={(e) => updateTarif(origIdx, 'steuer', e.target.checked)} style={chkSt} title="Basisabsicherung (steuerlich absetzbar)" />
                   </div>
                   <input type="number" min={0} max={100} step={1} value={t.steuerPct || 0}
-                    onChange={(e) => updateTarif(idx, 'steuerPct', parseFloat(e.target.value) || 0)}
+                    onChange={(e) => updateTarif(origIdx, 'steuerPct', parseFloat(e.target.value) || 0)}
                     style={{ ...inpSt, width: '100%', textAlign: 'right', opacity: t.steuer ? 1 : 0.3 }} disabled={!t.steuer} />
-                  <button onClick={() => removeTarif(idx)} title="Tarif entfernen"
-                    style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'rgba(239,68,68,0.1)', color: '#ef4444', cursor: yo.length > 1 ? 'pointer' : 'not-allowed', fontSize: '0.82rem', opacity: yo.length > 1 ? 1 : 0.3 }}>
+                  <button onClick={() => removeTarif(origIdx)} title="Tarif entfernen"
+                    style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'rgba(239,68,68,0.1)', color: '#ef4444', cursor: visibleTarife.length > 1 ? 'pointer' : 'not-allowed', fontSize: '0.82rem', opacity: visibleTarife.length > 1 ? 1 : 0.3 }}>
                     ×
                   </button>
                 </div>
               ))}
+              {droppedCount > 0 && (
+                <div style={{
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  background: isDark ? 'rgba(107,114,128,0.12)' : 'rgba(107,114,128,0.08)',
+                  color: muted,
+                  fontSize: '0.7rem',
+                  fontStyle: 'italic',
+                  marginTop: 4,
+                }}>
+                  {droppedCount} Tarif{droppedCount !== 1 ? 'e' : ''} in diesem Jahr entfallen (Alter ≥ „Tarif entfällt ab").
+                </div>
+              )}
             </div>
 
             {/* BRK + Free months */}
@@ -1048,7 +1110,7 @@ export default function PkvCalculatorPage({ isDark = false }) {
                   Kaufkraftbereinigt (Barwert)
                 </label>
               </Box>
-              <PkvLineChart data={pkvData} mode={chartMode} showInflation={showInflation} inflationRate={pkv.inflationRate} employmentStatus={pkv.employmentStatus} isDark={isDark} />
+              <PkvLineChart data={pkvData} mode={chartMode} showInflation={showInflation} inflationRate={pkv.inflationRate} isDark={isDark} />
             </SectionCard>
 
             {/* Table */}
@@ -1111,7 +1173,9 @@ export default function PkvCalculatorPage({ isDark = false }) {
                             <div>
                               <div style={{ fontWeight: 700, fontSize: '0.82rem', marginBottom: 2, fontFamily: 'sans-serif' }}>Mtl. Eigenanteil (Cashflow)</div>
                               <div style={{ color: isDark ? '#a5a0c8' : '#6d6a8a', fontSize: '0.7rem', marginBottom: 8, fontFamily: 'sans-serif' }}>
-                                {d.agZuschuss > 0 ? 'Arbeitsphase: Gesamtbeitrag minus AG-Zuschuss' : 'Kein AG-Zuschuss (Selbstständig / Rentner)'}
+                                {d.agZuschuss > 0 ? 'Arbeitsphase: Gesamtbeitrag minus AG-Zuschuss'
+                                 : d.rzBd > 0    ? 'Rentenphase: Gesamtbeitrag minus KVdR-Zuschuss'
+                                 :                  'Kein Zuschuss (Selbstständig)'}
                               </div>
                               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '2px 0' }}>
                                 <span>Gesamtbeitrag</span><span>{fmt(d.gesamtbeitragMtl, 2)}</span>
@@ -1121,14 +1185,20 @@ export default function PkvCalculatorPage({ isDark = false }) {
                                   <span>AG-Zuschuss (§ 257 SGB V)</span><span>-{fmt(d.agZuschuss, 2)}</span>
                                 </div>
                               )}
+                              {d.rzBd > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '2px 0', color: '#10b981' }}>
+                                  <span>KVdR-Zuschuss (§ 106 SGB VI)</span><span>-{fmt(d.rzBd, 2)}</span>
+                                </div>
+                              )}
                               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '4px 0 0', borderTop: `1px solid ${isDark ? '#2d2a5e' : '#e8e4f8'}`, marginTop: 4, fontWeight: 700, color: '#10b981' }}>
                                 <span>Eigenanteil</span><span>{fmt(d.eigenanteilMtl, 2)}</span>
                               </div>
                             </div>
                           }>
-                            <td style={{ padding: '8px 12px', color: d.agZuschuss > 0 ? '#10b981' : text, fontWeight: 600, cursor: 'help' }}>
+                            <td style={{ padding: '8px 12px', color: (d.agZuschuss > 0 || d.rzBd > 0) ? '#10b981' : text, fontWeight: 600, cursor: 'help' }}>
                               {fmt(d.eigenanteilMtl, 2)}
                               {d.agZuschuss > 0 && <span style={{ fontSize: '0.65rem', color: '#10b981', marginLeft: 4 }}>AN</span>}
+                              {d.rzBd > 0      && <span style={{ fontSize: '0.65rem', color: '#10b981', marginLeft: 4 }}>Rente</span>}
                             </td>
                           </MuiTooltip>
                           <MuiTooltip arrow placement="top" slotProps={{ tooltip: { sx: { maxWidth: 280, bgcolor: isDark ? '#1c2030' : '#fff', color: isDark ? '#ede9fe' : '#1e1b4b', border: `1px solid ${isDark ? '#2d2a5e' : '#e8e4f8'}`, borderRadius: '10px', p: '10px 14px', fontSize: '0.75rem', fontFamily: 'monospace', boxShadow: '0 4px 20px rgba(0,0,0,0.25)' } } }} title={
@@ -1161,7 +1231,7 @@ export default function PkvCalculatorPage({ isDark = false }) {
             </div>
 
             <div style={{ color: muted, fontSize: '0.68rem', lineHeight: 1.6 }}>
-              * Alle Angaben ohne Gewähr. GZ = Gesetzl. Zuschlag (10% auf GZ-pflichtige Tarife, bis Alter 60). Steuerl. Ersparnis = Basisabsicherungsanteile × Steuersatz.
+              * Alle Angaben ohne Gewähr. GZ = Gesetzl. Zuschlag (10% auf GZ-pflichtige Tarife, bis Alter 59). Steuerl. Ersparnis = Basisabsicherungsanteile × Steuersatz.
             </div>
           </div>
         </div>
