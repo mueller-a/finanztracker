@@ -31,14 +31,13 @@ Finanztracker/
 ### 1. Supabase-Projekt anlegen
 
 1. Neues Projekt auf [supabase.com](https://supabase.com) erstellen
-2. Dashboard → SQL Editor → alle Migrations aus `supabase/` in dieser Reihenfolge ausführen:
-   - `migration_electricity.sql`
-   - `migration_electricity_periods.sql`
-   - `migration_debts.sql`
-   - `migration_budget.sql`
-   - `migration_savings.sql`
-   - Danach die Feature-Migrations (`migration_add_*.sql`) chronologisch nach Dateidatum
-   - Zuletzt `migration_rls_all_tables.sql` für User-isolierte RLS-Policies
+2. Dashboard → SQL Editor → Inhalt von **`supabase/setup.sql`** einfügen und ausführen.
+   - Das File ist komplett idempotent (Tabellen, Indizes, Storage-Buckets, RLS-Policies, Trigger) und bringt ein leeres Projekt in einem Schritt auf den aktuellen Stand.
+   - Die einzelnen Migrations unter `supabase/migrations/` sind chronologisch nummeriert (`00_schema.sql` … `34_billing_period_credits.sql`) und dokumentieren die Schema-Evolution — für Neueinrichtungen nicht nötig.
+3. Optional: Edge Function deployen, falls Gehaltsrechner mit BMF-Validator gewünscht ist:
+   ```
+   supabase functions deploy bmf-lst-validator
+   ```
 
 ### 2. Client konfigurieren
 
