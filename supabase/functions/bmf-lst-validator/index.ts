@@ -36,12 +36,16 @@
 // @ts-ignore Deno imports
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
-// BMF hält mehrere URL-Varianten parallel vor. Wir probieren die bekannten
-// in absteigender Reihenfolge, bis eine gültiges XML mit <ausgabe>-Tags liefert.
-const BMF_URLS = [
-  'https://www.bmf-steuerrechner.de/interface/2026Version1.xhtml',
-  'https://www.bmf-steuerrechner.de/interface/2026.xhtml',
-  'https://www.bmf-steuerrechner.de/interface/2025Version1.xhtml',
+// BMF hält mehrere URL+Code-Kombinationen parallel vor. Wir probieren sie der
+// Reihe nach, bis eine gültiges XML mit <ausgabe>-Tags liefert.
+// - URL `XXXXVersion1.xhtml` erwartet code=LStXXXXext oder LStXXXXstd
+// - ext = "erweiterte" Variante (volle Vorsorgepauschale)
+// - std = "standard" Variante
+const BMF_ATTEMPTS: Array<{ url: string; code: string }> = [
+  { url: 'https://www.bmf-steuerrechner.de/interface/2026Version1.xhtml', code: 'LSt2026ext' },
+  { url: 'https://www.bmf-steuerrechner.de/interface/2026Version1.xhtml', code: 'LSt2026std' },
+  { url: 'https://www.bmf-steuerrechner.de/interface/2025Version1.xhtml', code: 'LSt2025ext' },
+  { url: 'https://www.bmf-steuerrechner.de/interface/2025Version1.xhtml', code: 'LSt2025std' },
 ];
 
 const CORS_HEADERS = {
@@ -101,9 +105,11 @@ serve(async (req: Request) => {
     const params: BmfParams = await req.json();
 
     // Build query string for BMF URL
-    // Default values required by the BMF XSD
+    // `code` wird pro Attempt gesetzt (siehe BMF_ATTEMPTS unten) — der Wert
+    // aus `params.code` wird ignoriert, weil unser Fallback-Matrix-Ansatz die
+    // zuverlässigen Kombinationen kennt.
     const queryParams = new URLSearchParams({
-      code:    params.code    ?? 'ext2026',
+      code:    'PLACEHOLDER',
       LZZ:     String(params.LZZ     ?? 1),    // 1 = Jahr
       RE4:     String(params.RE4     ?? 0),    // zu versteuerndes Einkommen in Cents
       STKL:    String(params.STKL    ?? 1),
@@ -133,17 +139,21 @@ serve(async (req: Request) => {
       ZKRV:    String(params.ZKRV    ?? 0),
     });
 
-    // Probiere alle BMF-URL-Varianten, bis eine valide XML liefert
-    // (das XML mit <ausgabe>-Tags). BMF ändert gelegentlich das URL-Schema.
+    // Probiere alle URL+Code-Kombinationen, bis eine valide XML mit
+    // <ausgabe>-Tags liefert.
     let xmlText = '';
     let usedUrl = '';
+    let usedCode = '';
     let raw: Record<string, number> = {};
     const ausgabeRegex = /<ausgabe\s+name="([^"]+)"\s+value="([^"]+)"/g;
 
-    // Pro URL: Status, Content-Type, Body-Preview — damit wir sehen was wirklich ankommt
-    const attempts: Array<{ url: string; status: number; contentType: string; preview: string; error?: string }> = [];
+    const attempts: Array<{
+      url: string; code: string; status: number;
+      contentType: string; preview: string; error?: string;
+    }> = [];
 
-    for (const baseUrl of BMF_URLS) {
+    for (const { url: baseUrl, code } of BMF_ATTEMPTS) {
+      queryParams.set('code', code);
       const bmfUrl = `${baseUrl}?${queryParams.toString()}`;
       try {
         const bmfResponse = await fetch(bmfUrl, {
@@ -155,20 +165,19 @@ serve(async (req: Request) => {
         const body = await bmfResponse.text();
         const ct   = bmfResponse.headers.get('content-type') ?? '';
         attempts.push({
-          url: baseUrl,
+          url: baseUrl, code,
           status: bmfResponse.status,
           contentType: ct,
-          preview: body.slice(0, 600),
+          preview: body.slice(0, 400),
         });
 
         if (!bmfResponse.ok) continue;
-
-        // Treffer prüfen: mindestens eine <ausgabe> mit bekanntem Feld
         const probe = /<ausgabe\s+name="(LSTLZZ|LSTJAHR|SOLZLZZ)"/i.test(body);
         if (!probe) continue;
 
         xmlText = body;
         usedUrl = baseUrl;
+        usedCode = code;
         let match;
         raw = {};
         while ((match = ausgabeRegex.exec(body)) !== null) {
@@ -177,10 +186,7 @@ serve(async (req: Request) => {
         break;
       } catch (err) {
         attempts.push({
-          url: baseUrl,
-          status: 0,
-          contentType: '',
-          preview: '',
+          url: baseUrl, code, status: 0, contentType: '', preview: '',
           error: err instanceof Error ? err.message : String(err),
         });
       }
@@ -200,6 +206,7 @@ serve(async (req: Request) => {
     return new Response(JSON.stringify({
       ok:      true,
       source:  usedUrl,
+      code:    usedCode,
       lstlzz:  raw.LSTLZZ  ?? 0,  // Lohnsteuer in Cents (für den LZZ)
       solzlzz: raw.SOLZLZZ ?? 0,  // Soli in Cents
       bk:      raw.BK      ?? 0,
