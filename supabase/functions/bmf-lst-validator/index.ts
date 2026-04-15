@@ -36,16 +36,18 @@
 // @ts-ignore Deno imports
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
-// BMF hält mehrere URL+Code-Kombinationen parallel vor. Wir probieren sie der
-// Reihe nach, bis eine gültiges XML mit <ausgabe>-Tags liefert.
-// - URL `XXXXVersion1.xhtml` erwartet code=LStXXXXext oder LStXXXXstd
-// - ext = "erweiterte" Variante (volle Vorsorgepauschale)
-// - std = "standard" Variante
+// BMF hält mehrere URL+Code-Kombinationen parallel vor.
+// - "std" = Standard-Lohnsteuer-Rechner (Jahres- oder Monatsberechnung)
+//   → das ist die Variante, die wir wollen: Brutto rein → LSt raus.
+// - "ext" = Fortschreibungs-Variante, erwartet Vormonats-Werte
+//   (JRE4, JSTLZZ etc.) als Input — ohne diese liefert sie 0.
+//
+// Strategie: "std" zuerst probieren; "ext" nur als Fallback.
 const BMF_ATTEMPTS: Array<{ url: string; code: string }> = [
-  { url: 'https://www.bmf-steuerrechner.de/interface/2026Version1.xhtml', code: 'LSt2026ext' },
   { url: 'https://www.bmf-steuerrechner.de/interface/2026Version1.xhtml', code: 'LSt2026std' },
-  { url: 'https://www.bmf-steuerrechner.de/interface/2025Version1.xhtml', code: 'LSt2025ext' },
+  { url: 'https://www.bmf-steuerrechner.de/interface/2026Version1.xhtml', code: 'LSt2026ext' },
   { url: 'https://www.bmf-steuerrechner.de/interface/2025Version1.xhtml', code: 'LSt2025std' },
+  { url: 'https://www.bmf-steuerrechner.de/interface/2025Version1.xhtml', code: 'LSt2025ext' },
 ];
 
 const CORS_HEADERS = {
@@ -175,14 +177,27 @@ serve(async (req: Request) => {
         const probe = /<ausgabe\s+name="(LSTLZZ|LSTJAHR|SOLZLZZ)"/i.test(body);
         if (!probe) continue;
 
+        // Parse <ausgabe>-Tags
+        const parsed: Record<string, number> = {};
+        let match;
+        while ((match = ausgabeRegex.exec(body)) !== null) {
+          parsed[match[1]] = Number(match[2]);
+        }
+        // Sinnvolle LSt erwartet (LSTLZZ > 0). Wenn 0 zurückkommt,
+        // probiere die nächste Code-Variante (z.B. ext/std falsch).
+        // Aber: bei wirklich 0 LSt (niedriges Einkommen) ist 0 korrekt —
+        // wir akzeptieren 0 nur, wenn es auch die LETZTE Variante ist.
+        const hasLst = (parsed.LSTLZZ ?? 0) > 0 || (parsed.LSTJAHR ?? 0) > 0;
+        if (!hasLst) {
+          // Als Fallback merken, aber weiter probieren
+          if (!xmlText) { xmlText = body; usedUrl = baseUrl; usedCode = code; raw = parsed; }
+          continue;
+        }
+
         xmlText = body;
         usedUrl = baseUrl;
         usedCode = code;
-        let match;
-        raw = {};
-        while ((match = ausgabeRegex.exec(body)) !== null) {
-          raw[match[1]] = Number(match[2]);
-        }
+        raw = parsed;
         break;
       } catch (err) {
         attempts.push({
