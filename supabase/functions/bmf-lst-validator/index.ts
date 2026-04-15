@@ -36,7 +36,13 @@
 // @ts-ignore Deno imports
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
-const BMF_URL = 'https://www.bmf-steuerrechner.de/interface/2026Version1.xhtml';
+// BMF hält mehrere URL-Varianten parallel vor. Wir probieren die bekannten
+// in absteigender Reihenfolge, bis eine gültiges XML mit <ausgabe>-Tags liefert.
+const BMF_URLS = [
+  'https://www.bmf-steuerrechner.de/interface/2026Version1.xhtml',
+  'https://www.bmf-steuerrechner.de/interface/2026.xhtml',
+  'https://www.bmf-steuerrechner.de/interface/2025Version1.xhtml',
+];
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  '*',
@@ -127,40 +133,60 @@ serve(async (req: Request) => {
       ZKRV:    String(params.ZKRV    ?? 0),
     });
 
-    const bmfUrl = `${BMF_URL}?${queryParams.toString()}`;
+    // Probiere alle BMF-URL-Varianten, bis eine valide XML liefert
+    // (das XML mit <ausgabe>-Tags). BMF ändert gelegentlich das URL-Schema.
+    let xmlText = '';
+    let usedUrl = '';
+    let lastStatus = 0;
+    let raw: Record<string, number> = {};
+    const ausgabeRegex = /<ausgabe\s+name="([^"]+)"\s+value="([^"]+)"/g;
 
-    const bmfResponse = await fetch(bmfUrl, {
-      headers: {
-        'Accept':     'application/xml, text/xml',
-        'User-Agent': 'InsureTrack-Validator/1.0',
-      },
-    });
+    for (const baseUrl of BMF_URLS) {
+      const bmfUrl = `${baseUrl}?${queryParams.toString()}`;
+      try {
+        const bmfResponse = await fetch(bmfUrl, {
+          headers: {
+            'Accept':     'application/xml, text/xml, */*',
+            'User-Agent': 'Mozilla/5.0 (compatible; Finanztracker-Validator/1.0)',
+          },
+        });
+        lastStatus = bmfResponse.status;
+        if (!bmfResponse.ok) continue;
+        const body = await bmfResponse.text();
 
-    if (!bmfResponse.ok) {
+        // Treffer prüfen: mindestens eine <ausgabe> mit bekanntem Feld
+        const probe = /<ausgabe\s+name="(LSTLZZ|LSTJAHR|SOLZLZZ)"/i.test(body);
+        if (!probe) { xmlText = body; continue; } // als Debug-Preview merken
+
+        xmlText = body;
+        usedUrl = baseUrl;
+        // eslint-disable-next-line no-regex-spaces
+        let match;
+        raw = {};
+        while ((match = ausgabeRegex.exec(body)) !== null) {
+          raw[match[1]] = Number(match[2]);
+        }
+        break;
+      } catch {
+        // Netzwerk-Error → nächste URL probieren
+      }
+    }
+
+    if (Object.keys(raw).length === 0) {
       return new Response(JSON.stringify({
         ok:     false,
-        error:  `BMF API returned ${bmfResponse.status}`,
-        status: bmfResponse.status,
+        error:  'BMF: keine <ausgabe>-Tags in Antwort',
+        status: lastStatus,
+        debug:  { urlsTried: BMF_URLS, xmlPreview: xmlText.slice(0, 500) },
       }), {
         status:  502,
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       });
     }
 
-    const xmlText = await bmfResponse.text();
-
-    // Parse the XML — BMF returns flat <ausgaben> elements like:
-    //   <ausgabe name="LSTLZZ" value="190030" type="STANDARD"/>
-    //   <ausgabe name="SOLZLZZ" value="0" type="STANDARD"/>
-    const raw: Record<string, number> = {};
-    const ausgabeRegex = /<ausgabe\s+name="([^"]+)"\s+value="([^"]+)"/g;
-    let match;
-    while ((match = ausgabeRegex.exec(xmlText)) !== null) {
-      raw[match[1]] = Number(match[2]);
-    }
-
     return new Response(JSON.stringify({
       ok:      true,
+      source:  usedUrl,
       lstlzz:  raw.LSTLZZ  ?? 0,  // Lohnsteuer in Cents (für den LZZ)
       solzlzz: raw.SOLZLZZ ?? 0,  // Soli in Cents
       bk:      raw.BK      ?? 0,
