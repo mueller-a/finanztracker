@@ -814,6 +814,21 @@ export function calcDepot(p) {
   var rentenMonat = p.rentenMonat || 1;
   var leben       = p.leben       || 22;
 
+  // ── Hybrid Tracking: neuester Snapshot überschreibt Startwerte ─────────
+  // Snapshot-Schema (policy_snapshots):
+  //   contract_value           = aktueller Marktwert (=> Startkapital)
+  //   total_contributions_paid = Summe bisheriger Einzahlungen (=> totalEingezahlt)
+  var snapshot = p.snapshotStart || null;
+  var startKapital         = 0;
+  var startTotalEingezahlt = 0;
+  if (snapshot && Number(snapshot.contract_value) > 0) {
+    startKapital         = Number(snapshot.contract_value) || 0;
+    startTotalEingezahlt = Number(snapshot.total_contributions_paid) || 0;
+    var snapDate = new Date(snapshot.snapshot_date);
+    vbJahr  = snapDate.getFullYear();
+    vbMonat = snapDate.getMonth() + 1;
+  }
+
   var sparMonate        = Math.max(1, (rentenJahr - vbJahr) * 12 + (rentenMonat - vbMonat));
   var sparjahre         = sparMonate / 12;
   var rentenPhaseMonate = Math.max(12, leben * 12);
@@ -822,7 +837,7 @@ export function calcDepot(p) {
   var inflationM    = inflationJ / 12;
   var depotgebuehrM = depotgebuehr / 12;
 
-  var kapital = 0, totalEingezahlt = 0, gesamtkosten = 0;
+  var kapital = startKapital, totalEingezahlt = startTotalEingezahlt, gesamtkosten = 0;
   var inflFak = 1;
   var labels = [], nomArr = [], realArr = [], einzArr = [];
 

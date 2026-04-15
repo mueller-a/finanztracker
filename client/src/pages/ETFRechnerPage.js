@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Slider, Box, Button, IconButton, Tabs, Tab, Stack, Typography, Chip,
-  Dialog, DialogTitle, DialogContent, DialogActions,
+  Dialog, DialogTitle, DialogContent, DialogActions, Card, CardContent,
   Alert, TextField, ToggleButton, ToggleButtonGroup, Switch, Paper,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
@@ -68,7 +68,7 @@ function runCalc(type, params, snapshot, snapshotHistory, policyMeta) {
       return { ...r, depotComparison: depotComp };
     }
     if (type === 'avd')   return calcAVD(baseParams);
-    if (type === 'depot') return calcDepot(baseParams);
+    if (type === 'depot') return calcDepot(enriched);  // Snapshot als Startwert übernehmen
     return calcPolicy(enriched);
   } catch { return null; }
 }
@@ -1990,8 +1990,8 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
 
       {/* Content */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {/* Sub-tabs (for insurance, bAV AND DRV with Hybrid Tracking) */}
-        {(pol.type === 'insurance' || pol.type === 'bav' || pol.type === 'drv') && (
+        {/* Sub-tabs (for insurance, bAV, DRV, depot — alle mit Snapshot-Tracking) */}
+        {(pol.type === 'insurance' || pol.type === 'bav' || pol.type === 'drv' || pol.type === 'depot') && (
           <div style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${t.bdr}` }}>
             {[
               { id: 'detail',    label: 'Prognose & Details' },
@@ -2010,7 +2010,9 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
           </div>
         )}
 
-        {/* Snapshots tab (insurance + bAV + DRV) */}
+        {/* Snapshots tab — zwei verschiedene Panels je nach Typ:
+            - Versicherung/bAV/DRV: komplexer SnapshotPanel mit Fondsverteilung + Kostenblöcken
+            - Depot:                schlankes DepotSnapshotPanel (Performance-Card + Liste) */}
         {(pol.type === 'insurance' || pol.type === 'bav' || pol.type === 'drv') && activeSubTab === 'snapshots' && (
           <SnapshotPanel
             policyId={pol.id}
@@ -2019,6 +2021,16 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
             onUpdate={onUpdateSnapshot}
             onDelete={onDeleteSnapshot}
             isDark={isDark}
+          />
+        )}
+
+        {pol.type === 'depot' && activeSubTab === 'snapshots' && (
+          <DepotSnapshotPanel
+            policyId={pol.id}
+            snapshots={snapshots || []}
+            onAdd={onAddSnapshot}
+            onUpdate={onUpdateSnapshot}
+            onDelete={onDeleteSnapshot}
           />
         )}
 
@@ -2036,7 +2048,7 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
           </div>
         )}
 
-        {((pol.type !== 'insurance' && pol.type !== 'bav' && pol.type !== 'drv') || activeSubTab === 'detail') && r?.depletionYear && (
+        {(pol.type === 'avd' || activeSubTab === 'detail') && r?.depletionYear && (
           <div style={{
             background: '#ef444415', border: '1px solid #ef4444',
             borderRadius: 10, padding: '10px 14px', color: '#ef4444', fontSize: '0.82rem',
@@ -2046,7 +2058,7 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
         )}
 
         {/* Stat cards (hidden in snapshots tab) */}
-        {((pol.type !== 'insurance' && pol.type !== 'bav' && pol.type !== 'drv') || activeSubTab === 'detail') && (
+        {(pol.type === 'avd' || activeSubTab === 'detail') && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(188px, 1fr))', gap: 16, alignItems: 'stretch' }}>
           {statCards.map((s, i) => (
             <StatCard key={i} {...s} isDark={isDark} />
@@ -2069,7 +2081,7 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
           <GrvTaxSimulatorCard pol={pol} />
         )}
 
-        {((pol.type !== 'insurance' && pol.type !== 'bav' && pol.type !== 'drv') || activeSubTab === 'detail') && <>
+        {(pol.type === 'avd' || activeSubTab === 'detail') && <>
         {/* Capital chart */}
         <div style={{ background: t.card, border: `1px solid ${t.bdr}`, borderRadius: 16, padding: 16 }}>
           <div style={{ color: t.sub, fontSize: '0.65rem', fontWeight: 700,
@@ -2621,6 +2633,280 @@ function OverviewPanel({ policies, onTabSwitch, isDark }) {
         })}
       </div>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DepotSnapshotPanel — schlanker Snapshot-Manager für Depot-Typ-Policen.
+// Nutzt dieselbe `policy_snapshots`-Tabelle wie Versicherungen, aber nur
+// die zwei relevanten Felder: total_balance (= contract_value) und
+// invested_capital (= total_contributions_paid).
+//
+// Steuerlogik: 26,375 % Abgeltungssteuer, reduziert um 30 % Teilfreistellung
+// für Aktien-ETFs → effektiv 18,4625 % auf den Gewinn.
+// ─────────────────────────────────────────────────────────────────────────────
+const DEPOT_TAX_RATE = 0.26375 * 0.70; // 30 % Teilfreistellung
+
+function DepotSnapshotPanel({ policyId, snapshots, onAdd, onUpdate, onDelete }) {
+  const [editing, setEditing] = useState(null); // null | { id?, ... }
+
+  const sorted = useMemo(
+    () => [...(snapshots ?? [])].sort((a, b) => new Date(b.snapshot_date) - new Date(a.snapshot_date)),
+    [snapshots],
+  );
+  const latest = sorted[0] ?? null;
+
+  const metrics = useMemo(() => {
+    if (!latest) return null;
+    const balance  = Number(latest.contract_value) || 0;
+    const invested = Number(latest.total_contributions_paid) || 0;
+    const gewinn   = balance - invested;
+    const pct      = invested > 0 ? (gewinn / invested) * 100 : 0;
+    const steuer   = gewinn > 0 ? gewinn * DEPOT_TAX_RATE : 0;
+    return { balance, invested, gewinn, pct, steuer, netto: balance - steuer };
+  }, [latest]);
+
+  async function handleSave(form) {
+    const payload = {
+      snapshot_date:            form.snapshot_date,
+      contract_value:           Number(form.total_balance),
+      total_contributions_paid: Number(form.invested_capital),
+      note:                     form.note ?? '',
+    };
+    if (form.id) await onUpdate(form.id, payload);
+    else         await onAdd(policyId, payload);
+    setEditing(null);
+  }
+
+  return (
+    <Stack spacing={2}>
+      {/* Performance-Card */}
+      {metrics && (
+        <Card elevation={2} sx={{ borderRadius: 3 }}>
+          <CardContent>
+            <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1.5 }}>
+              <Typography variant="caption" sx={{
+                color: 'text.secondary', fontWeight: 700,
+                letterSpacing: '0.08em', textTransform: 'uppercase',
+              }}>
+                Performance · Stand {new Date(latest.snapshot_date).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })}
+              </Typography>
+              <Chip
+                size="small"
+                label={metrics.gewinn >= 0 ? `+${metrics.pct.toFixed(2).replace('.', ',')} %` : `${metrics.pct.toFixed(2).replace('.', ',')} %`}
+                color={metrics.gewinn >= 0 ? 'success' : 'error'}
+                variant="outlined"
+              />
+            </Stack>
+            <Box sx={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(188px, 1fr))',
+              gap: 1.5,
+            }}>
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  Aktueller Wert
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 800, fontFamily: 'monospace' }}>
+                  {Math.round(metrics.balance).toLocaleString('de-DE')} €
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  Eingezahltes Kapital
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 800, fontFamily: 'monospace', color: 'text.secondary' }}>
+                  {Math.round(metrics.invested).toLocaleString('de-DE')} €
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  Gewinn / Verlust
+                </Typography>
+                <Typography variant="h5" sx={{
+                  fontWeight: 800, fontFamily: 'monospace',
+                  color: metrics.gewinn >= 0 ? 'success.main' : 'error.main',
+                }}>
+                  {metrics.gewinn >= 0 ? '+' : '−'} {Math.round(Math.abs(metrics.gewinn)).toLocaleString('de-DE')} €
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  Netto n. Steuer
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 800, fontFamily: 'monospace', color: 'warning.main' }}>
+                  {Math.round(metrics.netto).toLocaleString('de-DE')} €
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  abzgl. ~{Math.round(metrics.steuer).toLocaleString('de-DE')} € (18,46 %)
+                </Typography>
+              </Box>
+            </Box>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Liste + Toolbar */}
+      <Card elevation={2} sx={{ borderRadius: 3 }}>
+        <CardContent>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+            <Typography variant="caption" sx={{
+              color: 'text.secondary', fontWeight: 700,
+              letterSpacing: '0.08em', textTransform: 'uppercase',
+            }}>
+              Depot-Snapshots ({sorted.length})
+            </Typography>
+            <Button
+              size="small"
+              variant="contained"
+              onClick={() => setEditing({
+                snapshot_date:    new Date().toISOString().split('T')[0],
+                total_balance:    '',
+                invested_capital: '',
+                note:             '',
+              })}
+            >
+              Neuer Snapshot
+            </Button>
+          </Stack>
+
+          {sorted.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+              Noch kein Snapshot. Der erste Snapshot legt den Startwert für die Projektion fest.
+            </Typography>
+          ) : (
+            <Stack divider={<Box sx={{ borderTop: 1, borderColor: 'divider' }} />}>
+              {sorted.map((s) => {
+                const bal  = Number(s.contract_value) || 0;
+                const inv  = Number(s.total_contributions_paid) || 0;
+                const g    = bal - inv;
+                const pct  = inv > 0 ? (g / inv) * 100 : 0;
+                return (
+                  <Stack
+                    key={s.id}
+                    direction="row"
+                    alignItems="center"
+                    sx={{ py: 1.25, gap: 1.5 }}
+                  >
+                    <Box sx={{ minWidth: 100 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {new Date(s.snapshot_date).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">Wert</Typography>
+                        <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
+                          {Math.round(bal).toLocaleString('de-DE')} €
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">Eingezahlt</Typography>
+                        <Typography variant="body2" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>
+                          {Math.round(inv).toLocaleString('de-DE')} €
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">Performance</Typography>
+                        <Typography variant="body2" sx={{
+                          fontFamily: 'monospace', fontWeight: 600,
+                          color: g >= 0 ? 'success.main' : 'error.main',
+                        }}>
+                          {g >= 0 ? '+' : '−'}{Math.round(Math.abs(g)).toLocaleString('de-DE')} €
+                          {' · '}
+                          {pct >= 0 ? '+' : ''}{pct.toFixed(1).replace('.', ',')} %
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <Stack direction="row" spacing={0.5}>
+                      <IconButton size="small" onClick={() => setEditing({
+                        id:               s.id,
+                        snapshot_date:    s.snapshot_date,
+                        total_balance:    s.contract_value ?? '',
+                        invested_capital: s.total_contributions_paid ?? '',
+                        note:             s.note ?? '',
+                      })}>
+                        <EditOutlinedIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton size="small" color="error" onClick={() => onDelete(s.id).catch(() => {})}>
+                        <DeleteOutlineIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
+                  </Stack>
+                );
+              })}
+            </Stack>
+          )}
+        </CardContent>
+      </Card>
+
+      {editing && (
+        <DepotSnapshotDialog
+          initial={editing}
+          onClose={() => setEditing(null)}
+          onSave={handleSave}
+        />
+      )}
+    </Stack>
+  );
+}
+
+function DepotSnapshotDialog({ initial, onClose, onSave }) {
+  const [form, setForm] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const [err,  setErr]  = useState('');
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!form.snapshot_date) { setErr('Datum fehlt.'); return; }
+    const bal = parseFloat(form.total_balance);
+    const inv = parseFloat(form.invested_capital);
+    if (isNaN(bal) || bal < 0) { setErr('Depotwert ungültig.'); return; }
+    if (isNaN(inv) || inv < 0) { setErr('Eingezahltes Kapital ungültig.'); return; }
+    setBusy(true); setErr('');
+    try { await onSave(form); }
+    catch (ex) { setErr(ex.message); }
+    finally    { setBusy(false); }
+  }
+
+  return (
+    <Dialog open onClose={onClose} maxWidth="sm" fullWidth component="form" onSubmit={handleSubmit}>
+      <DialogTitle>{form.id ? 'Snapshot bearbeiten' : 'Neuer Depot-Snapshot'}</DialogTitle>
+      <DialogContent dividers>
+        <Stack spacing={2} sx={{ pt: 0.5 }}>
+          <DateField label="Stichtag" value={form.snapshot_date}
+            onChange={(v) => setForm((f) => ({ ...f, snapshot_date: v }))} />
+          <CurrencyField
+            label="Was ist dein aktueller Depotstand?"
+            value={form.total_balance}
+            onChange={(v) => setForm((f) => ({ ...f, total_balance: v === '' ? '' : v }))}
+            fullWidth
+            helperText="Marktwert laut Bank am Stichtag"
+          />
+          <CurrencyField
+            label="Wie viel hast du bis heute insgesamt eingezahlt?"
+            value={form.invested_capital}
+            onChange={(v) => setForm((f) => ({ ...f, invested_capital: v === '' ? '' : v }))}
+            fullWidth
+            helperText="Kumulierte Einzahlungen minus Entnahmen"
+          />
+          <TextField
+            size="small"
+            label="Notiz (optional)"
+            value={form.note}
+            onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+            fullWidth
+          />
+          {err && <Alert severity="error">{err}</Alert>}
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} color="inherit" disabled={busy}>Abbrechen</Button>
+        <Button type="submit" variant="contained" disabled={busy}>
+          {busy ? 'Speichern…' : 'Speichern'}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 
