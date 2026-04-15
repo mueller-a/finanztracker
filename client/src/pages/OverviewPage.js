@@ -25,6 +25,7 @@ import ChecklistRtlOutlinedIcon from '@mui/icons-material/ChecklistRtlOutlined';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { useDashboard } from '../hooks/useDashboard';
 import { useModules } from '../context/ModuleContext';
+import { useAppModules } from '../context/AppModulesContext';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmt2 = (n) => Number(n).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -203,6 +204,10 @@ function ModuleCard({ icon, title, accent, loading, children, onClick }) {
 }
 
 function ModuleStatusGrid({ data, loading, navigate }) {
+  // Globale Feature-Toggles aus app_modules — Kacheln werden nur gerendert,
+  // wenn das jeweilige Modul aktiviert ist.
+  const { isModuleEnabled } = useAppModules();
+
   // Nächste Insurance-Fälligkeit (heuristisch)
   const nextDue = useMemo(() => data ? estimateNextDue(data.ins.entries) : null, [data]);
   const nextDueStr = nextDue
@@ -233,6 +238,7 @@ function ModuleStatusGrid({ data, loading, navigate }) {
       gap: 2,
     }}>
       {/* Versicherungen */}
+      {isModuleEnabled('insurance') && (
       <ModuleCard
         icon={<ShieldOutlinedIcon />}
         title="Versicherungen"
@@ -255,8 +261,10 @@ function ModuleStatusGrid({ data, loading, navigate }) {
           <Typography variant="body2" sx={{ fontWeight: 700 }}>{nextDueStr}</Typography>
         </Box>
       </ModuleCard>
+      )}
 
       {/* Strom */}
+      {isModuleEnabled('electricity') && (
       <ModuleCard
         icon={<BoltOutlinedIcon />}
         title="Strom"
@@ -292,8 +300,10 @@ function ModuleStatusGrid({ data, loading, navigate }) {
           </Typography>
         </Box>
       </ModuleCard>
+      )}
 
       {/* Verbindlichkeiten */}
+      {isModuleEnabled('debts') && (
       <ModuleCard
         icon={<AccountBalanceOutlinedIcon />}
         title="Verbindlichkeiten"
@@ -330,8 +340,10 @@ function ModuleStatusGrid({ data, loading, navigate }) {
           </Typography>
         </Box>
       </ModuleCard>
+      )}
 
       {/* Ruhestand */}
+      {isModuleEnabled('retirement') && (
       <ModuleCard
         icon={<ElderlyOutlinedIcon />}
         title="Ruhestand"
@@ -358,6 +370,7 @@ function ModuleStatusGrid({ data, loading, navigate }) {
           </Typography>
         </Box>
       </ModuleCard>
+      )}
     </Box>
   );
 }

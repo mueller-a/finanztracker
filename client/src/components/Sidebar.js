@@ -27,6 +27,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { navItems } from '../navItems';
 import { useAuth } from '../context/AuthContext';
 import { useModules } from '../context/ModuleContext';
+import { useAppModules } from '../context/AppModulesContext';
 import { useContractAlert } from '../context/ContractAlertContext';
 
 // Map navItem.icon string → MUI Icon component
@@ -62,19 +63,30 @@ export default function Sidebar({ isDark, onToggleDark }) {
   });
 
   const { user, signOut } = useAuth();
-  const { modules } = useModules();
+  const { modules, isAdmin } = useModules();
+  const { isModuleEnabled } = useAppModules();
   const { redCount } = useContractAlert();
   const location = useLocation();
 
+  // Filter-Reihenfolge:
+  //   1. adminOnly  → nur Admins sehen den Eintrag
+  //   2. appModuleKey → globaler Toggle (app_modules)
+  //   3. moduleKey    → persönliche User-Präferenz (user_module_settings.show_*)
   const visibleItems = useMemo(() => {
+    function passes(item) {
+      if (item.adminOnly && !isAdmin)                            return false;
+      if (item.appModuleKey && !isModuleEnabled(item.appModuleKey)) return false;
+      if (item.moduleKey && !modules[item.moduleKey])             return false;
+      return true;
+    }
     return navItems
-      .filter((item) => !item.moduleKey || modules[item.moduleKey])
+      .filter(passes)
       .map((item) => {
         if (!item.children) return item;
-        const visibleChildren = item.children.filter((c) => !c.moduleKey || modules[c.moduleKey]);
+        const visibleChildren = item.children.filter(passes);
         return visibleChildren.length > 0 ? { ...item, children: visibleChildren } : item;
       });
-  }, [modules]);
+  }, [modules, isAdmin, isModuleEnabled]);
 
   function isAnyChildActive(children) {
     return children.some((c) => location.pathname === c.path || location.pathname.startsWith(c.path + '/'));

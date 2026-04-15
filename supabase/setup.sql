@@ -500,6 +500,38 @@ CREATE TABLE IF NOT EXISTS public.user_module_settings (
 
 
 -- ═════════════════════════════════════════════════════════════════════════════
+-- ║  SEKTION 8b: APP MODULES (Globale Feature-Toggles, Admin-gesteuert)       ║
+-- ═════════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS public.app_modules (
+  id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  module_key  text        NOT NULL UNIQUE,
+  label       text        NOT NULL,
+  is_active   boolean     NOT NULL DEFAULT true,
+  sort_order  integer     NOT NULL DEFAULT 0,
+  updated_at  timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_app_modules_key ON public.app_modules (module_key);
+
+INSERT INTO public.app_modules (module_key, label, sort_order, is_active) VALUES
+  ('dashboard',   'Dashboard',              0,  true),
+  ('insurance',   'Versicherungen',         10, true),
+  ('electricity', 'Strom',                  20, true),
+  ('savings',     'Guthaben & Sparziele',   30, true),
+  ('real_estate', 'Immobilien',             40, true),
+  ('debts',       'Verbindlichkeiten',      50, true),
+  ('budget',      'Budget',                 60, true),
+  ('salary',      'Gehaltsrechner',         70, true),
+  ('pkv',         'PKV-Rechner',            80, true),
+  ('retirement',  'Ruhestandsplanung',      90, true),
+  ('optimizer',   'Spar-Radar',             100, true)
+ON CONFLICT (module_key) DO UPDATE
+  SET label      = EXCLUDED.label,
+      sort_order = EXCLUDED.sort_order;
+
+
+-- ═════════════════════════════════════════════════════════════════════════════
 -- ║  SEKTION 9: TRIGGER (auto user_id)                                        ║
 -- ═════════════════════════════════════════════════════════════════════════════
 
@@ -1036,6 +1068,44 @@ CREATE POLICY "electricity_bills_delete_own"
   USING (
     bucket_id = 'electricity-bills'
     AND auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+
+-- ── app_modules: RLS (select alle auth, write nur Admins) ───────────────────
+ALTER TABLE public.app_modules ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "app_modules_select_all"    ON public.app_modules;
+DROP POLICY IF EXISTS "app_modules_insert_admin"  ON public.app_modules;
+DROP POLICY IF EXISTS "app_modules_update_admin"  ON public.app_modules;
+DROP POLICY IF EXISTS "app_modules_delete_admin"  ON public.app_modules;
+
+CREATE POLICY "app_modules_select_all" ON public.app_modules
+  FOR SELECT TO authenticated
+  USING (true);
+
+CREATE POLICY "app_modules_insert_admin" ON public.app_modules
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_module_settings
+            WHERE user_id = auth.uid() AND role = 'admin')
+  );
+
+CREATE POLICY "app_modules_update_admin" ON public.app_modules
+  FOR UPDATE TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.user_module_settings
+            WHERE user_id = auth.uid() AND role = 'admin')
+  )
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_module_settings
+            WHERE user_id = auth.uid() AND role = 'admin')
+  );
+
+CREATE POLICY "app_modules_delete_admin" ON public.app_modules
+  FOR DELETE TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.user_module_settings
+            WHERE user_id = auth.uid() AND role = 'admin')
   );
 
 

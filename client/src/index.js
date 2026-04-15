@@ -10,6 +10,7 @@ import './index.css';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ModuleProvider, useModules } from './context/ModuleContext';
+import { AppModulesProvider } from './context/AppModulesContext';
 import { ContractAlertProvider } from './context/ContractAlertContext';
 import MainLayout            from './components/MainLayout';
 import LoginPage             from './pages/LoginPage';
@@ -26,6 +27,8 @@ import PkvCalculatorPage     from './pages/PkvCalculatorPage';
 import SettingsPage          from './pages/SettingsPage';
 import ContractOptimizerPage from './pages/ContractOptimizerPage';
 import RealEstatePage        from './pages/RealEstatePage';
+import AdminModulesPage      from './pages/AdminModulesPage';
+import { useAppModules } from './context/AppModulesContext';
 
 // ─── Auth guard ───────────────────────────────────────────────────────────────
 function AuthGuard() {
@@ -49,6 +52,17 @@ function AuthGuard() {
   return <Outlet />;
 }
 
+// Wrapper, der den Zugriff auf eine Route blockiert, wenn das zugehörige
+// Modul global deaktiviert ist (`app_modules.is_active = false`). Während
+// der initialen Ladephase wird das Kind gerendert, damit kein "Flash to /".
+function ProtectedRoute({ moduleKey, children }) {
+  const { isModuleEnabled, loading } = useAppModules();
+  if (loading)                          return children;
+  if (!moduleKey)                       return children;
+  if (isModuleEnabled(moduleKey))       return children;
+  return <Navigate to="/" replace />;
+}
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 // To add a new route: add it to navItems.js AND here
 function AppRoutes({ isDark, onToggleDark }) {
@@ -60,18 +74,19 @@ function AppRoutes({ isDark, onToggleDark }) {
       {/* Protected: all routes inside AuthGuard → MainLayout */}
       <Route element={<AuthGuard />}>
         <Route element={<MainLayout isDark={isDark} onToggleDark={onToggleDark} />}>
-          <Route path="/"                   element={<OverviewPage isDark={isDark} />} />
-          <Route path="/versicherungen"     element={<InsurancesPage />} />
-          <Route path="/versicherungen/pkv" element={<PkvCalculatorPage isDark={isDark} />} />
-          <Route path="/budget"             element={<BudgetPage />} />
-          <Route path="/budget/optimizer"  element={<ContractOptimizerPage />} />
-          <Route path="/gehaltsrechner"    element={<SalaryPage />} />
-          <Route path="/guthaben/rente"       element={<ETFRechnerPage isDark={isDark} />} />
-          <Route path="/strom"              element={<StromPage />} />
-          <Route path="/verbindlichkeiten"  element={<VerbindlichkeitenPage />} />
-          <Route path="/immobilien"        element={<RealEstatePage />} />
-          <Route path="/guthaben"           element={<GuthabenPage />} />
-          <Route path="/settings"          element={<SettingsPage />} />
+          <Route path="/"                   element={<ProtectedRoute moduleKey="dashboard"><OverviewPage isDark={isDark} /></ProtectedRoute>} />
+          <Route path="/versicherungen"     element={<ProtectedRoute moduleKey="insurance"><InsurancesPage /></ProtectedRoute>} />
+          <Route path="/versicherungen/pkv" element={<ProtectedRoute moduleKey="pkv"><PkvCalculatorPage isDark={isDark} /></ProtectedRoute>} />
+          <Route path="/budget"             element={<ProtectedRoute moduleKey="budget"><BudgetPage /></ProtectedRoute>} />
+          <Route path="/budget/optimizer"   element={<ProtectedRoute moduleKey="optimizer"><ContractOptimizerPage /></ProtectedRoute>} />
+          <Route path="/gehaltsrechner"     element={<ProtectedRoute moduleKey="salary"><SalaryPage /></ProtectedRoute>} />
+          <Route path="/guthaben/rente"     element={<ProtectedRoute moduleKey="retirement"><ETFRechnerPage isDark={isDark} /></ProtectedRoute>} />
+          <Route path="/strom"              element={<ProtectedRoute moduleKey="electricity"><StromPage /></ProtectedRoute>} />
+          <Route path="/verbindlichkeiten"  element={<ProtectedRoute moduleKey="debts"><VerbindlichkeitenPage /></ProtectedRoute>} />
+          <Route path="/immobilien"         element={<ProtectedRoute moduleKey="real_estate"><RealEstatePage /></ProtectedRoute>} />
+          <Route path="/guthaben"           element={<ProtectedRoute moduleKey="savings"><GuthabenPage /></ProtectedRoute>} />
+          <Route path="/settings"           element={<SettingsPage />} />
+          <Route path="/admin/modules"      element={<AdminModulesPage />} />
           {/* Catch-all → back to overview */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
@@ -117,7 +132,9 @@ function Root() {
   return (
     <AuthProvider>
       <ModuleProvider>
-        <ThemeShell />
+        <AppModulesProvider>
+          <ThemeShell />
+        </AppModulesProvider>
       </ModuleProvider>
     </AuthProvider>
   );
