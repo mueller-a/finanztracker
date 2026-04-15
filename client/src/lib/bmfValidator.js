@@ -41,43 +41,43 @@ export async function fetchBmfTaxValidation(gh, localResult) {
 
     const jahresbrutto = (gh.ghBrutto || 0) * 12;
 
-    // PKV/GKV Parameter
-    // PKV: 0 = GKV, 1 = PKV (privat), 2 = PKV mit privater PV
-    const PKV = gh.ghKvType === 'pkv' ? 2 : 0;
+    // Parameter gemäss offizieller BMF-Schnittstellenbeschreibung
+    // "Lohnsteuer2026" (siehe
+    //  https://www.bmf-steuerrechner.de/javax.faces.resource/daten/xmls/Lohnsteuer2026.xml.xhtml):
+    //
+    // RE4   = Arbeitslohn für aktuellen LZZ (Cent) — bei LZZ=1 = Jahresbrutto
+    // JRE4  = Jahresarbeitslohn ohne sonstige Bezüge (Cent)
+    // KVZ   = GKV-Zusatzbeitrag in PROZENT (z.B. 2.5), NICHT ‰ × 10
+    // PKV   = 0 = GKV, 1 = PKV
+    // PKPV  = PKV-AN-Beitrag MONATLICH in Cent (nicht × 12)
+    // PKPVAGZ = AG-Zuschuss zur PKV MONATLICH in Cent
+    // R     = Religionsgemeinschaft (0=keine) — Pflichtfeld
+    // f     = Faktor Stkl. IV (3 Dezimalstellen); af = 1 bei Faktorverfahren
+    // ALV   = 0 = arbeitslosenversichert
+    // KRV   = 0 = rentenversichert
 
-    // PKPV = Jahres-PKV-Beitrag (Gesamt) in Cents, nur relevant bei PKV > 0
-    const pkpvJahr = gh.ghKvType === 'pkv'
-      ? toCents((gh.ghPkvBasis || gh.ghPkvBeitrag || 0) * 12)
-      : 0;
-
-    // KVZ = GKV-Zusatzbeitrag in Promille (also z.B. 2,48% → 24,8 → 25 gerundet)
-    // BMF erwartet den Wert als Promille × 10 (also in Hundertstel-Prozent)
-    const KVZ = Math.round((gh.ghGkvZusatz || 0) * 100);
-
-    // PVZ = Zuschlag für Kinderlose (0 = nein, 1 = ja)
-    const PVZ = (gh.ghKinder || 0) === 0 ? 1 : 0;
-
-    // ZKF = Kinderfreibetrag (Anzahl halbe Freibeträge, 0.5 Schritte)
-    const ZKF = gh.ghKinderFB || 0;
-
-    // Konfession: 0 = keine, 1 = ev/rk
-    const R = gh.ghKist ? 1 : 0;
-
+    const isPkv = gh.ghKvType === 'pkv';
     const body = {
-      code:   'ext2026',
-      LZZ:    1,              // 1 = Jahr
+      code:   'Lohnsteuer2026',
+      LZZ:    1,                                           // 1 = Jahr
       RE4:    toCents(jahresbrutto),
+      JRE4:   toCents(jahresbrutto),                       // bei LZZ=1 gleich RE4
       STKL:   gh.ghStkl || 1,
-      ZKF,
-      PKV,
-      PVZ,
-      R,
-      ZMVB:   12,
-      KVZ,
-      PKPV:   pkpvJahr,
-      f:      1,              // Faktor Stkl. 4 = 1
+      R:      gh.ghKist ? 1 : 0,                           // Pflichtfeld!
+      ZKF:    gh.ghKinderFB || 0,
+      PKV:    isPkv ? 1 : 0,                               // 0/1, NICHT 0/1/2
+      PVZ:    (gh.ghKinder || 0) === 0 ? 1 : 0,            // Zuschlag f. Kinderlose
+      KVZ:    gh.ghGkvZusatz || 0,                         // in PROZENT, nicht ‰
+      PKPV:   isPkv ? toCents(gh.ghPkvBasis || gh.ghPkvBeitrag || 0) : 0,     // MONATLICH
+      PKPVAGZ:isPkv ? toCents(gh.ghPkvAgZuschuss || 0)                         // MONATLICH
+                    : 0,
+      f:      1,                                           // kein Faktorverfahren
+      af:     0,
+      ALV:    0,
+      KRV:    0,
       AJAHR:  0,
       ALTER1: 0,
+      ZMVB:   0,
     };
 
     // Call via Edge Function proxy

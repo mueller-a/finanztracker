@@ -36,18 +36,12 @@
 // @ts-ignore Deno imports
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
-// BMF hält mehrere URL+Code-Kombinationen parallel vor.
-// - "std" = Standard-Lohnsteuer-Rechner (Jahres- oder Monatsberechnung)
-//   → das ist die Variante, die wir wollen: Brutto rein → LSt raus.
-// - "ext" = Fortschreibungs-Variante, erwartet Vormonats-Werte
-//   (JRE4, JSTLZZ etc.) als Input — ohne diese liefert sie 0.
-//
-// Strategie: "std" zuerst probieren; "ext" nur als Fallback.
+// Der korrekte Interface-Code laut offizieller Schnittstellenbeschreibung
+// (https://www.bmf-steuerrechner.de/javax.faces.resource/daten/xmls/Lohnsteuer2026.xml.xhtml)
+// ist `Lohnsteuer2026` — nicht die früher vermuteten Varianten LSt…ext/std.
 const BMF_ATTEMPTS: Array<{ url: string; code: string }> = [
-  { url: 'https://www.bmf-steuerrechner.de/interface/2026Version1.xhtml', code: 'LSt2026std' },
-  { url: 'https://www.bmf-steuerrechner.de/interface/2026Version1.xhtml', code: 'LSt2026ext' },
-  { url: 'https://www.bmf-steuerrechner.de/interface/2025Version1.xhtml', code: 'LSt2025std' },
-  { url: 'https://www.bmf-steuerrechner.de/interface/2025Version1.xhtml', code: 'LSt2025ext' },
+  { url: 'https://www.bmf-steuerrechner.de/interface/2026Version1.xhtml', code: 'Lohnsteuer2026' },
+  { url: 'https://www.bmf-steuerrechner.de/interface/2025Version1.xhtml', code: 'Lohnsteuer2025' },
 ];
 
 const CORS_HEADERS = {
@@ -135,39 +129,56 @@ serve(async (req: Request) => {
       probeResult = { code: 'LSt2026std', lstlzz: probeParsed.LSTLZZ ?? 0, raw: probeParsed };
     } catch { /* egal — probe ist nice-to-have */ }
 
-    // Build query string for BMF URL
-    // `code` wird pro Attempt gesetzt (siehe BMF_ATTEMPTS unten) — der Wert
-    // aus `params.code` wird ignoriert, weil unser Fallback-Matrix-Ansatz die
-    // zuverlässigen Kombinationen kennt.
+    // Parameter gemäss offizieller XML-Schnittstellen-Beschreibung
+    // Lohnsteuer2026 (BMF, PAP Version 1.0):
+    //   - RE4   = Arbeitslohn im aktuellen LZZ (Cent)
+    //   - JRE4  = Jahresarbeitslohn OHNE sonstige Bezüge (Cent) — bei LZZ=1 identisch mit RE4
+    //   - LZZ   = 1=Jahr, 2=Monat, 3=Woche, 4=Tag
+    //   - STKL  = 1..6
+    //   - R     = Religionsgemeinschaft (0=keine) — Pflichtfeld ohne Default!
+    //   - KVZ   = Zusatzbeitragssatz in PROZENT (z.B. 2.5), NICHT in ‰
+    //   - PKV   = 0=GKV, 1=PKV
+    //   - PKPV  = PKV-AN-Beitrag MONATLICH (Cent) — unabhängig von LZZ
+    //   - PKPVAGZ = AG-Zuschuss zur PKV MONATLICH (Cent)
+    //   - f     = Faktor Stkl. IV (3 Dezimalstellen)
+    //   - af    = 1, wenn Faktorverfahren gewählt (sonst 0)
+    //   - ALV   = 0 = arbeitslosenversichert
+    //   - KRV   = 0 = rentenversichert
     const queryParams = new URLSearchParams({
-      code:    'PLACEHOLDER',
-      LZZ:     String(params.LZZ     ?? 1),    // 1 = Jahr
-      RE4:     String(params.RE4     ?? 0),    // zu versteuerndes Einkommen in Cents
-      STKL:    String(params.STKL    ?? 1),
-      ZKF:     String(params.ZKF     ?? 0),
-      PKV:     String(params.PKV     ?? 0),    // 0 = GKV, 1 = PKV
-      PVZ:     String(params.PVZ     ?? 0),
-      R:       String(params.R       ?? 0),
-      ZMVB:    String(params.ZMVB    ?? 12),
-      KVZ:     String(params.KVZ     ?? 0),    // GKV-Zusatzbeitrag in ‰
-      PKPV:    String(params.PKPV    ?? 0),    // PKV/PV-Beitrag in Cents
-      AJAHR:   String(params.AJAHR   ?? 0),
-      ALTER1:  String(params.ALTER1  ?? 0),
-      f:       String(params.f       ?? 1),
-      VBEZ:    String(params.VBEZ    ?? 0),
-      VBEZM:   String(params.VBEZM   ?? 0),
-      VBEZS:   String(params.VBEZS   ?? 0),
-      VBS:     String(params.VBS     ?? 0),
-      VJAHR:   String(params.VJAHR   ?? 0),
-      KRV:     String(params.KRV     ?? 0),
-      LZZHINZU: String(params.LZZHINZU ?? 0),
+      code:     'PLACEHOLDER',                  // wird pro Attempt gesetzt
+      LZZ:      String(params.LZZ     ?? 1),
+      RE4:      String(params.RE4     ?? 0),
+      JRE4:     String((params as any).JRE4 ?? params.RE4 ?? 0),
+      STKL:     String(params.STKL    ?? 1),
+      R:        String(params.R       ?? 0),    // Pflichtfeld!
+      ZKF:      String(params.ZKF     ?? 0),
+      PKV:      String(params.PKV     ?? 0),
+      PVZ:      String(params.PVZ     ?? 0),
+      KVZ:      String(params.KVZ     ?? 0),    // Prozent, nicht ‰
+      PKPV:     String(params.PKPV    ?? 0),    // MONATLICH in Cent
+      PKPVAGZ:  String((params as any).PKPVAGZ ?? 0),
+      AJAHR:    String(params.AJAHR   ?? 0),
+      ALTER1:   String(params.ALTER1  ?? 0),
+      ALV:      String((params as any).ALV ?? 0),
+      KRV:      String(params.KRV     ?? 0),
+      f:        String(params.f       ?? 1),
+      af:       String((params as any).af ?? 0),
+      ZMVB:     String(params.ZMVB    ?? 0),
       LZZFREIB: String(params.LZZFREIB ?? 0),
-      SONSTB:  String(params.SONSTB  ?? 0),
+      LZZHINZU: String(params.LZZHINZU ?? 0),
+      JFREIB:   String((params as any).JFREIB ?? 0),
+      JHINZU:   String((params as any).JHINZU ?? 0),
+      VBEZ:     String(params.VBEZ    ?? 0),
+      VBEZM:    String(params.VBEZM   ?? 0),
+      VBEZS:    String(params.VBEZS   ?? 0),
+      VBS:      String(params.VBS     ?? 0),
+      VJAHR:    String(params.VJAHR   ?? 0),
+      JVBEZ:    String((params as any).JVBEZ ?? 0),
+      JRE4ENT:  String((params as any).JRE4ENT ?? 0),
+      SONSTB:   String(params.SONSTB  ?? 0),
       SONSTENT: String(params.SONSTENT ?? 0),
-      STERBE:  String(params.STERBE  ?? 0),
-      VKAPA:   String(params.VKAPA   ?? 0),
-      VMT:     String(params.VMT     ?? 0),
-      ZKRV:    String(params.ZKRV    ?? 0),
+      STERBE:   String(params.STERBE  ?? 0),
+      MBV:      String((params as any).MBV ?? 0),
     });
 
     // Probiere alle URL+Code-Kombinationen, bis eine valide XML mit
