@@ -468,7 +468,6 @@ export default function PkvCalculatorPage({ isDark = false }) {
       setHydrated(true);
     }
     run();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user, configs]);
 
   // ── Auto-save to Supabase + localStorage on every change (debounced 600ms)
@@ -1233,16 +1232,22 @@ export default function PkvCalculatorPage({ isDark = false }) {
       {/* ══════════════════════ GKV TAB ══════════════════════════════════════ */}
       {globalTab === 'gkv' && (
         <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
-          {/* Sidebar */}
-          <div style={{ flexShrink: 0, minWidth: 240 }}>
-            <SectionLabel isDark={isDark}>Hochrechnung</SectionLabel>
-            <div style={{ background: card, border: `1px solid ${bdr}`, borderRadius: 12, padding: 16, marginBottom: 12 }}>
-              <SliderField label="Jährl. Gehaltssteigerung" min={0} max={10} step={0.5} value={gkv.gkvGehaltsRate} onChange={(v) => updateGkv({ gkvGehaltsRate: v })} suffix="%" isDark={isDark} />
-              <SliderField label="Jährl. GKV-Beitragsanpassung" min={0} max={10} step={0.5} value={gkv.gkvBeitragsRate} onChange={(v) => updateGkv({ gkvBeitragsRate: v })} suffix="%" isDark={isDark} />
-              <div style={{ fontSize: '0.68rem', color: muted, lineHeight: 1.6, marginTop: 8 }}>
-                Brutto, GKV-Zusatzbeitrag und Kinder werden aus dem Gehaltsrechner-Modul übernommen.
+          {/* Sidebar — gleiche Breite/Struktur wie PkvSidebar (min 280 / max 300) */}
+          <div style={{ flexShrink: 0 }}>
+            <Stack sx={{ minWidth: 280, maxWidth: 300 }}>
+              <SectionLabel isDark={isDark}>Hochrechnung</SectionLabel>
+              <div style={{ background: card, border: `1px solid ${bdr}`, borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                <SliderField label="Jährl. Gehaltssteigerung" min={0} max={10} step={0.5} value={gkv.gkvGehaltsRate} onChange={(v) => updateGkv({ gkvGehaltsRate: v })} suffix="%" isDark={isDark} />
+                <SliderField label="Jährl. GKV-Beitragsanpassung" min={0} max={10} step={0.5} value={gkv.gkvBeitragsRate} onChange={(v) => updateGkv({ gkvBeitragsRate: v })} suffix="%" isDark={isDark} />
+                <div style={{ fontSize: '0.68rem', color: muted, lineHeight: 1.6, marginTop: 8 }}>
+                  Brutto, GKV-Zusatzbeitrag und Kinder werden aus dem Gehaltsrechner-Modul übernommen.
+                </div>
               </div>
-            </div>
+              <Alert severity="info" variant="outlined" sx={{ fontSize: '0.78rem' }}>
+                Die PKV-Beitragsprognose wird aus dem Tab <strong>"PKV-Rechner"</strong> übernommen
+                (Tarife, GZ, Beitragssteigerung, AG-/KVdR-Zuschuss). Änderungen dort wirken sich hier sofort aus.
+              </Alert>
+            </Stack>
           </div>
 
           {/* Content */}
