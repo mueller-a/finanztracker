@@ -2,7 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { VPI_FALLBACK } from '../lib/inflationData';
 
-const CACHE_KEY  = 'inflation_vpi_v1';
+// Cache-Key mit Version: bei Schema-Änderungen einfach hochzählen, dann
+// wird der lokale Cache aller User invalidiert (alte v1-Einträge bleiben
+// liegen, werden aber nicht mehr genutzt).
+const CACHE_KEY  = 'inflation_vpi_v2';
 const CACHE_TTL  = 24 * 60 * 60 * 1000; // 24 Stunden
 
 // Liefert eine Map { year: vpi } für historische Inflationsdaten.
@@ -38,8 +41,14 @@ export function useInflationData() {
     // 2. Edge Function aufrufen
     try {
       const { data, error: fnErr } = await supabase.functions.invoke('destatis-vpi');
-      if (fnErr) throw new Error(fnErr.message);
+      if (fnErr) {
+        // eslint-disable-next-line no-console
+        console.warn('[useInflationData] Edge Function Error:', fnErr);
+        throw new Error(fnErr.message);
+      }
       if (!data?.ok || !data.vpi || Object.keys(data.vpi).length === 0) {
+        // eslint-disable-next-line no-console
+        console.warn('[useInflationData] Edge Function antwortete unbrauchbar:', data);
         throw new Error(data?.error || 'Leere Antwort von destatis-vpi.');
       }
       setVpi(data.vpi);
@@ -50,6 +59,8 @@ export function useInflationData() {
       return;
     } catch (ex) {
       // 3. Fallback auf statische Werte
+      // eslint-disable-next-line no-console
+      console.warn('[useInflationData] Fallback auf statische VPI-Werte:', ex.message);
       setVpi(VPI_FALLBACK);
       setStatus('fallback');
       setError(ex.message || 'Destatis nicht erreichbar.');
