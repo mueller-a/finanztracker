@@ -39,9 +39,12 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 const BMF_URL = 'https://www.bmf-steuerrechner.de/interface/2026Version1.xhtml';
 
 const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  // x-client-info + apikey werden automatisch von supabase-js im Browser gesetzt
+  // und müssen im Preflight explizit erlaubt sein, sonst blockiert Chrome
+  // die Anfrage ("Request header field x-client-info is not allowed …").
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 interface BmfParams {
