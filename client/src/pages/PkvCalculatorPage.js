@@ -8,6 +8,8 @@ import {
 } from '../utils/salaryCalculations';
 import { readSalaryNetto } from '../hooks/useSalarySettings';
 import { useModules, calculateAge } from '../context/ModuleContext';
+import { useAuth } from '../context/AuthContext';
+import { usePkvConfigs } from '../hooks/usePkvConfigs';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartTooltip, Legend, ResponsiveContainer,
@@ -392,6 +394,17 @@ export default function PkvCalculatorPage({ isDark = false }) {
 
   const lsDraftTimer = useRef(null);
 
+  // ── Persistence: Supabase (pkv_configs) mit localStorage-Fallback ─────────
+  // Primärer Store ist Supabase. Die einzige auto-verwaltete Zeile pro User
+  // trägt den Namen AUTOSAVE_NAME; ihre ID merken wir uns in activeConfigId,
+  // damit weitere Saves ein UPDATE statt ein INSERT auslösen.
+  // localStorage bleibt als Offline-Cache und für Gäste-Nutzung erhalten.
+  const AUTOSAVE_NAME = 'Auto-Save';
+  const { user, loading: authLoading } = useAuth();
+  const { configs, loadConfig, saveConfig } = usePkvConfigs();
+  const [activeConfigId, setActiveConfigId] = useState(null);
+  const [hydrated, setHydrated] = useState(false); // Auto-Save erst NACH Init-Hydration
+
   // ── Sync global birthday → pkv state ────────────────────────────────────────
   useEffect(() => {
     if (!globalBirthday) return;
@@ -401,31 +414,85 @@ export default function PkvCalculatorPage({ isDark = false }) {
     }
   }, [globalBirthday]);
 
-  // ── Restore localStorage draft on first mount ──────────────────────────────
+  // ── Initial Hydration: Supabase bevorzugt, localStorage als Fallback ──────
+  // Läuft einmal, sobald Auth-Status feststeht. Gast-Nutzer (kein user) bekommen
+  // ausschließlich localStorage. Eingeloggte Nutzer: Supabase zuerst, bei leerem
+  // Ergebnis wird optional der localStorage-Draft als Start-Zustand verwendet
+  // (Migrationshilfe) und direkt wieder in Supabase geschrieben.
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('pkv_draft');
-      if (!raw) return;
-      const state = JSON.parse(raw);
+    if (authLoading) return;
+    if (hydrated)   return;
+
+    function applyState(state) {
       if (state?.version !== 1) return;
       const { gkv: savedGkv, gh: _savedGh, birthdate: _bd, currentAge: _age, ...savedPkv } = state;
       setPkv(prev => ({ ...DEFAULT_PKV, ...savedPkv, birthdate: prev.birthdate, currentAge: prev.currentAge }));
       if (savedGkv) setGkv({ ...DEFAULT_GKV, ...savedGkv });
       if (savedPkv.tarife?.length)    setNextTarifId(Math.max(...savedPkv.tarife.map((t) => t.id)) + 1);
       if (savedPkv.senkungen?.length) setNextSenkungId(Math.max(...savedPkv.senkungen.map((s) => s.id)) + 1);
-    } catch {}
-  }, []);  // eslint-disable-line
+    }
 
-  // ── Auto-save to localStorage on every change (debounced 600ms) ───────────
-  useEffect(() => {
-    clearTimeout(lsDraftTimer.current);
-    lsDraftTimer.current = setTimeout(() => {
+    function loadLocal() {
       try {
-        const { birthdate: _bd, currentAge: _age, ...pkvToSave } = pkv;
-        localStorage.setItem('pkv_draft', JSON.stringify({
-          version: 1, savedAt: new Date().toISOString(), ...pkvToSave, gkv,
-        }));
+        const raw = localStorage.getItem('pkv_draft');
+        if (!raw) return null;
+        return JSON.parse(raw);
+      } catch { return null; }
+    }
+
+    async function run() {
+      // Gast: nur localStorage
+      if (!user) {
+        const local = loadLocal();
+        if (local) applyState(local);
+        setHydrated(true);
+        return;
+      }
+
+      // Eingeloggt: versuche die neueste Auto-Save-Config des Users
+      const autosave = configs.find((c) => c.name === AUTOSAVE_NAME) ?? configs[0];
+      if (autosave) {
+        try {
+          const full = await loadConfig(autosave.id);
+          setActiveConfigId(full.id);
+          applyState(full.data);
+          setHydrated(true);
+          return;
+        } catch {
+          // Fallback auf localStorage
+        }
+      }
+      // Noch keine Config in Supabase — ggf. localStorage-Draft übernehmen
+      const local = loadLocal();
+      if (local) applyState(local);
+      setHydrated(true);
+    }
+    run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user, configs]);
+
+  // ── Auto-save to Supabase + localStorage on every change (debounced 600ms)
+  // - Supabase ist die primäre Quelle (RLS, geräteübergreifend)
+  // - localStorage bleibt als Offline-Cache / Gast-Speicher
+  // - Saves erst ab `hydrated`, um das Default-State-Initial nicht als Nutzer-
+  //   Änderung zurück in die DB zu schreiben
+  useEffect(() => {
+    if (!hydrated) return;
+    clearTimeout(lsDraftTimer.current);
+    lsDraftTimer.current = setTimeout(async () => {
+      const { birthdate: _bd, currentAge: _age, ...pkvToSave } = pkv;
+      const payload = { version: 1, savedAt: new Date().toISOString(), ...pkvToSave, gkv };
+      try {
+        localStorage.setItem('pkv_draft', JSON.stringify(payload));
       } catch {}
+      if (user) {
+        try {
+          const saved = await saveConfig(activeConfigId, AUTOSAVE_NAME, payload);
+          if (!activeConfigId && saved?.id) setActiveConfigId(saved.id);
+        } catch {
+          // Supabase-Fehler nicht eskalieren — localStorage reicht als Fallback
+        }
+      }
       // ── PKV projection for Ruhestandsplanung ──────────────────────────────
       // Netto-PKV-Beitrag bei Rentenbeginn = Brutto-Beitrag minus KVdR-Zuschuss.
       // (AG-Zuschuss entfällt im Rentenalter ohnehin.)
@@ -911,16 +978,14 @@ export default function PkvCalculatorPage({ isDark = false }) {
             {/* Tarif rows */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
               {/* Column headers */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 50px 50px 60px 28px', gap: 6, alignItems: 'center', padding: '0 2px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 50px 28px', gap: 6, alignItems: 'center', padding: '0 2px' }}>
                 <span style={lblSt}>Tarif</span>
                 <span style={lblSt}>Betrag €</span>
                 <span style={lblSt}>GZ</span>
-                <span style={lblSt}>Basis</span>
-                <span style={lblSt}>Absetzbar</span>
                 <span />
               </div>
               {visibleTarife.map(({ t, origIdx }) => (
-                <div key={t.id || origIdx} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 50px 50px 60px 28px', gap: 6, alignItems: 'center', padding: '3px 2px', borderRadius: 6, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
+                <div key={t.id || origIdx} style={{ display: 'grid', gridTemplateColumns: '1fr 90px 50px 28px', gap: 6, alignItems: 'center', padding: '3px 2px', borderRadius: 6, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
                   <input type="text" value={t.name} onChange={(e) => updateTarif(origIdx, 'name', e.target.value)}
                     style={{ ...inpSt, width: '100%' }} />
                   <input type="number" step="0.01" value={t.amount} onChange={(e) => updateTarif(origIdx, 'amount', parseFloat(e.target.value) || 0)}
@@ -928,12 +993,6 @@ export default function PkvCalculatorPage({ isDark = false }) {
                   <div style={{ display: 'flex', justifyContent: 'center' }}>
                     <input type="checkbox" checked={!!t.gz} onChange={(e) => updateTarif(origIdx, 'gz', e.target.checked)} style={chkSt} title="Gesetzlicher Zuschlag 10%" />
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'center' }}>
-                    <input type="checkbox" checked={!!t.steuer} onChange={(e) => updateTarif(origIdx, 'steuer', e.target.checked)} style={chkSt} title="Basisabsicherung (steuerlich absetzbar)" />
-                  </div>
-                  <input type="number" min={0} max={100} step={1} value={t.steuerPct || 0}
-                    onChange={(e) => updateTarif(origIdx, 'steuerPct', parseFloat(e.target.value) || 0)}
-                    style={{ ...inpSt, width: '100%', textAlign: 'right', opacity: t.steuer ? 1 : 0.3 }} disabled={!t.steuer} />
                   <button onClick={() => removeTarif(origIdx)} title="Tarif entfernen"
                     style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'rgba(239,68,68,0.1)', color: '#ef4444', cursor: visibleTarife.length > 1 ? 'pointer' : 'not-allowed', fontSize: '0.82rem', opacity: visibleTarife.length > 1 ? 1 : 0.3 }}>
                     ×
@@ -1165,7 +1224,7 @@ export default function PkvCalculatorPage({ isDark = false }) {
             </div>
 
             <div style={{ color: muted, fontSize: '0.68rem', lineHeight: 1.6 }}>
-              * Alle Angaben ohne Gewähr. GZ = Gesetzl. Zuschlag (10% auf GZ-pflichtige Tarife, bis Alter 59). Steuerl. Ersparnis = Basisabsicherungsanteile × Steuersatz.
+              * Alle Angaben ohne Gewähr. GZ = Gesetzl. Zuschlag (10% auf GZ-pflichtige Tarife, bis Alter 59).
             </div>
           </div>
         </div>
