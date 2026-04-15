@@ -137,9 +137,11 @@ serve(async (req: Request) => {
     // (das XML mit <ausgabe>-Tags). BMF ändert gelegentlich das URL-Schema.
     let xmlText = '';
     let usedUrl = '';
-    let lastStatus = 0;
     let raw: Record<string, number> = {};
     const ausgabeRegex = /<ausgabe\s+name="([^"]+)"\s+value="([^"]+)"/g;
+
+    // Pro URL: Status, Content-Type, Body-Preview — damit wir sehen was wirklich ankommt
+    const attempts: Array<{ url: string; status: number; contentType: string; preview: string; error?: string }> = [];
 
     for (const baseUrl of BMF_URLS) {
       const bmfUrl = `${baseUrl}?${queryParams.toString()}`;
@@ -150,25 +152,37 @@ serve(async (req: Request) => {
             'User-Agent': 'Mozilla/5.0 (compatible; Finanztracker-Validator/1.0)',
           },
         });
-        lastStatus = bmfResponse.status;
-        if (!bmfResponse.ok) continue;
         const body = await bmfResponse.text();
+        const ct   = bmfResponse.headers.get('content-type') ?? '';
+        attempts.push({
+          url: baseUrl,
+          status: bmfResponse.status,
+          contentType: ct,
+          preview: body.slice(0, 600),
+        });
+
+        if (!bmfResponse.ok) continue;
 
         // Treffer prüfen: mindestens eine <ausgabe> mit bekanntem Feld
         const probe = /<ausgabe\s+name="(LSTLZZ|LSTJAHR|SOLZLZZ)"/i.test(body);
-        if (!probe) { xmlText = body; continue; } // als Debug-Preview merken
+        if (!probe) continue;
 
         xmlText = body;
         usedUrl = baseUrl;
-        // eslint-disable-next-line no-regex-spaces
         let match;
         raw = {};
         while ((match = ausgabeRegex.exec(body)) !== null) {
           raw[match[1]] = Number(match[2]);
         }
         break;
-      } catch {
-        // Netzwerk-Error → nächste URL probieren
+      } catch (err) {
+        attempts.push({
+          url: baseUrl,
+          status: 0,
+          contentType: '',
+          preview: '',
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
     }
 
@@ -176,8 +190,7 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({
         ok:     false,
         error:  'BMF: keine <ausgabe>-Tags in Antwort',
-        status: lastStatus,
-        debug:  { urlsTried: BMF_URLS, xmlPreview: xmlText.slice(0, 500) },
+        attempts,   // Array mit URL/Status/ContentType/Preview pro Versuch
       }), {
         status:  502,
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
