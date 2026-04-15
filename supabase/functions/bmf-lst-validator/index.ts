@@ -212,6 +212,8 @@ serve(async (req: Request) => {
       bk:      raw.BK      ?? 0,
       bks:     raw.BKS     ?? 0,
       raw,
+      // Debug: was wurde an BMF gesendet (alle Parameter)
+      requestSent: Object.fromEntries(queryParams.entries()),
     }), {
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     });
