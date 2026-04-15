@@ -80,10 +80,4 @@ export const navItems = [
       { label: 'Ruhestandsplanung', path: '/guthaben/rente', icon: 'chart', moduleKey: 'show_retirement_plan', appModuleKey: 'retirement' },
     ],
   },
-  {
-    label: 'Admin · Module',
-    path:  '/admin/modules',
-    icon:  'shield',
-    adminOnly: true,
-  },
 ];

@@ -8,25 +8,13 @@ import { useModules } from '../context/ModuleContext';
 import { useAppModules } from '../context/AppModulesContext';
 import { PageHeader } from '../components/mui';
 
-// Admin-Bereich: Globale Modul-Toggles. Schreibrechte werden via RLS
-// (`app_modules_update_admin`) durchgesetzt — die Frontend-Prüfung ist nur UX.
-export default function AdminModulesPage() {
-  const { isAdmin, loading: modulesLoading } = useModules();
+// Wiederverwendbares Panel mit der eigentlichen Toggle-Liste.
+// Wird sowohl auf der Standalone-Page (/admin/modules) als auch
+// im Admin-Tab unter Einstellungen gerendert.
+export function AdminModulesPanel() {
   const { modules, loading, error, setModuleActive } = useAppModules();
   const [savingKey, setSavingKey] = useState(null);
   const [snack, setSnack]         = useState(null);
-
-  if (modulesLoading) {
-    return (
-      <Box sx={{ p: 3, display: 'flex', justifyContent: 'center' }}>
-        <CircularProgress size={28} />
-      </Box>
-    );
-  }
-  if (!isAdmin) {
-    // Nicht-Admins werden zum Dashboard umgeleitet (Defense-in-depth zur RLS).
-    return <Navigate to="/" replace />;
-  }
 
   async function handleToggle(key, next) {
     setSavingKey(key);
@@ -41,12 +29,7 @@ export default function AdminModulesPage() {
   }
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 } }}>
-      <PageHeader
-        title="Admin · Module"
-        subtitle="Globale Feature-Toggles. Änderungen wirken sofort für alle Nutzer."
-      />
-
+    <Box>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Card elevation={2} sx={{ borderRadius: 3 }}>
@@ -103,8 +86,8 @@ export default function AdminModulesPage() {
       <Alert severity="info" variant="outlined" sx={{ mt: 2, fontSize: '0.82rem' }}>
         Deaktivierte Module verschwinden aus der Sidebar und vom Dashboard.
         Aufrufe der jeweiligen URL leiten zum Dashboard zurück.
-        Persönliche Sidebar-Präferenzen unter <strong>Einstellungen</strong> bleiben unberührt
-        und greifen zusätzlich.
+        Persönliche Sidebar-Präferenzen oben unter <strong>Modulauswahl</strong> bleiben
+        unberührt und greifen zusätzlich.
       </Alert>
 
       <Snackbar
@@ -115,6 +98,31 @@ export default function AdminModulesPage() {
       >
         {snack ? <Alert severity={snack.severity} onClose={() => setSnack(null)}>{snack.text}</Alert> : null}
       </Snackbar>
+    </Box>
+  );
+}
+
+// Standalone-Page für /admin/modules (mit eigenem Header).
+// Bleibt erhalten als Direktlink-Ziel, ist aber nicht mehr in der Sidebar verlinkt.
+export default function AdminModulesPage() {
+  const { isAdmin, loading: modulesLoading } = useModules();
+
+  if (modulesLoading) {
+    return (
+      <Box sx={{ p: 3, display: 'flex', justifyContent: 'center' }}>
+        <CircularProgress size={28} />
+      </Box>
+    );
+  }
+  if (!isAdmin) return <Navigate to="/" replace />;
+
+  return (
+    <Box sx={{ p: { xs: 2, sm: 3 } }}>
+      <PageHeader
+        title="Admin · Module"
+        subtitle="Globale Feature-Toggles. Änderungen wirken sofort für alle Nutzer."
+      />
+      <AdminModulesPanel />
     </Box>
   );
 }

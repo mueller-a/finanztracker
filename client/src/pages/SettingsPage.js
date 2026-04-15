@@ -6,10 +6,12 @@ import {
   Tabs, Tab, CircularProgress, Chip, Paper, TextField,
 } from '@mui/material';
 import CodeIcon from '@mui/icons-material/Code';
+import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
 import { useModules, calculateAge } from '../context/ModuleContext';
 import { supabase } from '../lib/supabaseClient';
 import ThemeShowcase from '../components/ThemeShowcase';
 import { PageHeader, SectionCard, DateField } from '../components/mui';
+import { AdminModulesPanel } from './AdminModulesPage';
 
 // ── Module cards config ───────────────────────────────────────────────────────
 const MODULE_CARDS = [
@@ -300,8 +302,9 @@ export default function SettingsPage() {
       {isAdmin && (
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2.5 }}>
           <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
-            <Tab value="modules" label="Modulauswahl" />
-            <Tab value="developer" label="Developer" icon={<CodeIcon fontSize="small" />} iconPosition="start" />
+            <Tab value="modules"   label="Modulauswahl" />
+            <Tab value="admin"     label="Admin · Module" icon={<AdminPanelSettingsOutlinedIcon fontSize="small" />} iconPosition="start" />
+            <Tab value="developer" label="Developer"      icon={<CodeIcon fontSize="small" />}                       iconPosition="start" />
           </Tabs>
         </Box>
       )}
@@ -313,6 +316,15 @@ export default function SettingsPage() {
           isPkv={isPkv} setIsPkv={setIsPkv}
           steuerSatzAlter={steuerSatzAlter} setSteuerSatzAlter={setSteuerSatzAlter}
         />
+      )}
+
+      {activeTab === 'admin' && isAdmin && (
+        <Box>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Globale Feature-Toggles. Änderungen wirken sofort für alle Nutzer.
+          </Typography>
+          <AdminModulesPanel />
+        </Box>
       )}
 
       {activeTab === 'developer' && isAdmin && (

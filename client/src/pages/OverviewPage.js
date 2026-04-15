@@ -23,6 +23,7 @@ import CalculateOutlinedIcon from '@mui/icons-material/CalculateOutlined';
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
 import ChecklistRtlOutlinedIcon from '@mui/icons-material/ChecklistRtlOutlined';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import { useDashboard } from '../hooks/useDashboard';
 import { useModules } from '../context/ModuleContext';
 import { useAppModules } from '../context/AppModulesContext';
@@ -157,7 +158,7 @@ function FinancialPulseBar({ insights, loading }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // SEKTION B — Modul-Status-Kacheln
 // ─────────────────────────────────────────────────────────────────────────────
-function ModuleCard({ icon, title, accent, loading, children, onClick }) {
+function ModuleCard({ icon, title, accent, loading, children, onClick, hiddenFromUsers = false }) {
   return (
     <Card
       elevation={2}
@@ -166,10 +167,14 @@ function ModuleCard({ icon, title, accent, loading, children, onClick }) {
         borderRadius: 3,
         minHeight: 188,
         cursor: onClick ? 'pointer' : 'default',
-        transition: 'transform 150ms ease, box-shadow 150ms ease',
+        transition: 'transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease',
+        opacity: hiddenFromUsers ? 0.6 : 1,
+        // Dezente gestrichelte Border kennzeichnet "für User unsichtbar" (Admin-Vorschau).
+        ...(hiddenFromUsers ? { borderStyle: 'dashed', borderWidth: 1, borderColor: 'divider' } : {}),
         '&:hover': onClick ? {
           transform: 'translateY(-2px)',
           boxShadow: 6,
+          opacity: 1,
         } : {},
       }}
     >
@@ -188,6 +193,11 @@ function ModuleCard({ icon, title, accent, loading, children, onClick }) {
           }}>
             {title}
           </Typography>
+          {hiddenFromUsers && (
+            <MuiTooltip title="Modul ist global deaktiviert — nur für Admins sichtbar" arrow>
+              <VisibilityOffOutlinedIcon sx={{ fontSize: 14, color: 'text.disabled', ml: 'auto' }} />
+            </MuiTooltip>
+          )}
         </Stack>
         {loading ? (
           <Stack spacing={1} sx={{ flex: 1 }}>
@@ -204,9 +214,10 @@ function ModuleCard({ icon, title, accent, loading, children, onClick }) {
 }
 
 function ModuleStatusGrid({ data, loading, navigate }) {
-  // Globale Feature-Toggles aus app_modules — Kacheln werden nur gerendert,
-  // wenn das jeweilige Modul aktiviert ist.
-  const { isModuleEnabled } = useAppModules();
+  // Globale Feature-Toggles aus app_modules.
+  // Sichtbarkeit folgt SKILL.md §284: Modul.is_active ODER User.role==='admin'.
+  // `isHiddenFromUsers` markiert für Admins, was normale User nicht sehen.
+  const { isModuleEnabled, isHiddenFromUsers } = useAppModules();
 
   // Nächste Insurance-Fälligkeit (heuristisch)
   const nextDue = useMemo(() => data ? estimateNextDue(data.ins.entries) : null, [data]);
@@ -244,6 +255,7 @@ function ModuleStatusGrid({ data, loading, navigate }) {
         title="Versicherungen"
         accent="#7c3aed"
         loading={loading}
+        hiddenFromUsers={isHiddenFromUsers('insurance')}
         onClick={() => navigate('/versicherungen')}
       >
         <Typography variant="h5" sx={{ fontWeight: 800, fontFamily: 'monospace', mb: 0.5 }}>
@@ -270,6 +282,7 @@ function ModuleStatusGrid({ data, loading, navigate }) {
         title="Strom"
         accent="#f59e0b"
         loading={loading}
+        hiddenFromUsers={isHiddenFromUsers('electricity')}
         onClick={() => navigate('/strom')}
       >
         <Typography variant="h5" sx={{
@@ -309,6 +322,7 @@ function ModuleStatusGrid({ data, loading, navigate }) {
         title="Verbindlichkeiten"
         accent="#ef4444"
         loading={loading}
+        hiddenFromUsers={isHiddenFromUsers('debts')}
         onClick={() => navigate('/verbindlichkeiten')}
       >
         <Typography variant="h5" sx={{
@@ -349,6 +363,7 @@ function ModuleStatusGrid({ data, loading, navigate }) {
         title="Ruhestand"
         accent="#0ea5e9"
         loading={loading}
+        hiddenFromUsers={isHiddenFromUsers('retirement')}
         onClick={() => navigate('/guthaben/rente')}
       >
         <Typography variant="h5" sx={{

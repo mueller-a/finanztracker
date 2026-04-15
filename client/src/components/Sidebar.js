@@ -24,6 +24,8 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
+import { Tooltip as MuiTooltip } from '@mui/material';
 import { navItems } from '../navItems';
 import { useAuth } from '../context/AuthContext';
 import { useModules } from '../context/ModuleContext';
@@ -51,7 +53,7 @@ function NavIcon({ name, ...props }) {
 }
 
 const COLLAPSED_WIDTH = 64;
-const EXPANDED_WIDTH  = 220;
+const EXPANDED_WIDTH  = 280;
 
 export default function Sidebar({ isDark, onToggleDark }) {
   const theme = useTheme();
@@ -64,7 +66,7 @@ export default function Sidebar({ isDark, onToggleDark }) {
 
   const { user, signOut } = useAuth();
   const { modules, isAdmin } = useModules();
-  const { isModuleEnabled } = useAppModules();
+  const { isModuleEnabled, isHiddenFromUsers } = useAppModules();
   const { redCount } = useContractAlert();
   const location = useLocation();
 
@@ -87,6 +89,20 @@ export default function Sidebar({ isDark, onToggleDark }) {
         return visibleChildren.length > 0 ? { ...item, children: visibleChildren } : item;
       });
   }, [modules, isAdmin, isModuleEnabled]);
+
+  // Wrappt einen Label-Text in ein JSX, das bei "vor User versteckten" Modulen
+  // ein dezentes "Hidden"-Icon anhängt (nur Admins sehen das).
+  function labelWithHiddenBadge(label, appModuleKey) {
+    if (!isHiddenFromUsers(appModuleKey)) return label;
+    return (
+      <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+        {label}
+        <MuiTooltip title="Für normale Nutzer ausgeblendet" arrow>
+          <VisibilityOffOutlinedIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
+        </MuiTooltip>
+      </Box>
+    );
+  }
 
   function isAnyChildActive(children) {
     return children.some((c) => location.pathname === c.path || location.pathname.startsWith(c.path + '/'));
@@ -204,7 +220,8 @@ export default function Sidebar({ isDark, onToggleDark }) {
 
   return (
     <Box
-      component="aside"
+      component="nav"
+      aria-label="Hauptnavigation"
       sx={{
         width: collapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH,
         minHeight: '100vh',
@@ -302,7 +319,7 @@ export default function Sidebar({ isDark, onToggleDark }) {
                   to={target}
                   active={anyChildActive}
                   icon={<NavIcon name={item.icon} />}
-                  label={item.label}
+                  label={labelWithHiddenBadge(item.label, item.appModuleKey)}
                   title={item.label}
                   badgeContent={groupBadge}
                 />
@@ -344,7 +361,16 @@ export default function Sidebar({ isDark, onToggleDark }) {
                     ) : <NavIcon name={item.icon} />}
                   </ListItemIcon>
                   <ListItemText
-                    primary={item.label}
+                    primary={
+                      <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                        {item.label}
+                        {isHiddenFromUsers(item.appModuleKey) && (
+                          <MuiTooltip title="Für normale Nutzer ausgeblendet" arrow>
+                            <VisibilityOffOutlinedIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
+                          </MuiTooltip>
+                        )}
+                      </Box>
+                    }
                     primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: 600 }}
                   />
                   {isOpen ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
@@ -360,7 +386,7 @@ export default function Sidebar({ isDark, onToggleDark }) {
                           to={child.path}
                           active={childActive}
                           icon={<NavIcon name={child.icon} />}
-                          label={child.label}
+                          label={labelWithHiddenBadge(child.label, child.appModuleKey)}
                           badgeContent={childBadge}
                         />
                       );
@@ -382,7 +408,7 @@ export default function Sidebar({ isDark, onToggleDark }) {
               to={item.path}
               active={active}
               icon={<NavIcon name={item.icon} />}
-              label={item.label}
+              label={labelWithHiddenBadge(item.label, item.appModuleKey)}
               title={item.label}
             />
           );
