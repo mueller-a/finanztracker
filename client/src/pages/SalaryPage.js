@@ -4,11 +4,14 @@ import {
   Checkbox, FormControlLabel, ToggleButton, ToggleButtonGroup,
   Tooltip as MuiTooltip, Alert, AlertTitle, CircularProgress, Chip,
   Divider, Tabs, Tab,
+  Accordion, AccordionSummary, AccordionDetails,
+  Table, TableBody, TableCell, TableRow,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import LinkIcon from '@mui/icons-material/Link';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
   DEFAULT_GEHALT, STEUERKLASSEN, BUNDESLAENDER,
   calcGehaltResult, calcNettoComparison, calcAgZuschuss, fmtEuro,
@@ -134,6 +137,97 @@ function LohnsteuerTooltipContent({ result, gh }) {
         <Typography variant="caption" sx={{ color: 'error.main', fontFamily: 'monospace', fontWeight: 'inherit' }}>{fmtEuro(d.lstJahr / 12, 2)}</Typography>
       </Stack>
     </Box>
+  );
+}
+
+// ─── BMF Debug-Panel ──────────────────────────────────────────────────────────
+// Stellt Lokal-Werte und BMF-`raw`-Felder nebeneinander, um Abweichungen
+// präzise lokalisieren zu können (VSP, ZVE, Tarif, Soli).
+function BmfDebugPanel({ local, bmf }) {
+  const raw = bmf.raw || {};
+  // BMF liefert alle Werte in CENTS — Umrechnung € (außer ZAHL-Felder wie STKL).
+  const cents = (k) => (raw[k] != null ? raw[k] / 100 : null);
+  const num   = (k) => (raw[k] != null ? raw[k]       : null);
+
+  const fmt = (v, d = 2) =>
+    v == null || isNaN(v) ? '—'
+      : v.toLocaleString('de-DE', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const fmtE = (v, d = 0) => v == null ? '—' : fmt(v, d) + ' €';
+
+  // Zentrale Vergleichszeilen: lokal vs BMF, Diff
+  const d = local.lstDetail;
+  const compareRows = [
+    ['Jahresbrutto (RE4)',           d.JB,                cents('RE4') ?? d.JB],
+    ['Sonderausgaben (VSP gesamt)',  local.sonderausgabenJahr, null /* BMF gibt VSP nicht direkt aus */],
+    ['– davon RV-Anteil',            local.vspRV,         cents('VSP1') ?? cents('VSPRENT')],
+    ['– davon KV/PV-Anteil',         local.vspKVPV,       cents('VSPN') ?? cents('VKVLZZ')],
+    ['– davon AV-Anteil',            local.vspAV,         null],
+    ['ZVE (zu vers. Einkommen)',     d.ZVE,               cents('ZVE')],
+    ['LSt-Jahr',                     local.lstJahr,       cents('LSTJAHR') ?? cents('LSTLZZ')],
+    ['Soli-Jahr',                    local.soliJahr,      cents('SOLZJ') ?? cents('SOLZLZZ')],
+  ];
+
+  // Alle BMF-`<ausgabe>`-Tags als Tabelle (rohe Werte in € umgerechnet, wo sinnvoll)
+  const rawEntries = Object.entries(raw).sort(([a], [b]) => a.localeCompare(b));
+
+  return (
+    <Accordion disableGutters elevation={0} sx={{ mt: 1.5, '&:before': { display: 'none' }, bgcolor: 'transparent' }}>
+      <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 0, minHeight: 0, '& .MuiAccordionSummary-content': { my: 0.5 } }}>
+        <Typography variant="caption" sx={{ fontWeight: 600 }}>
+          🔍 Detail-Vergleich (Lokal ↔ BMF)
+        </Typography>
+      </AccordionSummary>
+      <AccordionDetails sx={{ px: 0, pt: 0 }}>
+        {/* Curated Side-by-Side */}
+        <Table size="small" sx={{ mb: 2 }}>
+          <TableBody>
+            <TableRow sx={{ '& th': { fontWeight: 700, color: 'text.secondary', fontSize: '0.72rem', textTransform: 'uppercase' } }}>
+              <TableCell component="th">Größe</TableCell>
+              <TableCell component="th" align="right">Lokal</TableCell>
+              <TableCell component="th" align="right">BMF</TableCell>
+              <TableCell component="th" align="right">Diff</TableCell>
+            </TableRow>
+            {compareRows.map(([label, l, b]) => {
+              const diff = (l != null && b != null) ? b - l : null;
+              const hasDiff = diff != null && Math.abs(diff) >= 1;
+              return (
+                <TableRow key={label} sx={{ '& td': { fontSize: '0.78rem', fontFamily: 'monospace' } }}>
+                  <TableCell sx={{ fontFamily: 'inherit !important', fontSize: '0.78rem !important' }}>{label}</TableCell>
+                  <TableCell align="right">{fmtE(l)}</TableCell>
+                  <TableCell align="right" sx={{ color: b == null ? 'text.disabled' : 'text.primary' }}>
+                    {b == null ? '—' : fmtE(b)}
+                  </TableCell>
+                  <TableCell align="right" sx={{ color: hasDiff ? 'warning.main' : 'text.disabled', fontWeight: hasDiff ? 700 : 400 }}>
+                    {diff == null ? '—' : (diff > 0 ? '+' : '') + fmtE(diff)}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+
+        {/* Roh-Dump aller BMF-Felder */}
+        <Accordion disableGutters elevation={0} sx={{ '&:before': { display: 'none' }, bgcolor: 'action.hover', borderRadius: 1 }}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ minHeight: 0, '& .MuiAccordionSummary-content': { my: 0.5 } }}>
+            <Typography variant="caption" sx={{ fontWeight: 600 }}>
+              BMF-Rohdaten ({rawEntries.length} Felder)
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ pt: 0 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 0.75, fontFamily: 'monospace', fontSize: '0.72rem' }}>
+              {rawEntries.map(([k, v]) => (
+                <Box key={k} sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: 1, borderColor: 'divider', py: 0.25 }}>
+                  <Typography component="span" variant="caption" sx={{ fontFamily: 'inherit', color: 'text.secondary' }}>{k}</Typography>
+                  <Typography component="span" variant="caption" sx={{ fontFamily: 'inherit' }}>
+                    {v} {Number.isInteger(v) && Math.abs(v) > 100 ? `(${(v / 100).toLocaleString('de-DE')} €)` : ''}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          </AccordionDetails>
+        </Accordion>
+      </AccordionDetails>
+    </Accordion>
   );
 }
 
@@ -529,6 +623,9 @@ export default function SalaryPage() {
               <Typography variant="caption" color="text.secondary">
                 Lohnsteuer-Berechnung gegen die offizielle BMF-Schnittstelle prüfen.
               </Typography>
+            )}
+            {bmfResult?.ok && bmfResult?.raw && (
+              <BmfDebugPanel local={result} bmf={bmfResult} />
             )}
           </SectionCard>
 
