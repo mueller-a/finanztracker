@@ -106,6 +106,35 @@ serve(async (req: Request) => {
   try {
     const params: BmfParams = await req.json();
 
+    // ── Health-Probe: fester minimaler BMF-Request ──────────────────────────
+    // Vor dem eigentlichen User-Request rufen wir BMF mit einem minimalen
+    // Standard-Case auf (60 k€ Jahresbrutto, Stkl 1, keine SV-Abzüge).
+    // Wenn dieser Probe-Request LSTLZZ > 0 liefert, weiß man: BMF funktioniert
+    // und unser User-Request-Parameter-Set ist das Problem. Wenn Probe auch 0 ist,
+    // stimmt mit der Schnittstelle/dem Code etwas nicht.
+    let probeResult: { code: string; lstlzz: number; raw: Record<string, number> } | null = null;
+    try {
+      const probeParams = new URLSearchParams({
+        code: 'LSt2026std',
+        LZZ:  '1',
+        RE4:  '6000000',  // 60 k€ Jahresbrutto
+        STKL: '1',
+        f:    '1',
+      });
+      const probeResp = await fetch(
+        `https://www.bmf-steuerrechner.de/interface/2026Version1.xhtml?${probeParams.toString()}`,
+        { headers: { 'Accept': '*/*', 'User-Agent': 'Mozilla/5.0' } }
+      );
+      const probeBody = await probeResp.text();
+      const probeParsed: Record<string, number> = {};
+      const pRegex = /<ausgabe\s+name="([^"]+)"\s+value="([^"]+)"/g;
+      let pm;
+      while ((pm = pRegex.exec(probeBody)) !== null) {
+        probeParsed[pm[1]] = Number(pm[2]);
+      }
+      probeResult = { code: 'LSt2026std', lstlzz: probeParsed.LSTLZZ ?? 0, raw: probeParsed };
+    } catch { /* egal — probe ist nice-to-have */ }
+
     // Build query string for BMF URL
     // `code` wird pro Attempt gesetzt (siehe BMF_ATTEMPTS unten) — der Wert
     // aus `params.code` wird ignoriert, weil unser Fallback-Matrix-Ansatz die
@@ -229,6 +258,7 @@ serve(async (req: Request) => {
       raw,
       // Debug: was wurde an BMF gesendet (alle Parameter)
       requestSent: Object.fromEntries(queryParams.entries()),
+      probeResult,
     }), {
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     });
