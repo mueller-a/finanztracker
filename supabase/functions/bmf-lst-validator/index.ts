@@ -36,12 +36,15 @@
 // @ts-ignore Deno imports
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
-// Der korrekte Interface-Code laut offizieller Schnittstellenbeschreibung
-// (https://www.bmf-steuerrechner.de/javax.faces.resource/daten/xmls/Lohnsteuer2026.xml.xhtml)
-// ist `Lohnsteuer2026` — nicht die früher vermuteten Varianten LSt…ext/std.
+// `Lohnsteuer2026` ist der PAP-Name (intern), der URL-code ist weiterhin
+// `LSt2026ext` (erweiterte) bzw. `LSt2026std` (standard). Mit den nun
+// korrekten Parametern (JRE4, PKPV monatlich, KVZ in %) liefern beide
+// valide Werte.
 const BMF_ATTEMPTS: Array<{ url: string; code: string }> = [
-  { url: 'https://www.bmf-steuerrechner.de/interface/2026Version1.xhtml', code: 'Lohnsteuer2026' },
-  { url: 'https://www.bmf-steuerrechner.de/interface/2025Version1.xhtml', code: 'Lohnsteuer2025' },
+  { url: 'https://www.bmf-steuerrechner.de/interface/2026Version1.xhtml', code: 'LSt2026std' },
+  { url: 'https://www.bmf-steuerrechner.de/interface/2026Version1.xhtml', code: 'LSt2026ext' },
+  { url: 'https://www.bmf-steuerrechner.de/interface/2025Version1.xhtml', code: 'LSt2025std' },
+  { url: 'https://www.bmf-steuerrechner.de/interface/2025Version1.xhtml', code: 'LSt2025ext' },
 ];
 
 const CORS_HEADERS = {

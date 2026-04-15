@@ -58,7 +58,9 @@ export async function fetchBmfTaxValidation(gh, localResult) {
 
     const isPkv = gh.ghKvType === 'pkv';
     const body = {
-      code:   'Lohnsteuer2026',
+      // `code` wird in der Edge Function durch die BMF_ATTEMPTS-Matrix überschrieben;
+      // der Default-Wert hier ist nur ein Fallback.
+      code:   'LSt2026std',
       LZZ:    1,                                           // 1 = Jahr
       RE4:    toCents(jahresbrutto),
       JRE4:   toCents(jahresbrutto),                       // bei LZZ=1 gleich RE4
