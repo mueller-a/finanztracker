@@ -7,5 +7,6 @@ client/build/
 .DS_Store
 *.log
 .vercel
+agents/
 SKILL.md
 frontend-design.md

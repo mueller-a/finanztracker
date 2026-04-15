@@ -3,7 +3,7 @@ import {
   Box, Stack, Typography, Button, IconButton, TextField, MenuItem,
   Checkbox, FormControlLabel, ToggleButton, ToggleButtonGroup,
   Tooltip as MuiTooltip, Alert, AlertTitle, CircularProgress, Chip,
-  Divider,
+  Divider, Tabs, Tab,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import LinkIcon from '@mui/icons-material/Link';
@@ -16,6 +16,7 @@ import {
 import { useSalarySettings } from '../hooks/useSalarySettings';
 import { fetchBmfTaxValidation } from '../lib/bmfValidator';
 import { PageHeader, SectionCard, CurrencyField } from '../components/mui';
+import SalaryHistoryTab from './SalaryHistoryTab';
 
 // ─── Lohnsteuer Tooltip Body ──────────────────────────────────────────────────
 function LohnsteuerTooltipContent({ result, gh }) {
@@ -145,6 +146,7 @@ export default function SalaryPage() {
   const [saveStatus, setSaveStatus] = useState('idle');
   const [bmfStatus, setBmfStatus] = useState('idle');
   const [bmfResult, setBmfResult] = useState(null);
+  const [activeTab, setActiveTab] = useState('current'); // 'current' | 'history'
   const debounceRef = useRef(null);
   const savedRef    = useRef(null);
   const mountedRef  = useRef(false);
@@ -261,6 +263,18 @@ export default function SalaryPage() {
         actions={statusEl}
       />
 
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2.5 }}>
+        <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
+          <Tab value="current" label="Aktueller Rechner" />
+          <Tab value="history" label="Gehaltshistorie & Prognose" />
+        </Tabs>
+      </Box>
+
+      {activeTab === 'history' && (
+        <SalaryHistoryTab baseParams={gh} />
+      )}
+
+      {activeTab === 'current' && (
       <Box sx={{
         display: 'grid',
         gridTemplateColumns: { xs: '1fr', md: '300px 1fr' },
@@ -636,6 +650,7 @@ export default function SalaryPage() {
           </Alert>
         </Stack>
       </Box>
+      )}
     </Box>
   );
 }
