@@ -161,7 +161,7 @@ function CategoryRow({ category, years, viewMode, onEdit, onDeleteEntry, onDelet
                       bgcolor: 'background.paper',
                       border: 1,
                       borderColor: 'divider',
-                      borderRadius: 1.5,
+                      borderRadius: 1,
                       px: 1.25,
                       py: 0.5,
                     }}

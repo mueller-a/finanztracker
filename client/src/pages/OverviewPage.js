@@ -120,7 +120,7 @@ function FinancialPulseBar({ insights, loading }) {
   ];
 
   return (
-    <Card elevation={2} sx={{ borderRadius: 3 }}>
+    <Card elevation={2} sx={{ borderRadius: 1 }}>
       <CardContent sx={{ py: 2.5, px: 3, '&:last-child': { pb: 2.5 } }}>
         <Stack
           direction={{ xs: 'column', md: 'row' }}
@@ -164,7 +164,7 @@ function ModuleCard({ icon, title, accent, loading, children, onClick, hiddenFro
       elevation={2}
       onClick={onClick}
       sx={{
-        borderRadius: 3,
+        borderRadius: 1,
         minHeight: 188,
         cursor: onClick ? 'pointer' : 'default',
         transition: 'transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease',
@@ -398,7 +398,7 @@ function WealthProgressChart({ wealthSeries, loading }) {
 
   if (loading) {
     return (
-      <Card elevation={2} sx={{ borderRadius: 3, height: '100%' }}>
+      <Card elevation={2} sx={{ borderRadius: 1, height: '100%' }}>
         <CardContent>
           <Skeleton variant="text" width="40%" />
           <Skeleton variant="rounded" height={260} sx={{ mt: 2 }} />
@@ -413,7 +413,7 @@ function WealthProgressChart({ wealthSeries, loading }) {
     : 0;
 
   return (
-    <Card elevation={2} sx={{ borderRadius: 3, height: '100%' }}>
+    <Card elevation={2} sx={{ borderRadius: 1, height: '100%' }}>
       <CardContent>
         <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1.5 }}>
           <Stack>
@@ -588,7 +588,7 @@ function NextStepsList({ data, loading, navigate }) {
   }, [data]);
 
   return (
-    <Card elevation={2} sx={{ borderRadius: 3, height: '100%' }}>
+    <Card elevation={2} sx={{ borderRadius: 1, height: '100%' }}>
       <CardContent>
         <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
           <ChecklistRtlOutlinedIcon fontSize="small" sx={{ color: 'text.secondary' }} />
@@ -654,7 +654,7 @@ function QuickAccessFooter({ navigate }) {
   ];
 
   return (
-    <Card elevation={2} sx={{ borderRadius: 3 }}>
+    <Card elevation={2} sx={{ borderRadius: 1 }}>
       <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
         <Stack direction="row" justifyContent="space-around" flexWrap="wrap" spacing={1}>
           {entries.map(({ label, icon, path }) => (
@@ -663,7 +663,7 @@ function QuickAccessFooter({ navigate }) {
                 onClick={() => navigate(path)}
                 sx={{
                   flexDirection: 'column',
-                  borderRadius: 1.5,
+                  borderRadius: 1,
                   px: 1.5,
                   py: 1,
                   color: 'text.secondary',

@@ -69,7 +69,7 @@ export default function ThemeShowcase({ isDark, onToggleDark }) {
         <Box sx={{
           bgcolor: 'primary.main',
           color: 'primary.contrastText',
-          borderRadius: 2,
+          borderRadius: 1,
           p: 3,
           display: 'flex',
           alignItems: 'center',
@@ -286,7 +286,7 @@ export default function ThemeShowcase({ isDark, onToggleDark }) {
       {/* ── Theme Toggle Banner ─────────────────────────────────────── */}
       <Box sx={{
         background: 'linear-gradient(135deg, #1e1b4b 0%, #4c1d95 40%, #7c3aed 70%, #f43f5e 100%)',
-        borderRadius: 2,
+        borderRadius: 1,
         p: 4,
         textAlign: 'center',
         color: '#fff',

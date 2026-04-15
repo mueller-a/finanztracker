@@ -35,7 +35,7 @@ function SummaryCard({ label, value, sub, accent }) {
       borderRight: `1px solid ${theme.palette.divider}`,
       borderBottom: `1px solid ${theme.palette.divider}`,
       borderLeft: `3px solid ${accent}`,
-      borderRadius: 1.5,
+      borderRadius: 1,
       p: '16px 18px',
       height: '100%',
     })}>

@@ -150,7 +150,7 @@ export default function SalaryHistoryTab({ baseParams }) {
   return (
     <Stack spacing={2.5}>
       {/* Toolbar: Prognose-Konfiguration */}
-      <Card elevation={2} sx={{ borderRadius: 3 }}>
+      <Card elevation={2} sx={{ borderRadius: 1 }}>
         <CardContent>
           <Stack
             direction={{ xs: 'column', md: 'row' }}
@@ -233,7 +233,7 @@ export default function SalaryHistoryTab({ baseParams }) {
       )}
 
       {/* Tabelle */}
-      <Card elevation={2} sx={{ borderRadius: 3 }}>
+      <Card elevation={2} sx={{ borderRadius: 1 }}>
         <CardContent sx={{ p: 0 }}>
           {loading ? (
             <Stack spacing={1} sx={{ p: 2 }}>
@@ -443,7 +443,7 @@ export default function SalaryHistoryTab({ baseParams }) {
 
       {/* Line-Chart unter der Tabelle */}
       {chartData.length >= 2 && (
-        <Card elevation={2} sx={{ borderRadius: 3 }}>
+        <Card elevation={2} sx={{ borderRadius: 1 }}>
           <CardContent>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
               <Typography variant="caption" sx={{
@@ -561,7 +561,7 @@ function InflationHistoryChart({ vpi, status }) {
   })();
 
   return (
-    <Card elevation={2} sx={{ borderRadius: 3 }}>
+    <Card elevation={2} sx={{ borderRadius: 1 }}>
       <CardContent>
         <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1.5 }}>
           <Box>

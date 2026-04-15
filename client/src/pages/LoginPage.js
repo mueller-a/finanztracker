@@ -73,7 +73,7 @@ export default function LoginPage() {
         {/* Logo */}
         <Stack alignItems="center" spacing={1.5} sx={{ mb: 4 }}>
           <Box sx={{
-            width: 56, height: 56, borderRadius: 2,
+            width: 56, height: 56, borderRadius: 1,
             background: 'linear-gradient(135deg, #7c3aed, #a78bfa)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: '0 8px 24px rgba(124,58,237,0.4)',
@@ -115,7 +115,7 @@ export default function LoginPage() {
             bgcolor: loading ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.97)',
             color: '#1f2937',
             border: '1px solid rgba(255,255,255,0.15)',
-            borderRadius: 2,
+            borderRadius: 1,
             fontSize: '0.925rem',
             fontWeight: 600,
             boxShadow: '0 4px 14px rgba(0,0,0,0.3)',

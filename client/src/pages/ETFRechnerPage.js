@@ -215,7 +215,7 @@ function StatCard({ label, value, sub, accent }) {
       borderRight: `1px solid ${theme.palette.divider}`,
       borderBottom: `1px solid ${theme.palette.divider}`,
       borderLeft: `3px solid ${accent}`,
-      borderRadius: 2,
+      borderRadius: 1,
       padding: '14px 16px',
       height: '100%',
     })}>
@@ -262,7 +262,7 @@ function TypeSelectorModal({ open, onClose, onSelect }) {
               sx={(theme) => ({
                 backgroundColor: theme.palette.mode === 'dark' ? '#16133a' : theme.palette.background.default,
                 border: `1px solid ${theme.palette.divider}`,
-                borderRadius: 2,
+                borderRadius: 1,
                 p: 2,
                 cursor: 'pointer',
                 textAlign: 'left',
@@ -629,7 +629,7 @@ function BAVSidebar({ params, onChange, color, isDark, isPassive, onPassiveChang
   return (
     <div>
       {/* ── Beitragsfrei-Stellung ─────────────────────────────────────────── */}
-      <Paper variant="outlined" sx={{ borderRadius: 2, p: 1.5, mb: 1.5 }}>
+      <Paper variant="outlined" sx={{ borderRadius: 1, p: 1.5, mb: 1.5 }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between">
           <Box>
             <Typography variant="body2" sx={{ fontWeight: 700 }}>
@@ -1703,7 +1703,7 @@ function BavTaxSimulatorCard({ pol, birthday }) {
           </Typography>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 1.5, mb: 1.5 }}>
             <Box sx={{
-              bgcolor: 'rgba(239,68,68,0.06)', borderRadius: 1.5, p: 1.5,
+              bgcolor: 'rgba(239,68,68,0.06)', borderRadius: 1, p: 1.5,
               border: 1, borderColor: 'rgba(239,68,68,0.2)',
             }}>
               <Typography variant="caption" sx={{
@@ -1719,7 +1719,7 @@ function BavTaxSimulatorCard({ pol, birthday }) {
               </Typography>
             </Box>
             <Box sx={{
-              bgcolor: 'rgba(16,185,129,0.06)', borderRadius: 1.5, p: 1.5,
+              bgcolor: 'rgba(16,185,129,0.06)', borderRadius: 1, p: 1.5,
               border: 1, borderColor: 'rgba(16,185,129,0.2)',
             }}>
               <Typography variant="caption" sx={{
@@ -2682,7 +2682,7 @@ function DepotSnapshotPanel({ policyId, snapshots, onAdd, onUpdate, onDelete }) 
     <Stack spacing={2}>
       {/* Performance-Card */}
       {metrics && (
-        <Card elevation={2} sx={{ borderRadius: 3 }}>
+        <Card elevation={2} sx={{ borderRadius: 1 }}>
           <CardContent>
             <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1.5 }}>
               <Typography variant="caption" sx={{
@@ -2747,7 +2747,7 @@ function DepotSnapshotPanel({ policyId, snapshots, onAdd, onUpdate, onDelete }) 
       )}
 
       {/* Liste + Toolbar */}
-      <Card elevation={2} sx={{ borderRadius: 3 }}>
+      <Card elevation={2} sx={{ borderRadius: 1 }}>
         <CardContent>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
             <Typography variant="caption" sx={{

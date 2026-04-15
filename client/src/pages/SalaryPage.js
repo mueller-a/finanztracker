@@ -457,7 +457,7 @@ export default function SalaryPage() {
           <Box sx={{
             bgcolor: 'primary.main',
             color: 'primary.contrastText',
-            borderRadius: 2,
+            borderRadius: 1,
             p: 3,
             display: 'flex',
             alignItems: 'center',
@@ -603,7 +603,7 @@ export default function SalaryPage() {
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 1.5, mb: 1.5 }}>
                 <Box sx={{
                   bgcolor: theme.palette.mode === 'dark' ? 'rgba(232,184,75,0.07)' : 'rgba(232,184,75,0.06)',
-                  borderRadius: 1.5, p: 1.5,
+                  borderRadius: 1, p: 1.5,
                 }}>
                   <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.06em', mb: 0.5 }}>
                     Netto mit PKV (AN)
@@ -617,7 +617,7 @@ export default function SalaryPage() {
                 </Box>
                 <Box sx={{
                   bgcolor: theme.palette.mode === 'dark' ? 'rgba(91,141,238,0.07)' : 'rgba(91,141,238,0.06)',
-                  borderRadius: 1.5, p: 1.5,
+                  borderRadius: 1, p: 1.5,
                 }}>
                   <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.06em', mb: 0.5 }}>
                     Netto mit GKV (AN)

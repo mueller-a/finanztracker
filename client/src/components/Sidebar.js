@@ -125,7 +125,7 @@ export default function Sidebar({ isDark, onToggleDark }) {
         selected={active}
         onClick={onClick}
         sx={{
-          borderRadius: 1.5,
+          borderRadius: 1,
           mb: 0.25,
           minHeight: 40,
           justifyContent: collapsed ? 'center' : 'flex-start',
@@ -331,7 +331,7 @@ export default function Sidebar({ isDark, onToggleDark }) {
                 <ListItemButton
                   onClick={() => toggleGroup(item.path)}
                   sx={{
-                    borderRadius: 1.5,
+                    borderRadius: 1,
                     mb: 0.25,
                     minHeight: 40,
                     px: 1.5,

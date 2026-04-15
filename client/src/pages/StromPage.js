@@ -518,7 +518,7 @@ function ReadingUploadDialog({ open, onClose, onSave, onError, editing = null, r
                   display: 'flex',
                   alignItems: 'center',
                   gap: 1.5,
-                  borderRadius: 2,
+                  borderRadius: 1,
                 }}
               >
                 <Box
@@ -880,7 +880,7 @@ function TariffForm({ tariff, onSave }) {
             </Box>
 
             {/* ── Variable monatliche Abschläge ──────────────────────────── */}
-            <Paper variant="outlined" sx={{ borderRadius: 2, p: 1.5 }}>
+            <Paper variant="outlined" sx={{ borderRadius: 1, p: 1.5 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
                 <Typography variant="overline" sx={{ color: 'text.secondary', fontWeight: 700 }}>
                   Monatliche Abschläge (variabel)
@@ -1002,7 +1002,7 @@ function ImageLightbox({ open, imageUrl, onClose, label }) {
               maxWidth: '100%',
               maxHeight: '80vh',
               objectFit: 'contain',
-              borderRadius: 1.5,
+              borderRadius: 1,
             }}
           />
         ) : (
@@ -1583,7 +1583,7 @@ function PeriodForm({ initial, onSave, onCancel, onOpenBill, onRemoveExistingBil
           </Box>
 
           {/* Dynamische Arbeitspreis-Liste mit Verbrauchsaufteilung (1:N, SKILL.md §296ff.) */}
-          <Paper variant="outlined" sx={{ borderRadius: 2, p: 1.5 }}>
+          <Paper variant="outlined" sx={{ borderRadius: 1, p: 1.5 }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
               <Typography variant="overline" sx={{ color: 'text.secondary', fontWeight: 700 }}>
                 Preisphasen (Verbrauch + Arbeitspreis)
@@ -1748,7 +1748,7 @@ function PeriodForm({ initial, onSave, onCancel, onOpenBill, onRemoveExistingBil
           </Paper>
 
           {/* ── Außerordentliche Gebühren (Mahn-, Rücklastschrift-, …) ──── */}
-          <Paper variant="outlined" sx={{ borderRadius: 2, p: 1.5 }}>
+          <Paper variant="outlined" sx={{ borderRadius: 1, p: 1.5 }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
               <Stack>
                 <Typography variant="overline" sx={{ color: 'text.secondary', fontWeight: 700 }}>
@@ -1864,7 +1864,7 @@ function PeriodForm({ initial, onSave, onCancel, onOpenBill, onRemoveExistingBil
           </Paper>
 
           {/* ── Gutschriften & Boni (Neukunden-, Treuebonus, …) ──────────── */}
-          <Paper variant="outlined" sx={{ borderRadius: 2, p: 1.5 }}>
+          <Paper variant="outlined" sx={{ borderRadius: 1, p: 1.5 }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
               <Stack direction="row" alignItems="center" spacing={1}>
                 <CardGiftcardIcon sx={{ color: 'success.main', fontSize: 20 }} />
@@ -2006,7 +2006,7 @@ function PeriodForm({ initial, onSave, onCancel, onOpenBill, onRemoveExistingBil
               if (f) pickFile(f);
             }}
             sx={{
-              borderRadius: 2,
+              borderRadius: 1,
               p: 2,
               borderStyle: 'dashed',
               borderColor: dragOver ? 'primary.main' : 'divider',
@@ -2047,7 +2047,7 @@ function PeriodForm({ initial, onSave, onCancel, onOpenBill, onRemoveExistingBil
                 alignItems="center"
                 sx={{
                   p: 1.25,
-                  borderRadius: 1.5,
+                  borderRadius: 1,
                   bgcolor: 'action.hover',
                 }}
               >
@@ -2181,7 +2181,7 @@ function PeriodsTable({ periods, onEdit, onDelete, onOpenBill }) {
   };
 
   return (
-    <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden' }}>
+    <Paper variant="outlined" sx={{ borderRadius: 1, overflow: 'hidden' }}>
       <Box sx={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>

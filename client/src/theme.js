@@ -35,7 +35,7 @@ const components = {
   MuiCard: {
     styleOverrides: {
       root: {
-        borderRadius: borderRadius * 1.25,
+        borderRadius: borderRadius,
         boxShadow: '0 2px 8px 0 rgba(0,0,0,0.06), 0 8px 32px -4px rgba(0,0,0,0.08)',
       },
     },
@@ -65,7 +65,7 @@ const components = {
   },
   MuiTooltip: {
     styleOverrides: {
-      tooltip: { borderRadius: 8, fontSize: '0.75rem', fontWeight: 500 },
+      tooltip: { borderRadius: borderRadius, fontSize: '0.75rem', fontWeight: 500 },
     },
   },
   MuiInputAdornment: {
@@ -100,7 +100,7 @@ const components = {
   },
   MuiDialog: {
     styleOverrides: {
-      paper: { borderRadius: borderRadius * 1.25 },
+      paper: { borderRadius: borderRadius },
     },
   },
   MuiDialogTitle: {
@@ -182,7 +182,7 @@ export const lightTheme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: borderRadius * 1.25,
+          borderRadius: borderRadius,
           backgroundColor: '#ffffff',
           boxShadow: '0 2px 8px 0 rgba(99,60,255,0.06), 0 8px 32px -4px rgba(99,60,255,0.08)',
           border: '1px solid #ede9fe',
@@ -236,7 +236,7 @@ export const darkTheme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: borderRadius * 1.25,
+          borderRadius: borderRadius,
           backgroundColor: '#1a1744',
           boxShadow: '0 2px 8px 0 rgba(0,0,0,0.3), 0 8px 32px -4px rgba(99,60,255,0.15)',
           border: '1px solid #2d2a5e',

@@ -30,7 +30,7 @@ function StatCard({ label, value, sub, accent }) {
       borderRight: `1px solid ${theme.palette.divider}`,
       borderBottom: `1px solid ${theme.palette.divider}`,
       borderLeft: `3px solid ${accent}`,
-      borderRadius: 1.5,
+      borderRadius: 1,
       p: '14px 16px',
       height: '100%',
     })}>
@@ -592,7 +592,7 @@ export default function RealEstatePage() {
                   display: 'flex',
                   overflow: 'hidden',
                   cursor: 'pointer',
-                  borderRadius: 2,
+                  borderRadius: 1,
                   border: 1,
                   borderColor: 'divider',
                   backgroundColor: 'background.paper',

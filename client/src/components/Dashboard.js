@@ -36,7 +36,7 @@ function RichTooltip({ active, payload, label, categories, viewMode }) {
       bgcolor: 'background.paper',
       border: 1,
       borderColor: 'divider',
-      borderRadius: 1.5,
+      borderRadius: 1,
       p: 1.5,
       minWidth: 200,
       boxShadow: 4,

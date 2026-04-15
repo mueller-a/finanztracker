@@ -32,7 +32,7 @@ export function AdminModulesPanel() {
     <Box>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      <Card elevation={2} sx={{ borderRadius: 3 }}>
+      <Card elevation={2} sx={{ borderRadius: 1 }}>
         <CardContent sx={{ p: 0 }}>
           {loading ? (
             <Stack spacing={1} sx={{ p: 2 }}>

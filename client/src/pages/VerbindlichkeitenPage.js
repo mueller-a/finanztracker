@@ -46,7 +46,7 @@ function TotalWidget({ debts, schedulesMap }) {
   return (
     <Box sx={{
       background: 'linear-gradient(135deg, #7f1d1d 0%, #dc2626 60%, #ef4444 100%)',
-      borderRadius: 2.5,
+      borderRadius: 1,
       p: '1.75rem 2rem',
       display: 'flex',
       alignItems: 'center',
@@ -77,7 +77,7 @@ function TotalWidget({ debts, schedulesMap }) {
         ].map(({ label, val }) => (
           <Box key={label} sx={{
             background: 'rgba(255,255,255,0.15)',
-            borderRadius: 1.5,
+            borderRadius: 1,
             p: '10px 16px',
             backdropFilter: 'blur(4px)',
           }}>
@@ -155,7 +155,7 @@ function DebtCard({ debt, schedule, onEdit, onDelete, onAddPayment, onSimulate }
 
   return (
     <Paper variant="outlined" sx={{
-      borderRadius: 2.5,
+      borderRadius: 1,
       p: 2,
       display: 'flex',
       flexDirection: 'column',
@@ -897,7 +897,7 @@ function TilgungsplanTab({ debts, payments, schedulesMap, onAddPayment, onEditPa
           .reduce((s, p) => s + Number(p.amount), 0);
         const hasWithdrawals = totalWithdrawals > 0;
         return (
-          <Paper variant="outlined" sx={{ borderRadius: 2.5, overflow: 'hidden' }}>
+          <Paper variant="outlined" sx={{ borderRadius: 1, overflow: 'hidden' }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center"
               sx={{ p: '10px 14px', borderBottom: 1, borderColor: 'divider' }}>
               <Typography variant="overline" sx={{
@@ -972,7 +972,7 @@ function TilgungsplanTab({ debts, payments, schedulesMap, onAddPayment, onEditPa
       </Button>
 
       {/* Amortization table */}
-      <Paper variant="outlined" sx={{ borderRadius: 2.5, overflow: 'hidden' }}>
+      <Paper variant="outlined" sx={{ borderRadius: 1, overflow: 'hidden' }}>
         <Box sx={{ overflowY: 'auto', maxHeight: 480 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
@@ -1188,7 +1188,7 @@ function ZinsAnalyseTab({ debts, schedulesMap }) {
           { label: 'Zinsen noch offen',      val: `${fmt0(totalRemaining)} €`,            color: '#f97316', icon: '⚠️' },
           { label: 'Gesamtzinslast',         val: `${fmt0(totalPaid + totalRemaining)} €`, color: '#dc2626', icon: '💸' },
         ].map(({ label, val, color, icon }) => (
-          <Paper key={label} variant="outlined" sx={{ borderRadius: 2, p: '1.25rem', textAlign: 'center' }}>
+          <Paper key={label} variant="outlined" sx={{ borderRadius: 1, p: '1.25rem', textAlign: 'center' }}>
             <Typography sx={{ fontSize: '1.5rem', mb: 0.75 }}>{icon}</Typography>
             <Typography variant="caption" sx={{
               color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',

@@ -305,7 +305,7 @@ function EmptyBanner({ onImport, onCopyPrev, onSelectiveImport, importing }) {
   return (
     <Paper
       variant="outlined"
-      sx={{ borderRadius: 3, p: 5, textAlign: 'center' }}
+      sx={{ borderRadius: 1, p: 5, textAlign: 'center' }}
     >
       <Typography sx={{ fontSize: '2.5rem', mb: 1.5 }}>📋</Typography>
       <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>Monat noch leer</Typography>
@@ -733,7 +733,7 @@ function IncomeSection({ items, onCommit, onDelete, onAdd, onReorder }) {
   );
 
   return (
-    <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden' }}>
+    <Paper variant="outlined" sx={{ borderRadius: 1, overflow: 'hidden' }}>
       <Stack
         direction="row"
         alignItems="center"
@@ -949,7 +949,7 @@ function ExpenseCategoryTable({ items, totalIncome, onCommit, onDelete, onAdd, o
   );
 
   return (
-    <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden' }}>
+    <Paper variant="outlined" sx={{ borderRadius: 1, overflow: 'hidden' }}>
       {/* Header */}
       <Stack
         direction="row"
@@ -1077,7 +1077,7 @@ function NettoFooter({ incomeItems, expenseItems }) {
   const restBorder    = isPositive ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)';
 
   return (
-    <Paper variant="outlined" sx={{ borderRadius: 3, p: 2.5 }}>
+    <Paper variant="outlined" sx={{ borderRadius: 1, p: 2.5 }}>
       <Typography variant="overline" sx={{ display: 'block', color: 'text.secondary', fontWeight: 700, letterSpacing: '0.1em', mb: 2 }}>
         Netto-Bilanz
       </Typography>
@@ -1112,7 +1112,7 @@ function NettoFooter({ incomeItems, expenseItems }) {
             background: restBg,
             border: 1,
             borderColor: restBorder,
-            borderRadius: 2,
+            borderRadius: 1,
             px: 2, py: 0.5,
           }}>
             {isPositive ? '+' : '−'} {fmt2(Math.abs(rest))} €

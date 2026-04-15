@@ -134,7 +134,7 @@ function InterestPreviewBox({ goals, entries }) {
 
   return (
     <Paper variant="outlined" sx={{
-      borderRadius: 2,
+      borderRadius: 1,
       p: '16px 20px',
       display: 'flex',
       gap: 3,
@@ -224,7 +224,7 @@ function TotalWidget({ goals, entries, etfPolicies }) {
   return (
     <Box sx={{
       background: `linear-gradient(135deg, ${isDark ? '#1e1650' : '#7c3aed'} 0%, ${isDark ? '#2d2172' : '#a78bfa'} 100%)`,
-      borderRadius: 2.5,
+      borderRadius: 1,
       p: '1.75rem 2rem',
       display: 'flex',
       alignItems: 'center',
@@ -249,7 +249,7 @@ function TotalWidget({ goals, entries, etfPolicies }) {
         {KATEGORIEN.filter(({ value }) => byKat[value] > 0).map(({ value, label }) => (
           <Box key={value} sx={{
             background: 'rgba(255,255,255,0.15)',
-            borderRadius: 1.5,
+            borderRadius: 1,
             p: '8px 14px',
             backdropFilter: 'blur(4px)',
           }}>
@@ -290,7 +290,7 @@ function GoalCard({ goal, entries, etfPolicies, onAddEntry, onEdit, onDelete }) 
     <Paper
       variant="outlined"
       sx={{
-        borderRadius: 2.5,
+        borderRadius: 1,
         p: 2,
         display: 'flex',
         flexDirection: 'column',
@@ -833,7 +833,7 @@ function AnleihenLadder({ goals }) {
           { label: 'Nominalwert gesamt', val: fmt2(totalNominal) + ' €', color: 'text.primary' },
           { label: 'Kupon-Einnahmen p.a.', val: fmt2(totalKuponYear) + ' €', color: 'warning.main' },
         ].map(({ label, val, color }) => (
-          <Paper key={label} variant="outlined" sx={{ borderRadius: 2, p: '14px 18px' }}>
+          <Paper key={label} variant="outlined" sx={{ borderRadius: 1, p: '14px 18px' }}>
             <Typography variant="caption" sx={{
               color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
               display: 'block', mb: 0.75,
@@ -847,7 +847,7 @@ function AnleihenLadder({ goals }) {
         ))}
       </Box>
 
-      <Paper variant="outlined" sx={{ borderRadius: 2.5, overflow: 'hidden' }}>
+      <Paper variant="outlined" sx={{ borderRadius: 1, overflow: 'hidden' }}>
         <Box sx={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
@@ -974,7 +974,7 @@ function MonatsTracker({ goals, entries, onAddEntry }) {
           </Typography>
         </SectionCard>
       ) : (
-        <Paper variant="outlined" sx={{ borderRadius: 2.5, overflow: 'hidden' }}>
+        <Paper variant="outlined" sx={{ borderRadius: 1, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
@@ -1135,7 +1135,7 @@ function TransactionHistory({ goals, entries, onDelete }) {
           const goal = goalMap[e.goal_id];
           const ts   = TYPE_STYLE[e.type] ?? TYPE_STYLE.einzahlung;
           return (
-            <Paper key={e.id} variant="outlined" sx={{ borderRadius: 1.5, p: '10px 14px' }}>
+            <Paper key={e.id} variant="outlined" sx={{ borderRadius: 1, p: '10px 14px' }}>
               <Stack direction="row" alignItems="center" spacing={1.5}>
                 <Avatar sx={{
                   width: 34, height: 34,

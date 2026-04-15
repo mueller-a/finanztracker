@@ -42,7 +42,7 @@ export default function PlaceholderPage() {
       <Paper
         variant="outlined"
         sx={{
-          borderRadius: 2.5,
+          borderRadius: 1,
           p: '3rem 2.5rem',
           maxWidth: 480,
           width: '100%',
@@ -51,7 +51,7 @@ export default function PlaceholderPage() {
       >
         {/* Icon */}
         <Box sx={{
-          width: 72, height: 72, borderRadius: 2.5,
+          width: 72, height: 72, borderRadius: 1,
           bgcolor: `${config.color}18`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: '2rem',
@@ -73,7 +73,7 @@ export default function PlaceholderPage() {
         {config.features.length > 0 && (
           <Box sx={{
             bgcolor: `${config.color}08`,
-            borderRadius: 1.5,
+            borderRadius: 1,
             p: 2,
             mb: 2.5,
             textAlign: 'left',

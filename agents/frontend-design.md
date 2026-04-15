@@ -40,3 +40,33 @@ Interpret creatively and make unexpected choices that feel genuinely designed fo
 **IMPORTANT**: Match implementation complexity to the aesthetic vision. Maximalist designs need elaborate code with extensive animations and effects. Minimalist or refined designs need restraint, precision, and careful attention to spacing, typography, and subtle details. Elegance comes from executing the vision well.
 
 Remember: Claude is capable of extraordinary creative work. Don't hold back, show what can truly be created when thinking outside the box and committing fully to a distinctive vision.
+
+---
+
+## Finanztracker — Verbindliche Design-Tokens
+
+Diese Werte sind projektspezifische Konstanten für den Finanztracker. Sie werden
+zentral im MUI-Theme (`client/src/theme.js`) gepflegt und dürfen in Seiten/Komponenten
+nicht abweichend überschrieben werden, sofern nicht ausdrücklich begründet.
+
+### Border-Radius
+
+- **Einheitlich 16 px** für alle Container-Elemente: `<Card>`, `<Paper>`,
+  `<Dialog>`, `<TextField>`, `<Alert>`, `<Select>`, `<Button>`, `<Tooltip>`,
+  `<TableContainer>`.
+- `theme.shape.borderRadius = 16`. Der MUI-`sx`-Prop behandelt
+  `borderRadius` als **Multiplikator**:
+  - `sx={{ borderRadius: 1 }}` → `1 × 16 px = 16 px` ✅ **Standard**.
+  - `sx={{ borderRadius: 2 }}` → `2 × 16 px = 32 px` ❌ **nicht verwenden**.
+  - Alternativ: `sx={{ borderRadius: '16px' }}` (expliziter String, keine
+    Multiplikation).
+- **Ausnahmen**:
+  - `<Chip>` / Pills / Tags: `borderRadius: 99` (voll runde Kapsel — MUI
+    clamped visuell auf max. Dimension).
+  - `<LinearProgress>`: `borderRadius: 99`.
+  - Kleine Indikator-Boxen (< 24 × 24 px): explizit via `borderRadius: '8px'`
+    angeben, wenn eine kleinere Rundung gewünscht ist.
+
+Alle globalen Komponenten-Overrides sind im Theme bereits auf 16 px konfiguriert.
+Bei neuen Containern einfach `<Card>`, `<Paper>`, `<Dialog>` nutzen — ohne
+Inline-`borderRadius`-Prop — dann greift der Standard automatisch.

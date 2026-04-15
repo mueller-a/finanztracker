@@ -275,7 +275,7 @@ function KpiCard({ label, value, sub, color = '#7c3aed' }) {
       borderRight: `1px solid ${theme.palette.divider}`,
       borderBottom: `1px solid ${theme.palette.divider}`,
       borderLeft: `3px solid ${color}`,
-      borderRadius: 1.5,
+      borderRadius: 1,
       p: '14px 16px',
       minWidth: 0,
     })}>
@@ -695,7 +695,7 @@ export default function PkvCalculatorPage({ isDark = false }) {
 
         {/* Tarife */}
         <SectionLabel isDark={isDark}>Tarife · Startjahr</SectionLabel>
-        <Paper variant="outlined" sx={{ borderRadius: 2, p: 2, mb: 1.5 }}>
+        <Paper variant="outlined" sx={{ borderRadius: 1, p: 2, mb: 1.5 }}>
           <Alert
             severity="info"
             variant="outlined"
@@ -712,7 +712,7 @@ export default function PkvCalculatorPage({ isDark = false }) {
                 key={t.id}
                 variant="outlined"
                 sx={{
-                  borderRadius: 2,
+                  borderRadius: 1,
                   p: 1.5,
                   bgcolor: 'action.hover',
                 }}
