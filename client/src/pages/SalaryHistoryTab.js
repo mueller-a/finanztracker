@@ -6,8 +6,8 @@ import {
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import {
-  ResponsiveContainer, LineChart, Line, XAxis, YAxis,
-  CartesianGrid, Tooltip as RechartTooltip, Legend,
+  ResponsiveContainer, LineChart, Line, BarChart, Bar, Cell, ReferenceLine,
+  XAxis, YAxis, CartesianGrid, Tooltip as RechartTooltip, Legend,
 } from 'recharts';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -515,6 +515,129 @@ export default function SalaryHistoryTab({ baseParams }) {
           </CardContent>
         </Card>
       )}
+
+      <InflationHistoryChart vpi={vpi} status={inflStatus} />
     </Stack>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Inflations-Verlauf der letzten 20 Jahre (jährliche Veränderungsrate des VPI).
+// Quelle ist der `useInflationData`-Status — die Komponente zeigt einen Chip,
+// ob die Daten live von Destatis kommen oder aus dem statischen Fallback.
+// ─────────────────────────────────────────────────────────────────────────────
+function InflationHistoryChart({ vpi, status }) {
+  const theme = useTheme();
+
+  // Letzte 20 Jahre der jährlichen Inflation (auf Basis der VPI-Map).
+  const data = useMemo(() => {
+    const years = Object.keys(vpi).map(Number).sort((a, b) => a - b);
+    if (years.length < 2) return [];
+    const minYear = Math.max(years[0] + 1, CURRENT_YEAR - 19);
+    const out = [];
+    for (let y = minYear; y <= CURRENT_YEAR; y++) {
+      const cur  = vpi[y];
+      const prev = vpi[y - 1];
+      if (cur == null || prev == null || prev === 0) continue;
+      out.push({
+        year: y,
+        rate: Math.round(((cur / prev) - 1) * 1000) / 10, // 1 Dezimalstelle
+      });
+    }
+    return out;
+  }, [vpi]);
+
+  const avg = useMemo(() => {
+    if (data.length === 0) return null;
+    return data.reduce((s, d) => s + d.rate, 0) / data.length;
+  }, [data]);
+
+  const sourceChip = (() => {
+    if (status === 'loading')  return { label: 'Wird geladen…', color: 'default' };
+    if (status === 'live')     return { label: 'Live · Destatis',          color: 'success' };
+    if (status === 'cached')   return { label: 'Live · gecached (24 h)',   color: 'success' };
+    if (status === 'fallback') return { label: 'Fallback · statische Daten', color: 'warning' };
+    return { label: status, color: 'default' };
+  })();
+
+  return (
+    <Card elevation={2} sx={{ borderRadius: 3 }}>
+      <CardContent>
+        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1.5 }}>
+          <Box>
+            <Typography variant="caption" sx={{
+              color: 'text.secondary', fontWeight: 700,
+              letterSpacing: '0.08em', textTransform: 'uppercase',
+            }}>
+              Inflation (VPI) · letzte 20 Jahre
+            </Typography>
+            {avg != null && (
+              <Typography variant="body2" color="text.secondary">
+                Ø {avg.toFixed(2).replace('.', ',')} % p.a. ·{' '}
+                {data.length > 0 ? `${data[0].year}–${data[data.length - 1].year}` : '–'}
+              </Typography>
+            )}
+          </Box>
+          <Chip
+            size="small"
+            label={sourceChip.label}
+            color={sourceChip.color}
+            variant="outlined"
+          />
+        </Stack>
+        {data.length === 0 ? (
+          <Box sx={{ py: 3, textAlign: 'center', color: 'text.secondary' }}>
+            <Typography variant="body2">Keine VPI-Daten verfügbar.</Typography>
+          </Box>
+        ) : (
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={data} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} vertical={false} />
+              <XAxis dataKey="year" tick={{ fontSize: 11, fill: theme.palette.text.secondary }}
+                axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: theme.palette.text.secondary }}
+                axisLine={false} tickLine={false} width={50}
+                tickFormatter={(v) => `${v} %`} />
+              <RechartTooltip
+                formatter={(v) => [`${Number(v).toFixed(1).replace('.', ',')} %`, 'Inflation']}
+                contentStyle={{
+                  background: theme.palette.background.paper,
+                  border: `1px solid ${theme.palette.divider}`,
+                  borderRadius: 10, fontSize: 12,
+                }}
+                labelStyle={{ color: theme.palette.text.primary, fontWeight: 700 }}
+              />
+              {avg != null && (
+                <ReferenceLine
+                  y={avg}
+                  stroke={theme.palette.text.secondary}
+                  strokeDasharray="4 3"
+                  label={{
+                    value: `Ø ${avg.toFixed(1).replace('.', ',')} %`,
+                    fill: theme.palette.text.secondary,
+                    fontSize: 10,
+                    position: 'insideTopRight',
+                  }}
+                />
+              )}
+              <Bar dataKey="rate" radius={[4, 4, 0, 0]}>
+                {data.map((d) => (
+                  <Cell
+                    key={d.year}
+                    // Hohe Inflation rot, niedrige grün, EZB-Ziel ~2 % als Schwelle
+                    fill={d.rate >= 4 ? theme.palette.error.main
+                        : d.rate >= 2 ? theme.palette.warning.main
+                        : theme.palette.success.main}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+          Quelle: Destatis Tabelle 61111-0001 (Verbraucherpreisindex Deutschland, Basisjahr 2020 = 100).
+        </Typography>
+      </CardContent>
+    </Card>
   );
 }
