@@ -30,14 +30,14 @@ const CURRENT_YEAR = new Date().getFullYear();
 
 // ─── Default state ────────────────────────────────────────────────────────────
 const DEFAULT_TARIFE = [
-  { id: 1, name: 'Krankenvollversicherung', amount: 520,  gz: true,  steuer: true,  steuerPct: 88.00, dropAtAge: null },
-  { id: 2, name: 'Krankentagegeld',          amount: 45,   gz: false, steuer: false, steuerPct: 0,     dropAtAge: null },
-  { id: 3, name: 'Pflegepflicht',            amount: 58,   gz: true,  steuer: true,  steuerPct: 100.0, dropAtAge: null },
-  { id: 4, name: 'BEN',                      amount: 0,    gz: false, steuer: false, steuerPct: 0,     dropAtAge: null },
+  { id: 1, name: 'Krankenvollversicherung', amount: 520,  gz: true,  dropAtAge: null },
+  { id: 2, name: 'Krankentagegeld',          amount: 45,   gz: false, dropAtAge: null },
+  { id: 3, name: 'Pflegepflicht',            amount: 58,   gz: true,  dropAtAge: null },
+  { id: 4, name: 'BEN',                      amount: 0,    gz: false, dropAtAge: null },
 ];
 
 // Defaults für neu angelegte Tarife: alle Toggles auf "Nein" (false).
-const NEW_TARIF_DEFAULTS = { name: 'Neuer Tarif', amount: 0, gz: false, steuer: false, steuerPct: 0, dropAtAge: null };
+const NEW_TARIF_DEFAULTS = { name: 'Neuer Tarif', amount: 0, gz: false, dropAtAge: null };
 const DEFAULT_SENKUNGEN = [
   { id: 1, name: 'BEN-Rückerstattung', amount: 530, fromAge: 65 },
 ];
@@ -48,8 +48,6 @@ const DEFAULT_PKV = {
   currentAge:       45,
   maxAge:           85,
   growthRate:       5,
-  taxRateWork:      42,
-  taxRateRetire:    26,
   inflationRate:    2,
   employmentStatus: 'angestellt',
   rzActive:         true,
@@ -116,25 +114,9 @@ function getGzMonthlyFor(age, gf, yTarife) {
   return gz;
 }
 
-function getSteuerBasisMonthlyFor(age, gf, yTarife) {
-  const gzActive = age < 60;
-  let total = 0;
-  yTarife.forEach((t) => {
-    if (t.dropAtAge !== null && age >= t.dropAtAge) return;
-    const net = t.amount * gf;
-    if (t.steuer && t.steuerPct > 0) {
-      total += net * (t.steuerPct / 100);
-    }
-    if (t.gz && gzActive) {
-      total += net * 0.10;
-    }
-  });
-  return total;
-}
-
 function calcPkvData(pkv) {
   const {
-    startDate, birthdate, currentAge, maxAge, growthRate, taxRateWork, taxRateRetire,
+    startDate, birthdate, currentAge, maxAge, growthRate,
     employmentStatus, rzActive, rzFromAge, rzRente, tarife, senkungen,
     yearOverrides, brkAmounts, freeMonths, manualOverrides,
   } = pkv;
@@ -146,15 +128,12 @@ function calcPkvData(pkv) {
   const birthYear     = birthdate ? new Date(birthdate).getFullYear() : (todayYear - currentAge);
   const startAge      = startYear - birthYear;
   const growthRateDec = growthRate / 100;
-  const taxWorkDec    = taxRateWork / 100;
-  const taxRetireDec  = taxRateRetire / 100;
   const years         = maxAge - startAge + 1;
   if (years <= 0) return [];
 
   const data = [];
   let cumulative      = 0;
   let cumulativeEigen = 0;
-  let cumTaxSaving    = 0;
 
   for (let i = 0; i < years; i++) {
     const year = startYear + i;
@@ -174,17 +153,13 @@ function calcPkvData(pkv) {
 
     const gzActive  = age < 60;
     const gzScaled  = getGzMonthlyFor(age, gf, yTarife);
-    const steuerMonthly = getSteuerBasisMonthlyFor(age, gf, yTarife);
-    const activeTaxRate = age >= rzFromAge ? taxRetireDec : taxWorkDec;
 
     const baseMonths   = (i === 0) ? startMonths : 12;
     const freeMo       = Math.min(freeMonths[year] || 0, baseMonths);
     const monthsInYear = Math.max(0, baseMonths - freeMo);
 
     const annual     = monthly * monthsInYear;
-    const taxDed     = steuerMonthly * monthsInYear * activeTaxRate;
     cumulative      += annual;
-    cumTaxSaving    += taxDed;
 
     // Zuschüsse — AG (Arbeitsphase) bzw. KVdR (Rentenphase). Greifen nie
     // gleichzeitig: AG gilt nur `age < rzFromAge`, KVdR nur `age >= rzFromAge`.
@@ -215,8 +190,7 @@ function calcPkvData(pkv) {
       isStartYear: i === 0, startMonths: i === 0 ? startMonths : 12,
       monthsInYear, freeMonthsVal: freeMo,
       gz: gzScaled, gzActive,
-      taxDeduction: taxDed, steuerMonthly,
-      cumulative, cumulativeEigen, cumTaxSaving,
+      cumulative, cumulativeEigen,
       annualEigen,
       brkYear, gzTotalBd, gf,
       isFuture:    year > todayYear,
@@ -224,7 +198,7 @@ function calcPkvData(pkv) {
       isPast:      year < todayYear,
       hasOverride: manualOverrides[year] !== undefined,
       hasYearOverride,
-      activeTaxRate, agZuschuss, nettoMonthly,
+      agZuschuss, nettoMonthly,
       gesamtbeitragMtl: monthly,
       eigenanteilMtl:   nettoMonthly,
       rzBd, breakdown,
@@ -532,9 +506,6 @@ export default function PkvCalculatorPage({ isDark = false }) {
   function updateTarif(id, field, val) {
     updatePkv({ tarife: pkv.tarife.map((t) => t.id !== id ? t : { ...t, [field]: val }) });
   }
-  function updateTarifSteuer(id, checked) {
-    updatePkv({ tarife: pkv.tarife.map((t) => t.id !== id ? t : { ...t, steuer: checked, steuerPct: checked ? (t.steuerPct || 88) : 0 }) });
-  }
 
   function addSenkung() {
     const id = nextSenkungId;
@@ -586,12 +557,11 @@ export default function PkvCalculatorPage({ isDark = false }) {
     if (!pkvData.length) return {};
     const first = pkvData[0];
     const last  = pkvData[pkvData.length - 1];
-    const totalTax = pkvData.reduce((s, d) => s + d.taxDeduction, 0);
     const totalBrk = pkvData.reduce((s, d) => s + d.brkYear, 0);
     const brkCount = pkvData.filter((d) => d.brkYear > 0).length;
     const renteD   = pkvData.find((d) => d.age >= pkv.rzFromAge) ?? last;
     const anstieg  = first.monthly > 0 ? ((last.monthly - first.monthly) / first.monthly) * 100 : 0;
-    return { first, last, totalTax, totalBrk, brkCount, renteD, anstieg };
+    return { first, last, totalBrk, brkCount, renteD, anstieg };
   }, [pkvData, pkv.rzFromAge]);
 
   // ── Sidebar ──
@@ -732,39 +702,6 @@ export default function PkvCalculatorPage({ isDark = false }) {
                   />
                 </Stack>
 
-                {/* Option: Basisabsicherung */}
-                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ py: 0.5 }}>
-                  <Stack>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>Basisabsicherung</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Steuerlich absetzbarer Tarif (§ 10 EStG)
-                    </Typography>
-                  </Stack>
-                  <Switch
-                    checked={!!t.steuer}
-                    onChange={(e) => updateTarifSteuer(t.id, e.target.checked)}
-                    inputProps={{ 'aria-label': 'Basisabsicherung' }}
-                  />
-                </Stack>
-
-                {/* Dynamisch: steuerl. Absetzbar — nur sichtbar, wenn Basisabsicherung aktiv */}
-                {t.steuer && (
-                  <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ py: 0.5, pl: 2 }}>
-                    <Typography variant="body2" color="text.secondary">steuerl. Absetzbar</Typography>
-                    <TextField
-                      size="small"
-                      type="number"
-                      value={t.steuerPct}
-                      onChange={(e) => updateTarif(t.id, 'steuerPct', Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))}
-                      inputProps={{ min: 0, max: 100, step: 0.01, style: { textAlign: 'right' } }}
-                      InputProps={{
-                        endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                      }}
-                      sx={{ width: 140 }}
-                    />
-                  </Stack>
-                )}
-
                 <Divider sx={{ my: 1 }} />
 
                 {/* Option: Tarif entfällt ab — eigene Zeile mit Jahre-Feld */}
@@ -819,8 +756,6 @@ export default function PkvCalculatorPage({ isDark = false }) {
         <SectionLabel isDark={isDark}>Prognose</SectionLabel>
         <div style={{ background: card, border: `1px solid ${bdr}`, borderRadius: 12, padding: 16, marginBottom: 12 }}>
           <SliderField label="Jährl. Beitragssteigerung" min={0} max={20} step={0.5} value={pkv.growthRate} onChange={(v) => updatePkv({ growthRate: v })} suffix="%" isDark={isDark} />
-          <SliderField label="Steuersatz bis Renteneintritt" min={0} max={55} step={1} value={pkv.taxRateWork} onChange={(v) => updatePkv({ taxRateWork: v })} suffix="%" isDark={isDark} />
-          <SliderField label="Steuersatz ab Renteneintritt" min={0} max={55} step={1} value={pkv.taxRateRetire} onChange={(v) => updatePkv({ taxRateRetire: v })} suffix="%" isDark={isDark} />
           <SliderField label="Inflation p.a." min={0} max={10} step={0.5} value={pkv.inflationRate} onChange={(v) => updatePkv({ inflationRate: v })} suffix="%" isDark={isDark} />
         </div>
 
@@ -1081,7 +1016,6 @@ export default function PkvCalculatorPage({ isDark = false }) {
                   color="#e8b84b" isDark={isDark}
                 />
                 <KpiCard label="Gesamtkosten Lebenszeit" value={fmt(kpis.last?.cumulative, 0)} sub={`${pkvData.length} Jahre`} color="#5b8dee" isDark={isDark} />
-                <KpiCard label="Steuerl. Ersparnis (kum.)" value={fmt(kpis.totalTax, 0)} sub={`Arbeit: ${pkv.taxRateWork}% · Rente: ${pkv.taxRateRetire}%`} color="#10b981" isDark={isDark} />
                 <KpiCard label="BRK kumuliert" value={kpis.totalBrk > 0 ? fmt(kpis.totalBrk, 0) : '—'} sub={kpis.brkCount > 0 ? `${kpis.brkCount} Jahre mit BRK` : 'Noch keine eingetragen'} color="#5b8dee" isDark={isDark} />
                 <KpiCard label="Beitrag bei Renteneintritt" value={fmt(kpis.renteD?.monthly, 2)} sub={`ab Alter ${pkv.rzFromAge} (${kpis.renteD?.year})`} color="#e8b84b" isDark={isDark} />
                 <KpiCard label="Beitragsanstieg gesamt" value={(kpis.anstieg >= 0 ? '+' : '') + (kpis.anstieg?.toFixed(0) ?? '—') + ' %'} sub={`${fmt(kpis.first?.monthly, 2)} → ${fmt(kpis.last?.monthly, 2)}`} color="#ef4444" isDark={isDark} />
