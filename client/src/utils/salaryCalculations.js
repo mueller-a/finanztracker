@@ -81,6 +81,30 @@ export const DEFAULT_GEHALT = {
   ghMonth:        new Date().getMonth() + 1,
 };
 
+// ── Kinderfreibetrag-Zähler (§ 32 Abs. 6 EStG) ───────────
+// Bestimmt wie viele ganze KFB der AN auf der Lohnsteuerkarte hat.
+// Für KiSt- und Soli-Bemessung wird der ZKF-Zähler × Voll-KFB abgezogen.
+//
+// Der volle KFB pro Kind wird standardmäßig hälftig auf die Eltern
+// aufgeteilt. Ein Elternteil kann via Übertragung den ganzen KFB
+// bekommen (z.B. Stkl 3 Einverdiener), aber das ist die Ausnahme.
+//
+// Default-Aufteilung:
+// - Stkl 1 / 2 / 4: 0,5 pro Kind (ELStAM-Standard)
+// - Stkl 3: 1,0 pro Kind (einziger Verdiener, Partner gibt Hälfte ab)
+// - Stkl 5 / 6: 0 (Partner hat vollen KFB in Stkl 3, bzw. 2. Job)
+//
+// User kann über ghKinderFB manuell überschreiben, wenn sie den vollen
+// KFB auf sich übertragen haben.
+
+export function getKinderFB(kinder, stkl) {
+  var k = Math.max(0, Number(kinder) || 0);
+  if (k === 0)                  return 0;
+  if (stkl === 3)               return k;
+  if (stkl === 5 || stkl === 6) return 0;
+  return k * 0.5;
+}
+
 // ── Pflegeversicherung nach Kinderzahl ────────────────────
 // Basissatz aus Config (2025/2026: 1,8% AN). Kinderlos +0,6%. Ab 2. Kind -0,25%/Kind.
 
@@ -176,7 +200,12 @@ export function calcGehaltResult(gh, pkvMonthly, pkvSteuerMonthly) {
   var brutto        = gh.ghBrutto;
   var stkl          = gh.ghStkl;
   var kinder        = gh.ghKinder;
-  var kinderFB      = gh.ghKinderFB;
+  // KFB-Zähler: User-Override nutzen wenn gesetzt, sonst automatisch aus
+  // Kinderzahl + Steuerklasse ableiten (verhindert, dass KiSt/Soli auf
+  // der vollen LSt berechnet werden, wenn User nur ghKinder setzt)
+  var kinderFB      = (gh.ghKinderFB != null && gh.ghKinderFB > 0)
+                        ? gh.ghKinderFB
+                        : getKinderFB(kinder, stkl);
   var kistAktiv     = gh.ghKist;
   var bl            = gh.ghBundesland;
   var ghKvType      = gh.ghKvType;
@@ -298,7 +327,9 @@ export function calcNettoComparison(gh, pkvMonthlyFromModule) {
   var zusatz   = gh.ghGkvZusatz;
   var kinder   = gh.ghKinder;
   var stkl     = gh.ghStkl;
-  var kinderFB = gh.ghKinderFB;
+  var kinderFB = (gh.ghKinderFB != null && gh.ghKinderFB > 0)
+                    ? gh.ghKinderFB
+                    : getKinderFB(kinder, stkl);
   var avAktiv  = gh.ghAv;
   var rvAktiv  = gh.ghRv !== false;
   var cfg      = getTaxConfig(gh.ghYear || new Date().getFullYear(), gh.ghMonth || (new Date().getMonth() + 1));

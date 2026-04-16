@@ -11,6 +11,7 @@
 
 import { supabase } from './supabaseClient';
 import { getTaxConfig } from '../utils/taxConfigs';
+import { getKinderFB } from '../utils/salaryCalculations';
 
 /** Euro → Cents (Integer) */
 function toCents(euro) {
@@ -73,7 +74,9 @@ export async function fetchBmfTaxValidation(gh, localResult) {
       JRE4:   toCents(jahresbrutto),                       // bei LZZ=1 gleich RE4
       STKL:   gh.ghStkl || 1,
       R:      gh.ghKist ? 1 : 0,                           // Pflichtfeld!
-      ZKF:    gh.ghKinderFB || 0,
+      ZKF:    (gh.ghKinderFB != null && gh.ghKinderFB > 0)
+                ? gh.ghKinderFB
+                : getKinderFB(gh.ghKinder, gh.ghStkl),
       PKV:    isPkv ? 1 : 0,                               // 0/1, NICHT 0/1/2
       PVZ:    (gh.ghKinder || 0) === 0 ? 1 : 0,            // Zuschlag f. Kinderlose
       KVZ:    gh.ghGkvZusatz || 0,                         // in PROZENT, nicht ‰
