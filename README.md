@@ -5,6 +5,10 @@ Persönliche Finanz-Zentrale: Versicherungen, Stromabrechnungen, Guthaben/Sparzi
 Frontend: React (CRA) + Material UI + Recharts.
 Backend: Supabase (Postgres, Auth, Storage, Row-Level Security).
 
+> **🇩🇪 Rechtlicher Geltungsbereich:** Sämtliche Berechnungen, Beitragssätze, Freibeträge, Steuertarife und Versicherungslogiken basieren ausschließlich auf den in der **Bundesrepublik Deutschland** gültigen Rechts- und Steuergesetzen (EStG, SolzG, SGB V/VI/XI, BMF-PAP, KSchG, …) im Stand des Veranlagungsjahrs **2026**.
+>
+> Die Anwendung ist **nicht** für Österreich, die Schweiz, Liechtenstein oder andere Jurisdiktionen geeignet — dort gelten abweichende Beitragsbemessungsgrenzen, PV-/RV-Sätze, Lohnsteuer-Tarifformeln, Grundfreibeträge sowie eigenständige Sozialversicherungs- und Steuerregelungen (z.B. ASVG, BVG, ÖKV, AHV/IV/EO).
+
 ## Features
 
 - **Versicherungen**: Verträge, Beiträge, Kategorien, Snapshot-Historie
