@@ -7,6 +7,7 @@ import {
 } from '@mui/material';
 import CodeIcon from '@mui/icons-material/Code';
 import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
+import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import { useModules, calculateAge } from '../context/ModuleContext';
 import { supabase } from '../lib/supabaseClient';
 import ThemeShowcase from '../components/ThemeShowcase';
@@ -152,7 +153,7 @@ function ModuleTab({ modules, setModule, birthday, setBirthday, isPkv, setIsPkv,
 }
 
 // ── Developer tab (admin only) ────────────────────────────────────────────────
-function DeveloperTab({ isDark, onToggleDark }) {
+function DeveloperTab() {
   const [users, setUsers]     = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -261,13 +262,20 @@ function DeveloperTab({ isDark, onToggleDark }) {
           </Paper>
         )}
       </Box>
-
-      {/* Theme Showcase */}
-      <Box>
-        <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>Theme Showcase</Typography>
-        <ThemeShowcase isDark={isDark} onToggleDark={onToggleDark} />
-      </Box>
     </Stack>
+  );
+}
+
+// ── Theme Showcase tab (Admin-only) ──────────────────────────────────────────
+function ThemeShowcaseTab({ isDark, onToggleDark }) {
+  return (
+    <Box>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Live-Vorschau aller MUI-Theme-Tokens — Farben, Typografie, Buttons,
+        Karten, Eingabefelder. Dient als Design-Referenz.
+      </Typography>
+      <ThemeShowcase isDark={isDark} onToggleDark={onToggleDark} />
+    </Box>
   );
 }
 
@@ -303,8 +311,9 @@ export default function SettingsPage() {
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2.5 }}>
           <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
             <Tab value="modules"   label="Modulauswahl" />
-            <Tab value="admin"     label="Admin · Module" icon={<AdminPanelSettingsOutlinedIcon fontSize="small" />} iconPosition="start" />
-            <Tab value="developer" label="Developer"      icon={<CodeIcon fontSize="small" />}                       iconPosition="start" />
+            <Tab value="admin"     label="Admin · Module"  icon={<AdminPanelSettingsOutlinedIcon fontSize="small" />} iconPosition="start" />
+            <Tab value="developer" label="Developer"       icon={<CodeIcon fontSize="small" />}                       iconPosition="start" />
+            <Tab value="theme"     label="Theme Showcase"  icon={<PaletteOutlinedIcon fontSize="small" />}            iconPosition="start" />
           </Tabs>
         </Box>
       )}
@@ -328,7 +337,11 @@ export default function SettingsPage() {
       )}
 
       {activeTab === 'developer' && isAdmin && (
-        <DeveloperTab isDark={isDark} onToggleDark={onToggleDark} />
+        <DeveloperTab />
+      )}
+
+      {activeTab === 'theme' && isAdmin && (
+        <ThemeShowcaseTab isDark={isDark} onToggleDark={onToggleDark} />
       )}
     </Box>
   );
