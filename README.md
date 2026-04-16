@@ -70,10 +70,44 @@ cd client && npm run build
 
 Der Build-Output unter `client/build/` lässt sich z.B. auf Vercel oder Netlify deployen.
 
+## Berechtigungen & Rollen
+
+Das Tool kennt zwei Rollen, die über die Spalte `role` in `public.user_module_settings` gesteuert werden:
+
+| Rolle | Default | Berechtigungen |
+|---|---|---|
+| `user` | ja | Voller Zugriff auf alle eigenen Daten (RLS via `auth.uid() = user_id`). Sieht nur Module, die im Admin-Backend aktiviert sind. |
+| `admin` | nein | Zusätzlich: Modul-Verwaltung (`/admin/modules`), Developer-Tab in den Einstellungen, BMF-Abgleich im Gehaltsrechner, Sichtbarkeit aller `user_module_settings`-Zeilen, sieht auch deaktivierte Module. |
+
+### Admin-Rechte vergeben
+
+Nach dem ersten Login eines Nutzers wird automatisch eine Zeile in `user_module_settings` mit `role = 'user'` angelegt. Um diesen Account zum Admin zu befördern, im **Supabase Dashboard → SQL Editor** ausführen:
+
+```sql
+UPDATE public.user_module_settings
+   SET role = 'admin'
+ WHERE user_id IN (
+   SELECT id FROM auth.users WHERE email = 'dein@mail.de'
+ );
+```
+
+Die Änderung wird beim nächsten App-Reload (oder Logout/Login) wirksam — `useModules().isAdmin` liest den Wert beim Auth-Wechsel neu ein.
+
+Zum Zurückstufen analog mit `SET role = 'user'`. RLS-Policies lesen die Rolle bei jeder Anfrage frisch aus der DB, also greift die Änderung sofort serverseitig.
+
+### Implementierung im Frontend
+
+- `useModules().isAdmin` (aus [client/src/context/ModuleContext.js](client/src/context/ModuleContext.js)) — boolean Flag im Context.
+- Sidebar-Items mit `adminOnly: true` werden für reguläre Nutzer ausgeblendet.
+- Admin-Routen (z.B. `/admin/modules`) leiten Nicht-Admins per `<Navigate to="/" replace />` weiter.
+- Einzelne UI-Sektionen (z.B. BMF-Abgleich im Gehaltsrechner) gaten via `{isAdmin && (...)}`.
+- Server-seitig durchgesetzt durch RLS-Policies in den SQL-Migrations (`18_admin_role.sql`, `35_app_modules.sql`).
+
 ## Sicherheit
 
 - **Niemals** den Supabase **Service Role Key** committen. Die `.env` mit dem Anon Key liegt außerhalb des Repos.
-- RLS ist für alle User-Daten aktiv (`auth.uid() = user_id`), siehe `supabase/migration_rls_all_tables.sql`.
+- RLS ist für alle User-Daten aktiv (`auth.uid() = user_id`), siehe `supabase/migrations/15_rls_all_tables.sql`.
+- Admin-Rolle wird **ausschließlich** in der Datenbank gepflegt — kein Frontend-Code kann sie selbst setzen, da die `user_module_settings`-RLS-Policy `UPDATE` auf die `role`-Spalte verbietet (nur Service Role Key umgeht das).
 
 ## Lizenz
 
