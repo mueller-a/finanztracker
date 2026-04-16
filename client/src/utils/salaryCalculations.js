@@ -143,9 +143,18 @@ export function calcLohnsteuer2025(brutto, stkl, kinderFB, sonderausgaben, jahre
     ST_KIST = Math.max(0, Math.floor(lstFormula(ZVE_KIST)));
   }
 
-  // Solidaritätszuschlag 2026 (BMF SOLZFREI = 20.350; Stkl III × 2 = 40.700):
+  // Solidaritätszuschlag 2026 mit Milderungszone (§ 4 SolzG, BMF MSOLZ):
+  //   SOLZ_voll = LSt × 5,5 %
+  //   SOLZ_min  = (LSt − Freigrenze) × 11,9 %   (linearer Übergangstarif)
+  //   Soli      = min(SOLZ_voll, SOLZ_min) — Cap bei voller 5,5 %-Steuer
+  // SOLZFREI 2026 = 20.350 € (Stkl I/II/IV/V/VI), × 2 = 40.700 € für Stkl III (Splitting)
   var SOLI_FREIGRENZE = (stkl === 3) ? 40700 : 20350;
-  var SOLI = ST_KIST > SOLI_FREIGRENZE ? Math.floor(ST_KIST * 0.055) : 0;
+  var SOLI = 0;
+  if (ST_KIST > SOLI_FREIGRENZE) {
+    var soliVoll = Math.floor(ST_KIST * 0.055 * 100) / 100;
+    var soliMin  = Math.floor((ST_KIST - SOLI_FREIGRENZE) * 0.119 * 100) / 100;
+    SOLI = Math.min(soliVoll, soliMin);
+  }
 
   return {
     lstJahr: ST, soliJahr: SOLI, stKistBase: ST_KIST,
