@@ -704,67 +704,101 @@ export default function SalaryPage() {
 
           {/* Abzüge table */}
           <SectionCard title="Abzüge im Überblick">
-            <Stack divider={<Divider flexItem />} spacing={0}>
-              {[
-                ['Bruttogehalt', fmtE(result.brutto), 'success.main', null],
-                ['Lohnsteuer', '− ' + fmtE(result.lstMo), 'error.main', 'lst'],
-                ['Solidaritätszuschlag', result.soliMo > 0.005 ? '− ' + fmtE(result.soliMo) : '0,00 €', result.soliMo > 0.005 ? 'error.main' : 'text.secondary', null],
-                ['Kirchensteuer', result.kistMo > 0.005 ? '− ' + fmtE(result.kistMo) : '0,00 €', result.kistMo > 0.005 ? 'error.main' : 'text.secondary', null],
-                [gh.ghKvType === 'pkv' ? 'PKV-Eigenanteil (AN)' : 'Krankenversicherung (AN)', '− ' + fmtE(result.kvAN), 'warning.main', null],
-                ...(gh.ghKvType === 'pkv' && result.agZuschuss > 0 ? [['davon AG-Zuschuss PKV', '+ ' + fmtE(result.agZuschuss), 'success.main', null]] : []),
-                ...(result.pvAN > 0.005 ? [['Pflegeversicherung (AN)', '− ' + fmtE(result.pvAN), 'warning.main', null]] : []),
-                ['Rentenversicherung (AN)', result.rv > 0 ? '− ' + fmtE(result.rv) : '—', result.rv > 0 ? 'warning.main' : 'text.secondary', null],
-                ['Arbeitslosenversicherung (AN)', result.av > 0 ? '− ' + fmtE(result.av) : '—', result.av > 0 ? 'warning.main' : 'text.secondary', null],
-                ['Gesamt-Abzüge', '− ' + fmtE(result.gesamtAbzug), 'error.main', null],
-              ].map(([label, value, color, tooltip]) => {
-                const row = (
-                  <Stack
-                    key={label}
-                    direction="row"
-                    justifyContent="space-between"
-                    alignItems="center"
-                    sx={{ py: 0.75, cursor: tooltip ? 'help' : 'default' }}
-                  >
-                    <Typography variant="body2" color="text.secondary">{label}</Typography>
-                    <Typography variant="body2" sx={{ color, fontWeight: 600, fontFamily: 'monospace' }}>{value}</Typography>
+            {(() => {
+              const isPkv         = gh.ghKvType === 'pkv';
+              const pkvBrutto     = result.kvAN + result.agZuschuss;                 // voller PKV-Beitrag
+              const steuerSumme   = result.lstMo + result.soliMo + result.kistMo;
+              const sozialSumme   = isPkv
+                ? result.rv + result.av                                              // PKV: nur gesetzliche SV
+                : result.kvAN + result.pvAN + result.rv + result.av;
+              const nettoOben     = isPkv
+                ? result.brutto - steuerSumme - result.rv - result.av + result.agZuschuss
+                : result.netto;
+              const rows = isPkv ? [
+                { label: 'Bruttogehalt',                     value: fmtE(result.brutto),      color: 'text.primary',   fw: 700 },
+                { label: '− Lohnsteuer',                     value: fmtE(result.lstMo),       color: 'error.main',     tip: 'lst' },
+                { label: '− Solidaritätsbeitrag',            value: fmtE(result.soliMo),      color: result.soliMo > 0.005 ? 'error.main' : 'text.secondary' },
+                { label: '− Kirchensteuer',                  value: fmtE(result.kistMo),      color: result.kistMo > 0.005 ? 'error.main' : 'text.secondary' },
+                { label: '− Rentenversicherung (AN)',        value: fmtE(result.rv),          color: result.rv > 0 ? 'warning.main' : 'text.secondary' },
+                { label: '− Arbeitslosenversicherung (AN)',  value: fmtE(result.av),          color: result.av > 0 ? 'warning.main' : 'text.secondary' },
+                { label: '+ AG-Zuschuss private KV + PV',    value: fmtE(result.agZuschuss),  color: 'success.main' },
+              ] : [
+                { label: 'Bruttogehalt',                     value: fmtE(result.brutto),      color: 'text.primary',   fw: 700 },
+                { label: '− Lohnsteuer',                     value: fmtE(result.lstMo),       color: 'error.main',     tip: 'lst' },
+                { label: '− Solidaritätsbeitrag',            value: fmtE(result.soliMo),      color: result.soliMo > 0.005 ? 'error.main' : 'text.secondary' },
+                { label: '− Kirchensteuer',                  value: fmtE(result.kistMo),      color: result.kistMo > 0.005 ? 'error.main' : 'text.secondary' },
+                { label: '− Krankenversicherung',            value: fmtE(result.kvAN),        color: 'warning.main' },
+                { label: '− Pflegeversicherung',             value: fmtE(result.pvAN),        color: 'warning.main' },
+                { label: '− Rentenversicherung (AN)',        value: fmtE(result.rv),          color: result.rv > 0 ? 'warning.main' : 'text.secondary' },
+                { label: '− Arbeitslosenversicherung (AN)',  value: fmtE(result.av),          color: result.av > 0 ? 'warning.main' : 'text.secondary' },
+              ];
+              const rowEl = (r) => {
+                const el = (
+                  <Stack key={r.label} direction="row" justifyContent="space-between" alignItems="center"
+                    sx={{ py: 0.75, cursor: r.tip ? 'help' : 'default' }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontWeight: r.fw || 400 }}>{r.label}</Typography>
+                    <Typography variant="body2" sx={{ color: r.color, fontWeight: r.fw || 600, fontFamily: 'monospace' }}>{r.value}</Typography>
                   </Stack>
                 );
-                if (tooltip !== 'lst') return row;
+                if (r.tip !== 'lst') return el;
                 return (
-                  <MuiTooltip
-                    key={label}
-                    arrow
-                    placement="right"
-                    slotProps={{
-                      tooltip: {
-                        sx: {
-                          maxWidth: 380,
-                          bgcolor: 'background.paper',
-                          color: 'text.primary',
-                          border: 1,
-                          borderColor: 'divider',
-                          boxShadow: 4,
-                          p: 1.5,
-                        },
-                      },
-                    }}
-                    title={<LohnsteuerTooltipContent result={result} gh={gh} />}
-                  >
-                    {row}
+                  <MuiTooltip key={r.label} arrow placement="right"
+                    slotProps={{ tooltip: { sx: { maxWidth: 380, bgcolor: 'background.paper', color: 'text.primary', border: 1, borderColor: 'divider', boxShadow: 4, p: 1.5 } } }}
+                    title={<LohnsteuerTooltipContent result={result} gh={gh} />}>
+                    {el}
                   </MuiTooltip>
                 );
-              })}
-            </Stack>
-            <Stack direction="row" justifyContent="space-between" sx={{ pt: 1.5, mt: 0.5, borderTop: 1, borderColor: 'divider' }}>
-              <Typography variant="body2" sx={{ fontWeight: 700 }}>= Nettoeinkommen</Typography>
-              <Typography variant="body1" sx={{ color: 'success.main', fontWeight: 700, fontFamily: 'monospace' }}>
-                {fmtE(result.netto)}
-              </Typography>
-            </Stack>
-            <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', mt: 1 }}>
-              Vorsorgepauschale §39b EStG: {fmtEuro(result.sonderausgabenJahr / 12, 2)}/Monat
-              ({fmtEuro(result.sonderausgabenJahr, 0)}/Jahr) mindert Lohnsteuer
-            </Typography>
+              };
+              const subtotalEl = (label, val, color = 'success.main') => (
+                <Stack direction="row" justifyContent="space-between"
+                  sx={{ py: 1, my: 0.5, borderTop: 2, borderBottom: 2, borderColor: 'divider' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>{label}</Typography>
+                  <Typography variant="body1" sx={{ color, fontWeight: 700, fontFamily: 'monospace' }}>{val}</Typography>
+                </Stack>
+              );
+
+              return (
+                <>
+                  <Stack divider={<Divider flexItem />} spacing={0}>
+                    {rows.map(rowEl)}
+                  </Stack>
+
+                  {/* Nettogehalt */}
+                  {subtotalEl('= Nettogehalt', fmtE(nettoOben))}
+
+                  {/* Verbleibend-Block nur bei PKV */}
+                  {isPkv && (
+                    <>
+                      <Stack divider={<Divider flexItem />} spacing={0}>
+                        {rowEl({ label: '− private Krankenversicherung', value: fmtE(pkvBrutto), color: 'error.main' })}
+                      </Stack>
+                      {subtotalEl('= Verbleibend', fmtE(result.netto))}
+                    </>
+                  )}
+
+                  {/* Summary: Steuer + Sozial */}
+                  <Stack spacing={0.5} sx={{ mt: 1.5 }}>
+                    <Stack direction="row" justifyContent="space-between">
+                      <Typography variant="caption" color="text.secondary">Steuerabzug gesamt</Typography>
+                      <Typography variant="caption" sx={{ color: 'error.main', fontFamily: 'monospace', fontWeight: 600 }}>
+                        − {fmtE(steuerSumme)}
+                      </Typography>
+                    </Stack>
+                    <Stack direction="row" justifyContent="space-between">
+                      <Typography variant="caption" color="text.secondary">Sozialabgaben gesamt</Typography>
+                      <Typography variant="caption" sx={{ color: 'warning.main', fontFamily: 'monospace', fontWeight: 600 }}>
+                        − {fmtE(sozialSumme)}
+                      </Typography>
+                    </Stack>
+                  </Stack>
+
+                  <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', mt: 1.5 }}>
+                    Vorsorgepauschale §39b EStG: {fmtEuro(result.sonderausgabenJahr / 12, 2)}/Monat
+                    ({fmtEuro(result.sonderausgabenJahr, 0)}/Jahr) mindert Lohnsteuer
+                  </Typography>
+                </>
+              );
+            })()}
           </SectionCard>
 
           {/* PKV vs GKV netto comparison */}
