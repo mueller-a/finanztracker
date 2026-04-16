@@ -15,7 +15,7 @@ export const MAX_AG_ZUSCHUSS    = MAX_AG_ZUSCHUSS_KV + MAX_AG_ZUSCHUSS_PV; // 61
 export const GKV_BBG_KV     = 5812.50;   // BBG KV/PV monatlich
 export const GKV_BBG_RV     = 8450.00;   // BBG RV/AV (West) monatlich — SKILL.md 2026
 export const GKV_BASIS_RATE  = 0.073;     // 14,6% / 2 = AN-Anteil
-export const GKV_PV_RATE     = 0.017;     // 3,4% / 2 = AN-Anteil (SKILL.md 2026)
+export const GKV_PV_RATE     = 0.018;     // 3,6% / 2 = AN-Anteil (BMF-PAP 2026, PVSATZAN)
 export const GKV_PV_ZUSCHLAG = 0.006;     // kinderlos-Zuschlag (+0,6%)
 export const GKV_RV_RATE     = 0.093;     // 18,6% / 2 = AN-Anteil
 export const GKV_AV_RATE     = 0.013;     // 2,6% / 2 = AN-Anteil
