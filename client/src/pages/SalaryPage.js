@@ -248,9 +248,15 @@ export default function SalaryPage() {
   const debounceRef = useRef(null);
   const savedRef    = useRef(null);
   const mountedRef  = useRef(false);
+  const hydratedRef = useRef(false);
 
+  // Initial Hydration: settings → gh. Darf nur EINMAL feuern, sonst entsteht
+  // eine Endlosschleife, weil saveSettings() intern wieder setSettings() aufruft,
+  // was diesen Effect retriggern und gh mit einem neuen Objekt überschreiben würde.
   useEffect(() => {
-    if (!loading && settings) setGh({ ...DEFAULT_GEHALT, ...settings });
+    if (loading || hydratedRef.current) return;
+    if (settings) setGh({ ...DEFAULT_GEHALT, ...settings });
+    hydratedRef.current = true;
   }, [loading, settings]);
 
   useEffect(() => {
