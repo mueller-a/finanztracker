@@ -1,24 +1,31 @@
 // ─────────────────────────────────────────────────────────
 //  Gehaltsrechner — Reine Berechnungsfunktionen
-//  Zentrale Datei für alle Steuer-/SV-Konstanten und -Formeln.
-//  Wird von SalaryPage.js UND PkvCalculatorPage.js importiert.
 //
-//  Basiert auf SKILL.md: "Gehaltsrechner & Lohnsteuer-Logik (Deutschland 2026)"
+//  Sämtliche Steuer- und SV-Parameter kommen aus `taxConfigs.js`
+//  (time-indexed pro validFrom). Alle Funktionen akzeptieren eine
+//  optionale `cfg`-Config; ohne Parameter wird `LATEST_TAX_CONFIG`
+//  verwendet (Backward-Compat für bestehende Aufrufer).
 // ─────────────────────────────────────────────────────────
 
-// ── Sozialversicherungs-Konstanten (2026 gemäß SKILL.md) ──
+import { getTaxConfig, LATEST_TAX_CONFIG } from './taxConfigs.js';
 
-export const MAX_AG_ZUSCHUSS_KV = 508.59;  // § 257 SGB V
-export const MAX_AG_ZUSCHUSS_PV = 104.63;
-export const MAX_AG_ZUSCHUSS    = MAX_AG_ZUSCHUSS_KV + MAX_AG_ZUSCHUSS_PV; // 613,22 €
+export { getTaxConfig, LATEST_TAX_CONFIG, TAX_CONFIGS, AVAILABLE_YEARS, MONATE } from './taxConfigs.js';
 
-export const GKV_BBG_KV     = 5812.50;   // BBG KV/PV monatlich
-export const GKV_BBG_RV     = 8450.00;   // BBG RV/AV (West) monatlich — SKILL.md 2026
-export const GKV_BASIS_RATE  = 0.073;     // 14,6% / 2 = AN-Anteil
-export const GKV_PV_RATE     = 0.018;     // 3,6% / 2 = AN-Anteil (BMF-PAP 2026, PVSATZAN)
-export const GKV_PV_ZUSCHLAG = 0.006;     // kinderlos-Zuschlag (+0,6%)
-export const GKV_RV_RATE     = 0.093;     // 18,6% / 2 = AN-Anteil
-export const GKV_AV_RATE     = 0.013;     // 2,6% / 2 = AN-Anteil
+// ── Backward-Compat-Exports (lesen aus aktueller Config) ──
+//   PkvCalculatorPage.js und andere Konsumenten importieren diese
+//   Konstanten direkt und erwarten Skalare.
+
+export const GKV_BBG_KV      = LATEST_TAX_CONFIG.bbgKvPvJahr / 12;
+export const GKV_BBG_RV      = LATEST_TAX_CONFIG.bbgRvAlvJahr / 12;
+export const GKV_BASIS_RATE  = LATEST_TAX_CONFIG.kvANRateAllgemein;
+export const GKV_PV_RATE     = LATEST_TAX_CONFIG.pvANRate;
+export const GKV_PV_ZUSCHLAG = LATEST_TAX_CONFIG.pvKinderlosZuschlag;
+export const GKV_RV_RATE     = LATEST_TAX_CONFIG.rvANRate;
+export const GKV_AV_RATE     = LATEST_TAX_CONFIG.avANRate;
+
+export const MAX_AG_ZUSCHUSS_KV = Math.round(GKV_BBG_KV * (GKV_BASIS_RATE + LATEST_TAX_CONFIG.kvZusatzDurchschnitt / 200) * 100) / 100;
+export const MAX_AG_ZUSCHUSS_PV = Math.round(GKV_BBG_KV * GKV_PV_RATE * 100) / 100;
+export const MAX_AG_ZUSCHUSS    = MAX_AG_ZUSCHUSS_KV + MAX_AG_ZUSCHUSS_PV;
 
 // ── Referenz-Daten ────────────────────────────────────────
 
@@ -61,70 +68,70 @@ export const DEFAULT_GEHALT = {
   ghAv:           true,
   ghFreibetragMo: 0,       // monatl. Steuer-Freibetrag (§ 39a EStG), ELStAM
   ghKvType:       'gkv',
-  ghGkvZusatz:    2.50,   // Ø-Zusatzbeitrag 2026 lt. SKILL.md
+  ghGkvZusatz:    2.50,
   ghPkvBeitrag:   0,
   ghPkvBasis:     0,
   ghPkvAgZuschuss: 0,
   ghPkvPvBetrag:  0,
   ghPkvSynced:    false,
   ghView:         'monat',
+  // Berechnungszeitraum — default aktuelles Kalenderdatum.
+  // Bei erster User-Änderung wird der Wert via saveSettings persistiert.
+  ghYear:         new Date().getFullYear(),
+  ghMonth:        new Date().getMonth() + 1,
 };
 
-// ── Pflegeversicherung nach Kinderzahl (SKILL.md) ─────────
-// Basissatz 3,4% (AN: 1,7%). Kinderlos +0,6%. Ab 2. Kind -0,25%/Kind.
+// ── Pflegeversicherung nach Kinderzahl ────────────────────
+// Basissatz aus Config (2025/2026: 1,8% AN). Kinderlos +0,6%. Ab 2. Kind -0,25%/Kind.
 
-export function pvSatzByKinder(kinder) {
+export function pvSatzByKinder(kinder, cfg) {
+  cfg = cfg || LATEST_TAX_CONFIG;
   var k = Math.max(0, Math.min(5, kinder));
-  var zuschlag = k === 0 ? 0.006 : 0;                   // kinderlos +0,6%
-  var abschlag = k >= 2 ? Math.min((k - 1) * 0.0025, 0.01) : 0; // ab 2. Kind -0,25%
-  return GKV_PV_RATE + zuschlag - abschlag;
+  var zuschlag = k === 0 ? cfg.pvKinderlosZuschlag : 0;
+  var abschlag = k >= 2 ? Math.min((k - 1) * 0.0025, 0.01) : 0;
+  return cfg.pvANRate + zuschlag - abschlag;
 }
 
 // ── AG-Zuschuss (§ 257 SGB V) ────────────────────────────
-// 50% des PKV-Beitrags, max. GKV-Höchstbeitrag, max. 613,22€
+// 50% des PKV-Beitrags, max. GKV-Höchstbeitrag (KV-allg. + KVZ/2 + PV, ohne Kinderloser-Zuschlag)
 
-export function calcAgZuschuss(pkvBrutto, brutto, zusatzPct) {
-  var base     = Math.min(brutto, GKV_BBG_KV);
-  var gkvAgMax = base * (GKV_BASIS_RATE + zusatzPct / 200 + GKV_PV_RATE + GKV_PV_ZUSCHLAG);
-  return Math.min(pkvBrutto * 0.5, gkvAgMax, MAX_AG_ZUSCHUSS);
+export function calcAgZuschuss(pkvBrutto, brutto, zusatzPct, cfg) {
+  cfg = cfg || LATEST_TAX_CONFIG;
+  var bbgKvMo      = cfg.bbgKvPvJahr / 12;
+  var base         = Math.min(brutto, bbgKvMo);
+  var gkvAgMax     = base * (cfg.kvANRateAllgemein + zusatzPct / 200 + cfg.pvANRate + cfg.pvKinderlosZuschlag);
+  // Absolute Obergrenze § 257 SGB V: BBG_KV × (KV-allg. + Ø-KVZ/2 + PV)
+  var absoluteCap  = bbgKvMo * (cfg.kvANRateAllgemein + cfg.kvZusatzDurchschnitt / 200 + cfg.pvANRate);
+  return Math.min(pkvBrutto * 0.5, gkvAgMax, absoluteCap);
 }
 
-// ── Lohnsteuer 2026 (§ 32a EStG — Tarifzonen lt. amtlichem BMF-PAP 2026) ──
+// ── Lohnsteuer (§ 32a EStG — Tarifzonen lt. amtlichem BMF-PAP) ──
 //
-// Quelle: BMF-PAP "Lohnsteuer 2026" — METHOD UPTAB26
-// (https://www.bmf-steuerrechner.de/javax.faces.resource/daten/xmls/Lohnsteuer2026.xml.xhtml)
+// Sämtliche Tarif-Konstanten aus `cfg` (taxConfigs.js).
+// Quellen: BMF-PAP UPTAB25 / UPTAB26
+//   https://www.bmf-steuerrechner.de/javax.faces.resource/daten/xmls/Lohnsteuer{Jahr}.xml.xhtml
 
-export function calcLohnsteuer2025(brutto, stkl, kinderFB, sonderausgaben, jahresfreibetrag) {
+export function calcLohnsteuer2025(brutto, stkl, kinderFB, sonderausgaben, jahresfreibetrag, cfg) {
+  cfg = cfg || LATEST_TAX_CONFIG;
   sonderausgaben = sonderausgaben || 0;
   jahresfreibetrag = jahresfreibetrag || 0;
   var JB   = brutto * 12;
-  // Tabellenfreibeträge (BMF MZTABFB): ANP=1230 + SAP=36 für Stkl 1–5; Stkl 6 = 0
-  var ANP  = stkl === 6 ? 0 : 1230;
-  var SAP  = stkl === 6 ? 0 : 36;
+  var ANP  = stkl === 6 ? 0 : cfg.anp;
+  var SAP  = stkl === 6 ? 0 : cfg.sap;
   var ZTABFB = ANP + SAP;
-  // ZVE = Jahresbrutto − Tabellenfreibeträge − Vorsorgepauschale − individueller Jahresfreibetrag (ELStAM)
   var ZRE4 = Math.max(0, JB - ZTABFB - sonderausgaben - jahresfreibetrag);
   var ZVE  = Math.floor(ZRE4);
-  // Splitting Stkl. III: ZVE halbieren → Formel → verdoppeln (passiert in ST-Berechnung)
 
-  // GFB für lstDetail-Rückgabe (nur zur Anzeige im Tooltip)
-  var GFB  = { 1: 12348, 2: 12348, 3: 24696, 4: 12348, 5: 0, 6: 0 };
+  var GFB  = { 1: cfg.gfb, 2: cfg.gfb, 3: cfg.gfb * 2, 4: cfg.gfb, 5: 0, 6: 0 };
 
-  // Tarifzonen 2026 (BMF-PAP UPTAB26):
-  // Zone 1: 0–12.348 → 0%
-  // Zone 2: 12.349–17.799 → (914,51·y + 1400)·y
-  // Zone 3: 17.800–69.878 → (173,10·z + 2397)·z + 1034,87
-  // Zone 4: 69.879–277.825 → 0,42·X − 11.135,63
-  // Zone 5: ab 277.826 → 0,45·X − 19.470,38
   function lstFormula(zve) {
-    if (zve <= 12348)  return 0;
-    if (zve <= 17799)  { var y = (zve - 12348) / 10000; return (914.51 * y + 1400) * y; }
-    if (zve <= 69878)  { var z = (zve - 17799) / 10000; return (173.10 * z + 2397) * z + 1034.87; }
-    if (zve <= 277825) return 0.42 * zve - 11135.63;
-    return 0.45 * zve - 19470.38;
+    if (zve <= cfg.gfb)         return 0;
+    if (zve <= cfg.zone2End)    { var y = (zve - cfg.gfb)      / 10000; return (cfg.tarifZ2a * y + cfg.tarifZ2b) * y; }
+    if (zve <= cfg.zone3End)    { var z = (zve - cfg.zone2End) / 10000; return (cfg.tarifZ3a * z + cfg.tarifZ3b) * z + cfg.tarifZ3c; }
+    if (zve <= cfg.zone4End)    return cfg.tarifZ4Satz * zve - cfg.tarifZ4Abzug;
+    return cfg.tarifZ5Satz * zve - cfg.tarifZ5Abzug;
   }
 
-  // Splitting (Stkl. III): ZVE halbieren → Formel → verdoppeln
   var ST;
   if (stkl === 3) {
     ST = Math.max(0, Math.floor(lstFormula(Math.floor(ZVE / 2)))) * 2;
@@ -132,9 +139,8 @@ export function calcLohnsteuer2025(brutto, stkl, kinderFB, sonderausgaben, jahre
     ST = Math.max(0, Math.floor(lstFormula(ZVE)));
   }
 
-  // Kinderfreibetrag VOLL inkl. BEA-Freibetrag = 9.756 € pro Kind (BMF-PAP MZTABFB
-  // Stkl 1/2/3: KFB = ZKF × 9756; Stkl 4: ZKF × 4878 = halber Anteil pro Elternteil)
-  var KFB_PRO_KIND = stkl === 4 ? 4878 : 9756;
+  // Kinderfreibetrag voll (sächl. + BEA) aus Config; Stkl 4 = halber Anteil
+  var KFB_PRO_KIND = stkl === 4 ? cfg.kfbProKindStkl4 : cfg.kfbProKindSonst;
   var ZVE_KIST = Math.max(0, ZVE - Math.floor(kinderFB * KFB_PRO_KIND));
   var ST_KIST;
   if (stkl === 3) {
@@ -143,15 +149,14 @@ export function calcLohnsteuer2025(brutto, stkl, kinderFB, sonderausgaben, jahre
     ST_KIST = Math.max(0, Math.floor(lstFormula(ZVE_KIST)));
   }
 
-  // Solidaritätszuschlag 2026 mit Milderungszone (§ 4 SolzG, BMF MSOLZ):
-  //   SOLZ_voll = LSt × 5,5 %
+  // Solidaritätszuschlag mit Milderungszone (§ 4 SolzG, BMF MSOLZ):
+  //   SOLZ_voll = LSt × cfg.soliSatz
   //   SOLZ_min  = (LSt − Freigrenze) × 11,9 %   (linearer Übergangstarif)
-  //   Soli      = min(SOLZ_voll, SOLZ_min) — Cap bei voller 5,5 %-Steuer
-  // SOLZFREI 2026 = 20.350 € (Stkl I/II/IV/V/VI), × 2 = 40.700 € für Stkl III (Splitting)
-  var SOLI_FREIGRENZE = (stkl === 3) ? 40700 : 20350;
+  //   Soli      = min(SOLZ_voll, SOLZ_min)
+  var SOLI_FREIGRENZE = (stkl === 3) ? cfg.soliFreigrenze * 2 : cfg.soliFreigrenze;
   var SOLI = 0;
   if (ST_KIST > SOLI_FREIGRENZE) {
-    var soliVoll = Math.floor(ST_KIST * 0.055 * 100) / 100;
+    var soliVoll = Math.floor(ST_KIST * cfg.soliSatz * 100) / 100;
     var soliMin  = Math.floor((ST_KIST - SOLI_FREIGRENZE) * 0.119 * 100) / 100;
     SOLI = Math.min(soliVoll, soliMin);
   }
@@ -161,6 +166,7 @@ export function calcLohnsteuer2025(brutto, stkl, kinderFB, sonderausgaben, jahre
     JB: JB, ANP: ANP, SAP: SAP,
     sonderausgaben: sonderausgaben, ZRE4: ZRE4, GFB: GFB[stkl] || 0, ZVE: ZVE,
     ZVE_KIST: ZVE_KIST, splittingActive: stkl === 3,
+    cfgYear: cfg.year, cfgLabel: cfg.label,
   };
 }
 
@@ -181,23 +187,28 @@ export function calcGehaltResult(gh, pkvMonthly, pkvSteuerMonthly) {
   var rvAktiv       = gh.ghRv;
   var avAktiv       = gh.ghAv;
 
-  var kistSatz = (bl === 8 || bl === 9) ? 0.08 : 0.09;
-  var svBase   = Math.min(brutto, GKV_BBG_KV);
-  var rvBase   = Math.min(brutto, GKV_BBG_RV);
-  var pvRate   = pvSatzByKinder(kinder);
+  // Steuer-/SV-Konfig für gewählten Berechnungszeitraum (Default: aktuell)
+  var cfg = getTaxConfig(gh.ghYear || new Date().getFullYear(), gh.ghMonth || (new Date().getMonth() + 1));
+  var bbgKvMo = cfg.bbgKvPvJahr / 12;
+  var bbgRvMo = cfg.bbgRvAlvJahr / 12;
 
-  var rv = rvAktiv ? rvBase * GKV_RV_RATE : 0;
-  var av = avAktiv ? rvBase * GKV_AV_RATE : 0;
+  var kistSatz = (bl === 8 || bl === 9) ? 0.08 : 0.09;
+  var svBase   = Math.min(brutto, bbgKvMo);
+  var rvBase   = Math.min(brutto, bbgRvMo);
+  var pvRate   = pvSatzByKinder(kinder, cfg);
+
+  var rv = rvAktiv ? rvBase * cfg.rvANRate : 0;
+  var av = avAktiv ? rvBase * cfg.avANRate : 0;
 
   var kvAN = 0, pvAN = 0;
   var agZuschuss = 0;
 
   if (ghKvType === 'gkv') {
-    kvAN = svBase * (GKV_BASIS_RATE + gkvZusatz / 200);
+    kvAN = svBase * (cfg.kvANRateAllgemein + gkvZusatz / 200);
     pvAN = svBase * pvRate;
   } else {
     var effectivePkvBrutto = pkvMonthly > 0 ? pkvMonthly : (pkvBrutto || 0);
-    agZuschuss = pkvAgZuschuss > 0 ? pkvAgZuschuss : calcAgZuschuss(effectivePkvBrutto, brutto, gkvZusatz);
+    agZuschuss = pkvAgZuschuss > 0 ? pkvAgZuschuss : calcAgZuschuss(effectivePkvBrutto, brutto, gkvZusatz, cfg);
     kvAN = Math.max(0, effectivePkvBrutto - agZuschuss);
     pvAN = 0; // PV ist im PKV-Beitrag enthalten
   }
@@ -219,39 +230,37 @@ export function calcGehaltResult(gh, pkvMonthly, pkvSteuerMonthly) {
   //     VSP    = max(VSP, VSPN)
 
   var JB_VSP   = brutto * 12;
-  var base_RVj = Math.min(JB_VSP, GKV_BBG_RV * 12);
-  var base_KVj = Math.min(JB_VSP, GKV_BBG_KV * 12);
+  var base_RVj = Math.min(JB_VSP, cfg.bbgRvAlvJahr);
+  var base_KVj = Math.min(JB_VSP, cfg.bbgKvPvJahr);
 
   // VSPR — Altersvorsorge-Teilbetrag
-  var VSP_RV = rvAktiv ? Math.floor(base_RVj * GKV_RV_RATE * 100) / 100 : 0;
+  var VSP_RV = rvAktiv ? Math.floor(base_RVj * cfg.rvANRate * 100) / 100 : 0;
 
   // VSPKVPV — KV/PV-Teilbetrag
   var VSP_KVPV = 0;
   if (ghKvType === 'gkv') {
-    // BMF-PAP nutzt für die VSP den ERMÄSSIGTEN KV-Satz (§ 243 SGB V = 7,0 %)
+    // BMF-PAP nutzt für die VSP den ERMÄSSIGTEN KV-Satz (§ 243 SGB V)
     // + halben Zusatzbeitrag + PV-Satz nach Familienstand
-    var kvSatzVsp = 0.07 + (gkvZusatz / 200);
+    var kvSatzVsp = cfg.kvANRateErmaessigt + (gkvZusatz / 200);
     VSP_KVPV = Math.floor(base_KVj * (kvSatzVsp + pvRate) * 100) / 100;
   } else {
     var effectiveBasis = pkvBasis > 0 ? pkvBasis : (pkvMonthly > 0 ? pkvMonthly : (pkvBrutto || 0));
-    var agZVsp = pkvAgZuschuss > 0 ? pkvAgZuschuss : calcAgZuschuss(effectiveBasis, brutto, gkvZusatz);
+    var agZVsp = pkvAgZuschuss > 0 ? pkvAgZuschuss : calcAgZuschuss(effectiveBasis, brutto, gkvZusatz, cfg);
     VSP_KVPV = Math.max(0, Math.floor((effectiveBasis - agZVsp) * 12 * 100) / 100);
   }
 
   var VSP_simple = Math.ceil(VSP_RV + VSP_KVPV);
 
   // MVSPHB — Höchstbetragsberechnung für Sonstige (AV)
-  // Wird übersprungen für Stkl 6 (kein 2. Job-Freibetrag) oder wenn AV-frei
-  var VSP_AV  = avAktiv ? Math.floor(base_RVj * GKV_AV_RATE * 100) / 100 : 0;
+  var VSP_AV  = avAktiv ? Math.floor(base_RVj * cfg.avANRate * 100) / 100 : 0;
   var VSPHB   = Math.min(VSP_AV + VSP_KVPV, 1900);                // Cap § 10 Abs. 4 EStG
   var VSPN    = Math.ceil(VSP_RV + VSPHB);
   var sonderausgabenJahr = (avAktiv && stkl !== 6)
     ? Math.max(VSP_simple, VSPN)
     : VSP_simple;
-  // Für Detail-Anzeige: effektiv berücksichtigte AV-Pauschale (kann durch 1.900 €-Cap < Ist sein)
   var VSP_AV_effektiv = Math.max(0, sonderausgabenJahr - VSP_simple);
   var jahresfreibetrag = (gh.ghFreibetragMo || 0) * 12;
-  var lstDetail = calcLohnsteuer2025(brutto, stkl, kinderFB, sonderausgabenJahr, jahresfreibetrag);
+  var lstDetail = calcLohnsteuer2025(brutto, stkl, kinderFB, sonderausgabenJahr, jahresfreibetrag, cfg);
   var lstMo  = lstDetail.lstJahr  / 12;
   var soliMo = lstDetail.soliJahr / 12;
   var kistMo = kistAktiv ? (lstDetail.stKistBase / 12) * kistSatz : 0;
@@ -292,20 +301,22 @@ export function calcNettoComparison(gh, pkvMonthlyFromModule) {
   var kinderFB = gh.ghKinderFB;
   var avAktiv  = gh.ghAv;
   var rvAktiv  = gh.ghRv !== false;
-  var pvRate   = pvSatzByKinder(kinder);
-  var svBase   = Math.min(brutto, GKV_BBG_KV);
-  var rvBase   = Math.min(brutto, GKV_BBG_RV);
-  var kvGkv    = svBase * (GKV_BASIS_RATE + zusatz / 200);
+  var cfg      = getTaxConfig(gh.ghYear || new Date().getFullYear(), gh.ghMonth || (new Date().getMonth() + 1));
+  var bbgKvMo  = cfg.bbgKvPvJahr / 12;
+  var bbgRvMo  = cfg.bbgRvAlvJahr / 12;
+  var pvRate   = pvSatzByKinder(kinder, cfg);
+  var svBase   = Math.min(brutto, bbgKvMo);
+  var rvBase   = Math.min(brutto, bbgRvMo);
+  var kvGkv    = svBase * (cfg.kvANRateAllgemein + zusatz / 200);
   var pvGkv    = svBase * pvRate;
 
   // Vorsorgepauschale nach BMF-PAP MVSPHB-Algorithmus
   var JB        = brutto * 12;
-  var base_RVj  = Math.min(JB, GKV_BBG_RV * 12);
-  var base_KVj  = Math.min(JB, GKV_BBG_KV * 12);
-  var vsp_RV    = rvAktiv ? Math.floor(base_RVj * GKV_RV_RATE * 100) / 100 : 0;
-  var vsp_AV    = avAktiv ? Math.floor(base_RVj * GKV_AV_RATE * 100) / 100 : 0;
-  // GKV: ermäßigter KV-Satz § 243 SGB V (7,0 %) + halber Zusatz + PV-Satz
-  var vspKV_GKV = Math.floor(base_KVj * (0.07 + zusatz / 200 + pvRate) * 100) / 100;
+  var base_RVj  = Math.min(JB, cfg.bbgRvAlvJahr);
+  var base_KVj  = Math.min(JB, cfg.bbgKvPvJahr);
+  var vsp_RV    = rvAktiv ? Math.floor(base_RVj * cfg.rvANRate * 100) / 100 : 0;
+  var vsp_AV    = avAktiv ? Math.floor(base_RVj * cfg.avANRate * 100) / 100 : 0;
+  var vspKV_GKV = Math.floor(base_KVj * (cfg.kvANRateErmaessigt + zusatz / 200 + pvRate) * 100) / 100;
 
   function vspFinal(vspKV) {
     var simple = Math.ceil(vsp_RV + vspKV);
@@ -315,20 +326,20 @@ export function calcNettoComparison(gh, pkvMonthlyFromModule) {
   }
 
   var vspGkv   = vspFinal(vspKV_GKV);
-  var lstG     = calcLohnsteuer2025(brutto, stkl, kinderFB, vspGkv);
-  var rvG      = rvAktiv ? rvBase * GKV_RV_RATE : 0;
-  var avG      = avAktiv ? rvBase * GKV_AV_RATE : 0;
+  var lstG     = calcLohnsteuer2025(brutto, stkl, kinderFB, vspGkv, 0, cfg);
+  var rvG      = rvAktiv ? rvBase * cfg.rvANRate : 0;
+  var avG      = avAktiv ? rvBase * cfg.avANRate : 0;
   var nettoGkv = brutto - lstG.lstJahr / 12 - lstG.soliJahr / 12 - kvGkv - pvGkv - rvG - avG;
 
   // PKV Vorsorgepauschale (Basisanteil − AG-Zuschuss)
   var pkvMonthly = pkvMonthlyFromModule || (gh.ghPkvBeitrag || 0);
   var pkvBasis   = gh.ghPkvBasis || pkvMonthly;
-  var agZ        = calcAgZuschuss(pkvMonthly, brutto, zusatz);
+  var agZ        = calcAgZuschuss(pkvMonthly, brutto, zusatz, cfg);
   var kvPkv      = pkvMonthly - agZ;
   var vspKV_PKV  = Math.max(0, Math.floor((pkvBasis - agZ) * 12 * 100) / 100);
   var vspPkv     = vspFinal(vspKV_PKV);
 
-  var lstP     = calcLohnsteuer2025(brutto, stkl, kinderFB, vspPkv);
+  var lstP     = calcLohnsteuer2025(brutto, stkl, kinderFB, vspPkv, 0, cfg);
   var nettoPkv = brutto - lstP.lstJahr / 12 - lstP.soliJahr / 12 - kvPkv - rvG - avG;
 
   return {

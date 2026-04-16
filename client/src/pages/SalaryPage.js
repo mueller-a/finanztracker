@@ -14,7 +14,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
-  DEFAULT_GEHALT, STEUERKLASSEN, BUNDESLAENDER,
+  DEFAULT_GEHALT, STEUERKLASSEN, BUNDESLAENDER, AVAILABLE_YEARS, MONATE,
   calcGehaltResult, calcNettoComparison, calcAgZuschuss, fmtEuro,
 } from '../utils/salaryCalculations';
 import { useSalarySettings } from '../hooks/useSalarySettings';
@@ -433,6 +433,22 @@ export default function SalaryPage() {
                 fullWidth
                 inputProps={{ step: 100, min: 0 }}
               />
+              <Stack direction="row" spacing={1.5}>
+                <TextField
+                  select label="Jahr" size="small" fullWidth
+                  value={gh.ghYear ?? new Date().getFullYear()}
+                  onChange={(e) => update({ ghYear: parseInt(e.target.value, 10) })}
+                >
+                  {AVAILABLE_YEARS.map((y) => <MenuItem key={y} value={y}>{y}</MenuItem>)}
+                </TextField>
+                <TextField
+                  select label="Monat" size="small" fullWidth
+                  value={gh.ghMonth ?? (new Date().getMonth() + 1)}
+                  onChange={(e) => update({ ghMonth: parseInt(e.target.value, 10) })}
+                >
+                  {MONATE.map((m) => <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>)}
+                </TextField>
+              </Stack>
               <CurrencyField
                 label="Monatl. Freibetrag"
                 value={gh.ghFreibetragMo}

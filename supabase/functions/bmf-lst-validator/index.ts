@@ -40,6 +40,9 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 // `LSt2026ext` (erweiterte) bzw. `LSt2026std` (standard). Mit den nun
 // korrekten Parametern (JRE4, PKPV monatlich, KVZ in %) liefern beide
 // valide Werte.
+//
+// Default-Fallback-Matrix. Wird der Client liefert `bmfUrl` im Request-Body,
+// wird dieser Endpoint priorisiert — die Matrix dient dann nur als Notfall.
 const BMF_ATTEMPTS: Array<{ url: string; code: string }> = [
   { url: 'https://www.bmf-steuerrechner.de/interface/2026Version1.xhtml', code: 'LSt2026std' },
   { url: 'https://www.bmf-steuerrechner.de/interface/2026Version1.xhtml', code: 'LSt2026ext' },
@@ -156,7 +159,8 @@ serve(async (req: Request) => {
     });
 
     // Probiere alle URL+Code-Kombinationen, bis eine valide XML mit
-    // <ausgabe>-Tags liefert.
+    // <ausgabe>-Tags liefert. Wenn der Client einen `bmfUrl` + `code`
+    // mitschickt, wird dieser priorisiert (für jahresgenaue Auswahl).
     let xmlText = '';
     let usedUrl = '';
     let usedCode = '';
@@ -168,7 +172,15 @@ serve(async (req: Request) => {
       contentType: string; preview: string; error?: string;
     }> = [];
 
-    for (const { url: baseUrl, code } of BMF_ATTEMPTS) {
+    const clientUrl  = (params as any).bmfUrl as string | undefined;
+    const clientCode = (params as any).code   as string | undefined;
+    const orderedAttempts: Array<{ url: string; code: string }> =
+      clientUrl && clientCode
+        ? [{ url: clientUrl, code: clientCode },
+           ...BMF_ATTEMPTS.filter((a) => !(a.url === clientUrl && a.code === clientCode))]
+        : BMF_ATTEMPTS;
+
+    for (const { url: baseUrl, code } of orderedAttempts) {
       queryParams.set('code', code);
       const bmfUrl = `${baseUrl}?${queryParams.toString()}`;
       try {

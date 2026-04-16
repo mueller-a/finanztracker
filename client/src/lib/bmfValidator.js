@@ -10,6 +10,7 @@
  */
 
 import { supabase } from './supabaseClient';
+import { getTaxConfig } from '../utils/taxConfigs';
 
 /** Euro → Cents (Integer) */
 function toCents(euro) {
@@ -56,11 +57,17 @@ export async function fetchBmfTaxValidation(gh, localResult) {
     // ALV   = 0 = arbeitslosenversichert
     // KRV   = 0 = rentenversichert
 
+    // Steuerjahr-Config (für URL/Code des korrekten BMF-PAP-Endpoints)
+    const cfg = getTaxConfig(
+      gh.ghYear  || new Date().getFullYear(),
+      gh.ghMonth || (new Date().getMonth() + 1),
+    );
+
     const isPkv = gh.ghKvType === 'pkv';
     const body = {
-      // `code` wird in der Edge Function durch die BMF_ATTEMPTS-Matrix überschrieben;
-      // der Default-Wert hier ist nur ein Fallback.
-      code:   'LSt2026std',
+      // URL + Code aus Config — Edge Function nutzt diesen als bevorzugten Endpoint
+      bmfUrl: cfg.bmfUrl,
+      code:   cfg.bmfCodeStd,
       LZZ:    1,                                           // 1 = Jahr
       RE4:    toCents(jahresbrutto),
       JRE4:   toCents(jahresbrutto),                       // bei LZZ=1 gleich RE4

@@ -310,7 +310,7 @@ export default function SettingsPage() {
       {isAdmin && (
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2.5 }}>
           <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
-            <Tab value="modules"   label="Modulauswahl" />
+            <Tab value="modules"   label="Konfiguration" />
             <Tab value="admin"     label="Admin · Module"  icon={<AdminPanelSettingsOutlinedIcon fontSize="small" />} iconPosition="start" />
             <Tab value="developer" label="Developer"       icon={<CodeIcon fontSize="small" />}                       iconPosition="start" />
             <Tab value="theme"     label="Theme Showcase"  icon={<PaletteOutlinedIcon fontSize="small" />}            iconPosition="start" />
