@@ -237,7 +237,7 @@ function BmfDebugPanel({ local, bmf }) {
 export default function SalaryPage() {
   const theme = useTheme();
   const { settings, loading, saveSettings } = useSalarySettings();
-  const { birthday: globalBirthday } = useModules();
+  const { birthday: globalBirthday, isAdmin } = useModules();
   const age = calculateAge(globalBirthday);
 
   const [gh, setGh] = useState(DEFAULT_GEHALT);
@@ -627,7 +627,8 @@ export default function SalaryPage() {
             </Typography>
           </Box>
 
-          {/* BMF Validation */}
+          {/* BMF Validation — nur für Admin-Nutzer (Diagnose-Tool) */}
+          {isAdmin && (
           <SectionCard
             title="BMF-Abgleich"
             subheader="Offizielle Lohnsteuer-Schnittstelle (LSt2026ext)"
@@ -683,6 +684,7 @@ export default function SalaryPage() {
               <BmfDebugPanel local={result} bmf={bmfResult} />
             )}
           </SectionCard>
+          )}
 
           {/* Abzüge table */}
           <SectionCard title="Abzüge im Überblick">
