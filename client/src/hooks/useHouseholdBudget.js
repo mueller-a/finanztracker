@@ -154,12 +154,12 @@ export function useHouseholdTransactions(householdId) {
   return { transactions, members, loading, addTransaction, updateTransaction, deleteTransaction, refetch: fetchAll };
 }
 
-// ── Hook: Budget-Berechnung (Woche/Monat) ─────────────────────
-export function useBudgetStats(transactions, weeklyLimit, monthlyLimit, mode = 'week') {
+// ── Hook: Budget-Berechnung für beliebigen Referenz-Zeitpunkt ─
+export function useBudgetStats(transactions, weeklyLimit, monthlyLimit, mode = 'week', referenceDate = new Date()) {
   return useMemo(() => {
-    const now = new Date();
-    const periodStart = mode === 'week' ? startOfISOWeek(now) : startOfMonth(now);
-    const periodEnd   = mode === 'week' ? endOfISOWeek(now)   : endOfMonth(now);
+    const ref = new Date(referenceDate);
+    const periodStart = mode === 'week' ? startOfISOWeek(ref) : startOfMonth(ref);
+    const periodEnd   = mode === 'week' ? endOfISOWeek(ref)   : endOfMonth(ref);
     const limit       = mode === 'week' ? weeklyLimit         : monthlyLimit;
 
     const startIso = ymd(periodStart);
@@ -173,10 +173,16 @@ export function useBudgetStats(transactions, weeklyLimit, monthlyLimit, mode = '
     }
     const netSpent = Math.max(0, expenses - income);
     const remaining = Math.max(0, limit - netSpent);
+
+    // Tages-Reserve: bei vergangenen Perioden nicht sinnvoll → zeige 0
     const msPerDay = 86400000;
-    const today    = new Date(); today.setHours(0,0,0,0);
-    const daysLeft = Math.max(1, Math.ceil((periodEnd - today) / msPerDay) + 1);
-    const dailyReserve = remaining / daysLeft;
+    const today    = new Date(); today.setHours(0, 0, 0, 0);
+    const isPast   = periodEnd < today;
+    const isFuture = periodStart > today;
+    const effectiveToday = today < periodStart ? periodStart : today > periodEnd ? periodEnd : today;
+    const daysLeft = Math.max(1, Math.ceil((periodEnd - effectiveToday) / msPerDay) + 1);
+    const dailyReserve = isPast ? 0 : remaining / daysLeft;
+
     const percentAvailable = limit > 0 ? (remaining / limit) * 100 : 0;
 
     // Ampel-Logik nach SKILL.md:
@@ -184,18 +190,18 @@ export function useBudgetStats(transactions, weeklyLimit, monthlyLimit, mode = '
     //   20-50%          → gelb
     //   < 20%           → rot
     let severity;
-    if (percentAvailable > 50)     severity = 'success';
+    if (percentAvailable > 50)       severity = 'success';
     else if (percentAvailable >= 20) severity = 'warning';
-    else                            severity = 'error';
+    else                             severity = 'error';
 
     return {
       periodStart, periodEnd, limit,
       expenses, income, netSpent, remaining,
       daysLeft, dailyReserve,
       percentAvailable, percentUsed: 100 - percentAvailable,
-      severity,
+      severity, isPast, isFuture,
     };
-  }, [transactions, weeklyLimit, monthlyLimit, mode]);
+  }, [transactions, weeklyLimit, monthlyLimit, mode, referenceDate]);
 }
 
 // Export helpers für UI-Komponenten

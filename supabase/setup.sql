@@ -1180,6 +1180,12 @@ LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
 $$;
 GRANT EXECUTE ON FUNCTION public.get_household_members(uuid) TO authenticated;
 
+INSERT INTO public.app_modules (module_key, label, sort_order, is_active)
+VALUES ('household_budget', 'Wochenbudget (Gemeinschaft)', 65, true)
+ON CONFLICT (module_key) DO UPDATE
+  SET label      = EXCLUDED.label,
+      sort_order = EXCLUDED.sort_order;
+
 
 -- ============================================================================
 -- FERTIG — setup.sql abgeschlossen.

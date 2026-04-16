@@ -9,6 +9,9 @@ import { useTheme } from '@mui/material/styles';
 import AddIcon                  from '@mui/icons-material/Add';
 import DeleteOutlineIcon        from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon         from '@mui/icons-material/EditOutlined';
+import ChevronLeftIcon          from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon         from '@mui/icons-material/ChevronRight';
+import TodayOutlinedIcon        from '@mui/icons-material/TodayOutlined';
 import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
 import DirectionsCarOutlinedIcon from '@mui/icons-material/DirectionsCarOutlined';
 import HomeOutlinedIcon         from '@mui/icons-material/HomeOutlined';
@@ -59,9 +62,22 @@ export default function HouseholdBudgetPage() {
     = useHouseholdTransactions(householdId);
 
   const [mode, setMode]             = useState('week');     // 'week' | 'month'
+  const [referenceDate, setReferenceDate] = useState(() => new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTx,  setEditingTx]  = useState(null);       // null = neu, sonst Bestehende Tx
-  const stats = useBudgetStats(transactions, weeklyLimit, monthlyLimit, mode);
+  const stats = useBudgetStats(transactions, weeklyLimit, monthlyLimit, mode, referenceDate);
+
+  // Reset Referenzdatum wenn man den Mode wechselt (sonst verwirrend)
+  function switchMode(next) { setMode(next); setReferenceDate(new Date()); }
+  function shiftPeriod(delta) {
+    const d = new Date(referenceDate);
+    if (mode === 'week') d.setDate(d.getDate() + delta * 7);
+    else                 d.setMonth(d.getMonth() + delta);
+    setReferenceDate(d);
+  }
+  function goToday() { setReferenceDate(new Date()); }
+
+  const isToday = sameDayAs(referenceDate, new Date(), mode);
 
   function openNew()              { setEditingTx(null);  setDialogOpen(true); }
   function openEdit(tx)           { setEditingTx(tx);    setDialogOpen(true); }
@@ -99,15 +115,42 @@ export default function HouseholdBudgetPage() {
       <PageHeader
         title="Gemeinschaftsbudget"
         subtitle="Wochen- und Monatsbudget für das Gemeinschaftskonto"
-        action={
-          <ToggleButtonGroup size="small" exclusive value={mode} onChange={(_, v) => v && setMode(v)}>
-            <ToggleButton value="week">Diese Woche</ToggleButton>
-            <ToggleButton value="month">Diesen Monat</ToggleButton>
-          </ToggleButtonGroup>
-        }
       />
 
       <Stack spacing={2}>
+        {/* Period-Navigator: Mode-Toggle + Prev/Next + Heute */}
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', sm: 'center' }}
+          justifyContent="space-between">
+          <ToggleButtonGroup
+            size="small" exclusive value={mode}
+            onChange={(_, v) => { if (v) switchMode(v); }}
+          >
+            <ToggleButton value="week">Woche</ToggleButton>
+            <ToggleButton value="month">Monat</ToggleButton>
+          </ToggleButtonGroup>
+
+          <Stack direction="row" spacing={1} alignItems="center">
+            <IconButton size="small" onClick={() => shiftPeriod(-1)} aria-label="Vorherige Periode">
+              <ChevronLeftIcon />
+            </IconButton>
+            <Box sx={{ minWidth: 180, textAlign: 'center' }}>
+              <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                {formatPeriodLabel(stats.periodStart, stats.periodEnd, mode)}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {stats.periodStart.toLocaleDateString('de-DE')} – {stats.periodEnd.toLocaleDateString('de-DE')}
+              </Typography>
+            </Box>
+            <IconButton size="small" onClick={() => shiftPeriod(1)} aria-label="Nächste Periode">
+              <ChevronRightIcon />
+            </IconButton>
+            <Button size="small" variant="outlined" startIcon={<TodayOutlinedIcon />}
+              onClick={goToday} disabled={isToday}>
+              Heute
+            </Button>
+          </Stack>
+        </Stack>
+
         <BudgetProgressCard stats={stats} mode={mode} />
 
         <Box sx={{
@@ -122,7 +165,7 @@ export default function HouseholdBudgetPage() {
         </Box>
 
         <SectionCard
-          title={`Transaktionen (${mode === 'week' ? 'diese Woche' : 'dieser Monat'})`}
+          title={`Transaktionen · ${formatPeriodLabel(stats.periodStart, stats.periodEnd, mode)}`}
           action={
             <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={openNew}>
               Erfassen
@@ -188,24 +231,24 @@ export default function HouseholdBudgetPage() {
 
 // ─── Progress-Card mit Ampel ───────────────────────────────────
 function BudgetProgressCard({ stats, mode }) {
-  const label = mode === 'week' ? 'Noch für diese Woche' : 'Noch für diesen Monat';
-  const periodLabel = `${stats.periodStart.toLocaleDateString('de-DE')} – ${stats.periodEnd.toLocaleDateString('de-DE')}`;
+  const periodLabel = stats.isPast
+    ? (mode === 'week' ? 'Übrig geblieben (Vergangenheit)' : 'Übrig geblieben (Vergangenheit)')
+    : stats.isFuture
+    ? (mode === 'week' ? 'Budget zukünftige Woche' : 'Budget zukünftiger Monat')
+    : (mode === 'week' ? 'Noch für diese Woche' : 'Noch für diesen Monat');
   const barPct = Math.min(100, stats.percentUsed);
 
   return (
     <SectionCard>
       <Stack spacing={1.5}>
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-end">
-          <Box>
-            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              {label}
-            </Typography>
-            <Typography variant="h3" sx={{ color: `${stats.severity}.main`, fontWeight: 700, fontFamily: 'monospace', lineHeight: 1 }}>
-              {fmtEur(stats.remaining)}
-            </Typography>
-          </Box>
-          <Typography variant="caption" color="text.secondary">{periodLabel}</Typography>
-        </Stack>
+        <Box>
+          <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            {periodLabel}
+          </Typography>
+          <Typography variant="h3" sx={{ color: `${stats.severity}.main`, fontWeight: 700, fontFamily: 'monospace', lineHeight: 1 }}>
+            {fmtEur(stats.remaining)}
+          </Typography>
+        </Box>
 
         <LinearProgress
           variant="determinate"
@@ -214,17 +257,19 @@ function BudgetProgressCard({ stats, mode }) {
           sx={{ height: 12, borderRadius: 99, bgcolor: 'action.hover' }}
         />
 
-        <Stack direction="row" justifyContent="space-between">
+        <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
           <Typography variant="caption" color="text.secondary">
             {fmtEur(stats.netSpent)} von {fmtEur(stats.limit)} ausgegeben ({stats.percentUsed.toFixed(0)} %)
           </Typography>
-          <Chip
-            icon={<TrendingUpOutlinedIcon fontSize="small" />}
-            size="small"
-            color={stats.severity}
-            variant="outlined"
-            label={`Heute noch ${fmtEur(stats.dailyReserve)}`}
-          />
+          {!stats.isPast && !stats.isFuture && (
+            <Chip
+              icon={<TrendingUpOutlinedIcon fontSize="small" />}
+              size="small"
+              color={stats.severity}
+              variant="outlined"
+              label={`Heute noch ${fmtEur(stats.dailyReserve)}`}
+            />
+          )}
         </Stack>
       </Stack>
     </SectionCard>
@@ -534,4 +579,25 @@ function formatDayHeader(iso) {
   const today = ymd(new Date());
   if (iso === today) return `Heute · ${d.toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}`;
   return d.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'short' });
+}
+
+function isoWeekNumber(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+}
+function formatPeriodLabel(start, end, mode) {
+  if (mode === 'month') {
+    return start.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+  }
+  return `KW ${isoWeekNumber(start)} · ${start.getFullYear()}`;
+}
+function sameDayAs(a, b, mode) {
+  if (mode === 'week') {
+    // same ISO-week
+    return isoWeekNumber(a) === isoWeekNumber(b) && a.getFullYear() === b.getFullYear();
+  }
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
 }

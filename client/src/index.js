@@ -79,7 +79,7 @@ function AppRoutes({ isDark, onToggleDark }) {
           <Route path="/versicherungen"     element={<ProtectedRoute moduleKey="insurance"><InsurancesPage /></ProtectedRoute>} />
           <Route path="/versicherungen/pkv" element={<ProtectedRoute moduleKey="pkv"><PkvCalculatorPage isDark={isDark} /></ProtectedRoute>} />
           <Route path="/budget"             element={<ProtectedRoute moduleKey="budget"><BudgetPage /></ProtectedRoute>} />
-          <Route path="/budget/household"   element={<ProtectedRoute moduleKey="budget"><HouseholdBudgetPage /></ProtectedRoute>} />
+          <Route path="/budget/household"   element={<ProtectedRoute moduleKey="household_budget"><HouseholdBudgetPage /></ProtectedRoute>} />
           <Route path="/budget/optimizer"   element={<ProtectedRoute moduleKey="optimizer"><ContractOptimizerPage /></ProtectedRoute>} />
           <Route path="/gehaltsrechner"     element={<ProtectedRoute moduleKey="salary"><SalaryPage /></ProtectedRoute>} />
           <Route path="/guthaben/rente"     element={<ProtectedRoute moduleKey="retirement"><ETFRechnerPage isDark={isDark} /></ProtectedRoute>} />
