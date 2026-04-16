@@ -136,6 +136,7 @@ function calcPkvData(pkv) {
   const data = [];
   let cumulative      = 0;
   let cumulativeEigen = 0;
+  let cumulativeBrk   = 0;
 
   for (let i = 0; i < years; i++) {
     const year = startYear + i;
@@ -186,13 +187,14 @@ function calcPkvData(pkv) {
     const prevMonthly = i > 0 ? data[i - 1].monthly : null;
     const changePct   = prevMonthly !== null ? ((monthly - prevMonthly) / prevMonthly) * 100 : null;
     const brkYear     = brkAmounts[year] || 0;
+    cumulativeBrk    += brkYear;
 
     data.push({
       year, age, monthly, annual, changePct,
       isStartYear: i === 0, startMonths: i === 0 ? startMonths : 12,
       monthsInYear, freeMonthsVal: freeMo,
       gz: gzScaled, gzActive,
-      cumulative, cumulativeEigen,
+      cumulative, cumulativeEigen, cumulativeBrk,
       annualEigen,
       brkYear, gzTotalBd, gf,
       isFuture:    year > todayYear,
@@ -306,36 +308,45 @@ function PkvLineChart({ data, mode, showInflation, inflationRate, isDark }) {
   const chartData = useMemo(() => {
     const todayYear = CURRENT_YEAR;
     return data.map((d) => {
-      let brutto, eigen;
+      let brutto, eigen, brk;
       if (mode === 'monthly') {
         brutto = d.gesamtbeitragMtl;
         eigen  = d.eigenanteilMtl;
+        brk    = (d.brkYear || 0) / 12;       // monatl. Amortisierung der jährl. Rückerstattung
       } else if (mode === 'annual') {
         brutto = d.annual;
         eigen  = d.annualEigen;
+        brk    = d.brkYear || 0;
       } else {
         brutto = d.cumulative;
         eigen  = d.cumulativeEigen;
+        brk    = d.cumulativeBrk || 0;
       }
       if (showInflation && d.isFuture && inflationRate > 0) {
         const f = Math.pow(1 + inflationRate / 100, d.year - todayYear);
         brutto /= f;
         eigen  /= f;
+        brk    /= f;
       }
       return {
         year:   d.year,
         brutto: Math.round(brutto * 100) / 100,
         eigen:  Math.round(eigen  * 100) / 100,
+        brk:    Math.round(brk    * 100) / 100,
         isFuture: d.isFuture,
       };
     });
   }, [data, mode, showInflation, inflationRate]);
 
-  const colorBrutto = '#e8b84b'; // Gold — konsistent zur "Gesamtbeitrag"-Spalte in der Tabelle
-  const colorEigen  = '#10b981'; // Grün — konsistent zur "Eigenanteil"-Spalte
+  // Nur anzeigen, wenn überhaupt Rückerstattungen eingetragen sind
+  const hasBrk = chartData.some((d) => d.brk > 0);
+
+  const colorBrutto = '#e8b84b'; // Gold — Gesamtbeitrag
+  const colorEigen  = '#10b981'; // Grün — Eigenanteil
+  const colorBrk    = '#5b8dee'; // Blau — Beitragsrückerstattung (konsistent mit BRK-KpiCard)
   const sub         = isDark ? '#a5a0c8' : '#6d6a8a';
   const tickFormat  = (v) => mode === 'cumulative' ? (v / 1000).toFixed(0) + 'k €' : v + ' €';
-  const seriesLabel = (k) => k === 'brutto' ? 'Gesamtbeitrag' : 'Eigenanteil';
+  const seriesLabel = (k) => k === 'brutto' ? 'Gesamtbeitrag' : k === 'eigen' ? 'Eigenanteil' : 'Beitragsrückerstattung';
 
   return (
     <ResponsiveContainer width="100%" height={260}>
@@ -351,6 +362,7 @@ function PkvLineChart({ data, mode, showInflation, inflationRate, isDark }) {
           <Legend formatter={seriesLabel} wrapperStyle={{ fontSize: 11, paddingTop: 4, color: sub }} iconType="circle" iconSize={8} />
           <Line type="monotone" dataKey="brutto" stroke={colorBrutto} strokeWidth={2} dot={false} />
           <Line type="monotone" dataKey="eigen"  stroke={colorEigen}  strokeWidth={2} dot={false} />
+          {hasBrk && <Line type="monotone" dataKey="brk" stroke={colorBrk} strokeWidth={2} strokeDasharray="5 3" dot={false} />}
         </LineChart>
       ) : (
         <BarChart data={chartData} margin={{ top: 4, right: 12, bottom: 0, left: 0 }} barGap={2}>
@@ -365,6 +377,7 @@ function PkvLineChart({ data, mode, showInflation, inflationRate, isDark }) {
           <Legend formatter={seriesLabel} wrapperStyle={{ fontSize: 11, paddingTop: 4, color: sub }} iconType="square" iconSize={10} />
           <Bar dataKey="brutto" fill={colorBrutto} radius={[2, 2, 0, 0]} />
           <Bar dataKey="eigen"  fill={colorEigen}  radius={[2, 2, 0, 0]} />
+          {hasBrk && <Bar dataKey="brk" fill={colorBrk} radius={[2, 2, 0, 0]} />}
         </BarChart>
       )}
     </ResponsiveContainer>
