@@ -401,7 +401,7 @@ export default function PkvCalculatorPage({ isDark = false }) {
   // localStorage bleibt als Offline-Cache und für Gäste-Nutzung erhalten.
   const AUTOSAVE_NAME = 'Auto-Save';
   const { user, loading: authLoading } = useAuth();
-  const { configs, loadConfig, saveConfig } = usePkvConfigs();
+  const { configs, loadConfig, saveConfig, loading: configsLoading } = usePkvConfigs();
   const [activeConfigId, setActiveConfigId] = useState(null);
   const [hydrated, setHydrated] = useState(false); // Auto-Save erst NACH Init-Hydration
 
@@ -421,6 +421,10 @@ export default function PkvCalculatorPage({ isDark = false }) {
   // (Migrationshilfe) und direkt wieder in Supabase geschrieben.
   useEffect(() => {
     if (authLoading) return;
+    // Eingeloggte Nutzer: warten bis usePkvConfigs den Initial-Fetch abgeschlossen hat,
+    // sonst gibt configs.find(...) immer undefined und wir fallen fälschlich auf
+    // localStorage zurück → Geräte-übergreifende Werte (z.B. Rentenzuschuss) verloren.
+    if (user && configsLoading) return;
     if (hydrated)   return;
 
     function applyState(state) {
@@ -468,7 +472,7 @@ export default function PkvCalculatorPage({ isDark = false }) {
       setHydrated(true);
     }
     run();
-  }, [authLoading, user, configs]);
+  }, [authLoading, user, configs, configsLoading]);
 
   // ── Auto-save to Supabase + localStorage on every change (debounced 600ms)
   // - Supabase ist die primäre Quelle (RLS, geräteübergreifend)
