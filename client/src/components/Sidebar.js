@@ -16,6 +16,7 @@ import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined';
 import CreditCardOutlinedIcon from '@mui/icons-material/CreditCardOutlined';
 import SavingsOutlinedIcon from '@mui/icons-material/SavingsOutlined';
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
+import PeopleOutlinedIcon from '@mui/icons-material/PeopleOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
@@ -45,6 +46,7 @@ const ICON_MAP = {
   credit:     CreditCardOutlinedIcon,
   piggy:      SavingsOutlinedIcon,
   house:      HomeOutlinedIcon,
+  household:  PeopleOutlinedIcon,
 };
 
 function NavIcon({ name, ...props }) {

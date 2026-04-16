@@ -26,6 +26,7 @@ import SalaryPage            from './pages/SalaryPage';
 import PkvCalculatorPage     from './pages/PkvCalculatorPage';
 import SettingsPage          from './pages/SettingsPage';
 import ContractOptimizerPage from './pages/ContractOptimizerPage';
+import HouseholdBudgetPage   from './pages/HouseholdBudgetPage';
 import RealEstatePage        from './pages/RealEstatePage';
 import AdminModulesPage      from './pages/AdminModulesPage';
 import { useAppModules } from './context/AppModulesContext';
@@ -78,6 +79,7 @@ function AppRoutes({ isDark, onToggleDark }) {
           <Route path="/versicherungen"     element={<ProtectedRoute moduleKey="insurance"><InsurancesPage /></ProtectedRoute>} />
           <Route path="/versicherungen/pkv" element={<ProtectedRoute moduleKey="pkv"><PkvCalculatorPage isDark={isDark} /></ProtectedRoute>} />
           <Route path="/budget"             element={<ProtectedRoute moduleKey="budget"><BudgetPage /></ProtectedRoute>} />
+          <Route path="/budget/household"   element={<ProtectedRoute moduleKey="budget"><HouseholdBudgetPage /></ProtectedRoute>} />
           <Route path="/budget/optimizer"   element={<ProtectedRoute moduleKey="optimizer"><ContractOptimizerPage /></ProtectedRoute>} />
           <Route path="/gehaltsrechner"     element={<ProtectedRoute moduleKey="salary"><SalaryPage /></ProtectedRoute>} />
           <Route path="/guthaben/rente"     element={<ProtectedRoute moduleKey="retirement"><ETFRechnerPage isDark={isDark} /></ProtectedRoute>} />

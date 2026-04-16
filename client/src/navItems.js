@@ -26,8 +26,9 @@ export const navItems = [
     moduleKey:    'show_budget',
     appModuleKey: 'budget',
     children: [
-      { label: 'Budget',     path: '/budget',           icon: 'budget', appModuleKey: 'budget' },
-      { label: 'Spar-Radar', path: '/budget/optimizer',  icon: 'radar',  appModuleKey: 'optimizer' },
+      { label: 'Budget',         path: '/budget',            icon: 'budget', appModuleKey: 'budget' },
+      { label: 'Wochenbudget',   path: '/budget/household',  icon: 'household', appModuleKey: 'budget' },
+      { label: 'Spar-Radar',     path: '/budget/optimizer',  icon: 'radar',  appModuleKey: 'optimizer' },
     ],
   },
   {
