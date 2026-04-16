@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Box, Stack, Typography, Chip, Card, CardContent, IconButton,
-  ToggleButton, ToggleButtonGroup, FormControlLabel, Switch,
+  ToggleButton, ToggleButtonGroup,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -319,8 +319,7 @@ export default function Dashboard({ categories, onEdit, onDeleteCategory, viewMo
     new Set(categories.flatMap((c) => c.entries.map((e) => e.year)))
   ).sort((a, b) => a - b);
 
-  const [selectedYears,  setSelectedYears]  = useState(allYears);
-  const [showIndividual, setShowIndividual] = useState(false);
+  const [selectedYears, setSelectedYears] = useState(allYears);
 
   const filteredCategories = categories.map((cat) => ({
     ...cat,
@@ -339,35 +338,22 @@ export default function Dashboard({ categories, onEdit, onDeleteCategory, viewMo
 
       <TotalCostChart categories={filteredCategories} viewMode={viewMode} />
 
-      {/* Toggle for individual lines */}
-      <FormControlLabel
-        control={
-          <Switch
-            checked={showIndividual}
-            onChange={(e) => setShowIndividual(e.target.checked)}
-            color="primary"
+      {/* Einzellinien pro Kategorie — immer sichtbar */}
+      <Box sx={{
+        display: 'grid',
+        gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', xl: 'repeat(3, 1fr)' },
+        gap: 2,
+      }}>
+        {filteredCategories.map((cat) => (
+          <CategoryLineCard
+            key={cat.id}
+            category={cat}
+            viewMode={viewMode}
+            onEdit={onEdit}
+            onDeleteCategory={onDeleteCategory}
           />
-        }
-        label={<Typography variant="body2">Einzellinien pro Kategorie anzeigen</Typography>}
-      />
-
-      {showIndividual && (
-        <Box sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', xl: 'repeat(3, 1fr)' },
-          gap: 2,
-        }}>
-          {filteredCategories.map((cat) => (
-            <CategoryLineCard
-              key={cat.id}
-              category={cat}
-              viewMode={viewMode}
-              onEdit={onEdit}
-              onDeleteCategory={onDeleteCategory}
-            />
-          ))}
-        </Box>
-      )}
+        ))}
+      </Box>
     </Stack>
   );
 }
