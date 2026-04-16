@@ -127,13 +127,31 @@ export function useHouseholdTransactions(householdId) {
     return data;
   }, [householdId]);
 
+  const updateTransaction = useCallback(async (id, patch) => {
+    const { data, error } = await supabase
+      .from('household_transactions')
+      .update({
+        amount:      Number(patch.amount),
+        type:        patch.type,
+        category:    patch.category,
+        description: patch.description || null,
+        occurred_at: patch.occurred_at,
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    setTransactions((prev) => prev.map((t) => t.id === id ? data : t));
+    return data;
+  }, []);
+
   const deleteTransaction = useCallback(async (id) => {
     const { error } = await supabase.from('household_transactions').delete().eq('id', id);
     if (error) throw error;
     setTransactions((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  return { transactions, members, loading, addTransaction, deleteTransaction, refetch: fetchAll };
+  return { transactions, members, loading, addTransaction, updateTransaction, deleteTransaction, refetch: fetchAll };
 }
 
 // ── Hook: Budget-Berechnung (Woche/Monat) ─────────────────────

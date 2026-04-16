@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box, Stack, Typography, Button, IconButton, TextField, MenuItem, Avatar,
   LinearProgress, Chip, Alert, ToggleButton, ToggleButtonGroup,
@@ -8,6 +8,7 @@ import {
 import { useTheme } from '@mui/material/styles';
 import AddIcon                  from '@mui/icons-material/Add';
 import DeleteOutlineIcon        from '@mui/icons-material/DeleteOutline';
+import EditOutlinedIcon         from '@mui/icons-material/EditOutlined';
 import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
 import DirectionsCarOutlinedIcon from '@mui/icons-material/DirectionsCarOutlined';
 import HomeOutlinedIcon         from '@mui/icons-material/HomeOutlined';
@@ -54,12 +55,23 @@ export default function HouseholdBudgetPage() {
   const theme = useTheme();
   const { householdId, weeklyLimit, monthlyLimit, loading: settingsLoading,
           createHousehold, joinHousehold, leaveHousehold, updateSettings } = useHouseholdSettings();
-  const { transactions, members, loading: txLoading, addTransaction, deleteTransaction }
+  const { transactions, members, loading: txLoading, addTransaction, updateTransaction, deleteTransaction }
     = useHouseholdTransactions(householdId);
 
-  const [mode, setMode]         = useState('week');        // 'week' | 'month'
+  const [mode, setMode]             = useState('week');     // 'week' | 'month'
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingTx,  setEditingTx]  = useState(null);       // null = neu, sonst Bestehende Tx
   const stats = useBudgetStats(transactions, weeklyLimit, monthlyLimit, mode);
+
+  function openNew()              { setEditingTx(null);  setDialogOpen(true); }
+  function openEdit(tx)           { setEditingTx(tx);    setDialogOpen(true); }
+  function closeDialog()          { setDialogOpen(false); setEditingTx(null); }
+
+  async function handleSave(payload) {
+    if (editingTx) await updateTransaction(editingTx.id, payload);
+    else           await addTransaction(payload);
+    closeDialog();
+  }
 
   // ── Setup-Screen (kein Household konfiguriert) ─────────────
   if (settingsLoading) {
@@ -112,7 +124,7 @@ export default function HouseholdBudgetPage() {
         <SectionCard
           title={`Transaktionen (${mode === 'week' ? 'diese Woche' : 'dieser Monat'})`}
           action={
-            <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => setDialogOpen(true)}>
+            <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={openNew}>
               Erfassen
             </Button>
           }
@@ -134,6 +146,7 @@ export default function HouseholdBudgetPage() {
                         key={t.id}
                         tx={t}
                         member={memberMap[t.user_id]}
+                        onEdit={() => openEdit(t)}
                         onDelete={() => deleteTransaction(t.id)}
                       />
                     ))}
@@ -157,16 +170,17 @@ export default function HouseholdBudgetPage() {
       {/* Quick-Add FAB (mobile) */}
       <Fab
         color="primary"
-        onClick={() => setDialogOpen(true)}
+        onClick={openNew}
         sx={{ position: 'fixed', bottom: 24, right: 24, display: { xs: 'flex', sm: 'none' } }}
       >
         <AddIcon />
       </Fab>
 
-      <QuickAddDialog
+      <TransactionDialog
         open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        onSave={async (tx) => { await addTransaction(tx); setDialogOpen(false); }}
+        initial={editingTx}
+        onClose={closeDialog}
+        onSave={handleSave}
       />
     </Box>
   );
@@ -237,8 +251,8 @@ function KpiTile({ label, value, sub, color }) {
   );
 }
 
-// ─── Quick-Add-Dialog (Mobile first) ───────────────────────────
-function QuickAddDialog({ open, onClose, onSave }) {
+// ─── Transaction-Dialog (Add + Edit, Mobile first) ─────────────
+function TransactionDialog({ open, initial, onClose, onSave }) {
   const [amount,      setAmount]      = useState('');
   const [category,    setCategory]    = useState('grocery');
   const [type,        setType]        = useState('expense');
@@ -247,17 +261,28 @@ function QuickAddDialog({ open, onClose, onSave }) {
   const [saving,      setSaving]      = useState(false);
   const [error,       setError]       = useState(null);
 
-  function reset() {
-    setAmount(''); setCategory('grocery'); setType('expense');
-    setDescription(''); setOccurredAt(ymd(new Date())); setError(null);
-  }
+  // Sync form mit initial-Prop (Edit-Modus) bei jedem Open
+  useEffect(() => {
+    if (!open) return;
+    if (initial) {
+      setAmount(String(initial.amount ?? ''));
+      setCategory(initial.category || 'grocery');
+      setType(initial.type || 'expense');
+      setDescription(initial.description || '');
+      setOccurredAt(initial.occurred_at || ymd(new Date()));
+    } else {
+      setAmount(''); setCategory('grocery'); setType('expense');
+      setDescription(''); setOccurredAt(ymd(new Date()));
+    }
+    setError(null);
+  }, [open, initial]);
+
   async function handleSave() {
     const n = parseFloat(String(amount).replace(',', '.'));
     if (!n || n <= 0) { setError('Betrag fehlt'); return; }
     setSaving(true); setError(null);
     try {
       await onSave({ amount: n, category, type, description, occurred_at: occurredAt });
-      reset();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -265,9 +290,11 @@ function QuickAddDialog({ open, onClose, onSave }) {
     }
   }
 
+  const isEdit = !!initial;
+
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs" onTransitionExited={reset}>
-      <DialogTitle sx={{ pb: 1 }}>Neue Buchung</DialogTitle>
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
+      <DialogTitle sx={{ pb: 1 }}>{isEdit ? 'Buchung bearbeiten' : 'Neue Buchung'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ pt: 1 }}>
           <ToggleButtonGroup fullWidth exclusive size="small" value={type} onChange={(_, v) => v && setType(v)}>
@@ -326,7 +353,7 @@ function QuickAddDialog({ open, onClose, onSave }) {
       <DialogActions>
         <Button onClick={onClose}>Abbrechen</Button>
         <Button onClick={handleSave} variant="contained" disabled={saving}>
-          {saving ? 'Speichern…' : 'Speichern'}
+          {saving ? 'Speichern…' : isEdit ? 'Aktualisieren' : 'Speichern'}
         </Button>
       </DialogActions>
     </Dialog>
@@ -334,14 +361,24 @@ function QuickAddDialog({ open, onClose, onSave }) {
 }
 
 // ─── Transaction-Row ──────────────────────────────────────────
-function TransactionRow({ tx, member, onDelete }) {
+function TransactionRow({ tx, member, onEdit, onDelete }) {
   const cat = CAT_BY_KEY[tx.category] ?? CAT_BY_KEY.other;
   const CatIcon = cat.icon;
   const isIncome = tx.type === 'income';
   const name = member?.display_name || member?.email || '?';
 
   return (
-    <Stack direction="row" alignItems="center" spacing={1.5} sx={{ py: 1 }}>
+    <Stack
+      direction="row"
+      alignItems="center"
+      spacing={1.5}
+      onClick={onEdit}
+      sx={{
+        py: 1, cursor: 'pointer', borderRadius: 1,
+        transition: 'background-color 120ms',
+        '&:hover': { bgcolor: 'action.hover' },
+      }}
+    >
       <Avatar sx={{ width: 32, height: 32, bgcolor: colorFromId(tx.user_id), fontSize: '0.75rem', fontWeight: 700 }}>
         {initials(name)}
       </Avatar>
@@ -357,7 +394,20 @@ function TransactionRow({ tx, member, onDelete }) {
       <Typography variant="body2" sx={{ color: isIncome ? 'success.main' : 'error.main', fontWeight: 700, fontFamily: 'monospace' }}>
         {isIncome ? '+' : '−'} {fmtEur(tx.amount)}
       </Typography>
-      <IconButton size="small" onClick={onDelete} sx={{ color: 'text.disabled' }}>
+      <IconButton
+        size="small"
+        onClick={(e) => { e.stopPropagation(); onEdit(); }}
+        sx={{ color: 'text.disabled' }}
+        aria-label="Bearbeiten"
+      >
+        <EditOutlinedIcon fontSize="small" />
+      </IconButton>
+      <IconButton
+        size="small"
+        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+        sx={{ color: 'text.disabled' }}
+        aria-label="Löschen"
+      >
         <DeleteOutlineIcon fontSize="small" />
       </IconButton>
     </Stack>
