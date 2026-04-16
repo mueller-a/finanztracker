@@ -59,6 +59,7 @@ export const DEFAULT_GEHALT = {
   ghKinderFB:     0,
   ghRv:           true,
   ghAv:           true,
+  ghFreibetragMo: 0,       // monatl. Steuer-Freibetrag (§ 39a EStG), ELStAM
   ghKvType:       'gkv',
   ghGkvZusatz:    2.50,   // Ø-Zusatzbeitrag 2026 lt. SKILL.md
   ghPkvBeitrag:   0,
@@ -93,15 +94,16 @@ export function calcAgZuschuss(pkvBrutto, brutto, zusatzPct) {
 // Quelle: BMF-PAP "Lohnsteuer 2026" — METHOD UPTAB26
 // (https://www.bmf-steuerrechner.de/javax.faces.resource/daten/xmls/Lohnsteuer2026.xml.xhtml)
 
-export function calcLohnsteuer2025(brutto, stkl, kinderFB, sonderausgaben) {
+export function calcLohnsteuer2025(brutto, stkl, kinderFB, sonderausgaben, jahresfreibetrag) {
   sonderausgaben = sonderausgaben || 0;
+  jahresfreibetrag = jahresfreibetrag || 0;
   var JB   = brutto * 12;
   // Tabellenfreibeträge (BMF MZTABFB): ANP=1230 + SAP=36 für Stkl 1–5; Stkl 6 = 0
   var ANP  = stkl === 6 ? 0 : 1230;
   var SAP  = stkl === 6 ? 0 : 36;
   var ZTABFB = ANP + SAP;
-  // ZVE = Jahresbrutto − Tabellenfreibeträge − Vorsorgepauschale
-  var ZRE4 = Math.max(0, JB - ZTABFB - sonderausgaben);
+  // ZVE = Jahresbrutto − Tabellenfreibeträge − Vorsorgepauschale − individueller Jahresfreibetrag (ELStAM)
+  var ZRE4 = Math.max(0, JB - ZTABFB - sonderausgaben - jahresfreibetrag);
   var ZVE  = Math.floor(ZRE4);
   // Splitting Stkl. III: ZVE halbieren → Formel → verdoppeln (passiert in ST-Berechnung)
 
@@ -239,7 +241,8 @@ export function calcGehaltResult(gh, pkvMonthly, pkvSteuerMonthly) {
     : VSP_simple;
   // Für Detail-Anzeige: effektiv berücksichtigte AV-Pauschale (kann durch 1.900 €-Cap < Ist sein)
   var VSP_AV_effektiv = Math.max(0, sonderausgabenJahr - VSP_simple);
-  var lstDetail = calcLohnsteuer2025(brutto, stkl, kinderFB, sonderausgabenJahr);
+  var jahresfreibetrag = (gh.ghFreibetragMo || 0) * 12;
+  var lstDetail = calcLohnsteuer2025(brutto, stkl, kinderFB, sonderausgabenJahr, jahresfreibetrag);
   var lstMo  = lstDetail.lstJahr  / 12;
   var soliMo = lstDetail.soliJahr / 12;
   var kistMo = kistAktiv ? (lstDetail.stKistBase / 12) * kistSatz : 0;

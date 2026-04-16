@@ -80,6 +80,8 @@ export async function fetchBmfTaxValidation(gh, localResult) {
       AJAHR:  0,
       ALTER1: 0,
       ZMVB:   0,
+      // ELStAM-Freibetrag: monatl. × 12 → Jahreswert (da LZZ=1 übergeben)
+      LZZFREIB: toCents((gh.ghFreibetragMo || 0) * 12),
     };
 
     // Call via Edge Function proxy

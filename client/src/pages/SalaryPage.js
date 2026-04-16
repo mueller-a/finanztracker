@@ -3,11 +3,12 @@ import {
   Box, Stack, Typography, Button, IconButton, TextField, MenuItem,
   Checkbox, FormControlLabel, ToggleButton, ToggleButtonGroup,
   Tooltip as MuiTooltip, Alert, AlertTitle, CircularProgress, Chip,
-  Divider, Tabs, Tab,
+  Divider, Tabs, Tab, Link as MuiLink,
   Accordion, AccordionSummary, AccordionDetails,
   Table, TableBody, TableCell, TableRow,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import dayjs from 'dayjs';
 import LinkIcon from '@mui/icons-material/Link';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
@@ -17,6 +18,7 @@ import {
   calcGehaltResult, calcNettoComparison, calcAgZuschuss, fmtEuro,
 } from '../utils/salaryCalculations';
 import { useSalarySettings } from '../hooks/useSalarySettings';
+import { useModules, calculateAge } from '../context/ModuleContext';
 import { fetchBmfTaxValidation } from '../lib/bmfValidator';
 import { PageHeader, SectionCard, CurrencyField } from '../components/mui';
 import SalaryHistoryTab from './SalaryHistoryTab';
@@ -235,6 +237,8 @@ function BmfDebugPanel({ local, bmf }) {
 export default function SalaryPage() {
   const theme = useTheme();
   const { settings, loading, saveSettings } = useSalarySettings();
+  const { birthday: globalBirthday } = useModules();
+  const age = calculateAge(globalBirthday);
 
   const [gh, setGh] = useState(DEFAULT_GEHALT);
   const [saveStatus, setSaveStatus] = useState('idle');
@@ -377,6 +381,43 @@ export default function SalaryPage() {
       }}>
         {/* ── Sidebar ── */}
         <Stack spacing={2}>
+          <SectionCard title="Persönliche Daten">
+            <Box>
+              <Typography variant="caption" sx={{
+                color: 'text.secondary', fontWeight: 600,
+                textTransform: 'uppercase', letterSpacing: '0.06em',
+                display: 'block', mb: 0.5,
+              }}>
+                Geburtsdatum
+              </Typography>
+              {globalBirthday ? (
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  sx={{
+                    backgroundColor: 'background.default',
+                    border: 1, borderColor: 'divider',
+                    borderRadius: 1, px: 1.5, py: 1,
+                  }}
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {dayjs(globalBirthday).format('DD.MM.YYYY')}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 700 }}>
+                    {age} Jahre
+                  </Typography>
+                </Stack>
+              ) : (
+                <Alert severity="warning" variant="outlined" sx={{ py: 0.5, fontSize: '0.78rem' }}>
+                  Bitte in den{' '}
+                  <MuiLink href="/settings" sx={{ fontWeight: 700 }}>Einstellungen</MuiLink>
+                  {' '}ergänzen.
+                </Alert>
+              )}
+            </Box>
+          </SectionCard>
+
           <SectionCard title="Gehalt">
             <Stack spacing={1.5}>
               <CurrencyField
@@ -385,6 +426,14 @@ export default function SalaryPage() {
                 onChange={(v) => update({ ghBrutto: v === '' ? 0 : v })}
                 fullWidth
                 inputProps={{ step: 100, min: 0 }}
+              />
+              <CurrencyField
+                label="Monatl. Freibetrag"
+                value={gh.ghFreibetragMo}
+                onChange={(v) => update({ ghFreibetragMo: v === '' ? 0 : v })}
+                fullWidth
+                inputProps={{ step: 10, min: 0 }}
+                helperText="ELStAM-Freibetrag (§ 39a EStG) — reduziert das zu versteuernde Einkommen"
               />
               <TextField
                 select label="Steuerklasse" value={gh.ghStkl}
