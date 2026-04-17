@@ -2059,11 +2059,11 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
 
         {/* Stat cards (hidden in snapshots tab) */}
         {(pol.type === 'avd' || activeSubTab === 'detail') && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(188px, 1fr))', gap: 16, alignItems: 'stretch' }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(188px, 1fr))' }, gap: 2, alignItems: 'stretch' }}>
           {statCards.map((s, i) => (
             <StatCard key={i} {...s} isDark={isDark} />
           ))}
-        </div>
+        </Box>
         )}
 
         {/* Steuer-Simulator — Private Rentenversicherung (Schicht 3, Ertragsanteil) */}
@@ -2360,7 +2360,7 @@ function OverviewPanel({ policies, onTabSwitch, isDark }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* 3-Schichten Real-Netto-KPIs (nur Ist-Prognose, 188px Grid) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(188px, 1fr))', gap: 16, alignItems: 'stretch' }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(188px, 1fr))' }, gap: 2, alignItems: 'stretch' }}>
         <StatCard
           label="Netto-Monatsrente gesamt"
           value={euro(schichten.total) + '/Monat'}
@@ -2403,7 +2403,7 @@ function OverviewPanel({ policies, onTabSwitch, isDark }) {
           accent={totals.gewinn >= 0 ? '#10b981' : '#ef4444'}
           isDark={isDark}
         />
-      </div>
+      </Box>
 
       {/* DRV InfoCard — shown whenever at least one DRV policy is configured */}
       {drvPols.length > 0 && (
@@ -2700,7 +2700,7 @@ function DepotSnapshotPanel({ policyId, snapshots, onAdd, onUpdate, onDelete }) 
             </Stack>
             <Box sx={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(188px, 1fr))',
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fill, minmax(188px, 1fr))' },
               gap: 1.5,
             }}>
               <Box>

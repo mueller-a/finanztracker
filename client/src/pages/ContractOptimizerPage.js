@@ -226,7 +226,7 @@ export default function ContractOptimizerPage() {
       {/* Summary cards */}
       <Box sx={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(188px, 1fr))',
+        gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(188px, 1fr))' },
         gap: 2, mb: 3,
       }}>
         <SummaryCard label="Monatskosten gesamt" value={fmtEuro(totalMonthly)} sub="alle Verträge" accent="#0ea5e9" />

@@ -155,7 +155,7 @@ export default function HouseholdBudgetPage() {
 
         <Box sx={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(188px, 1fr))',
+          gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(188px, 1fr))' },
           gap: 2,
         }}>
           <KpiTile label="Ausgaben"       value={fmtEur(stats.expenses)} color="error.main" />

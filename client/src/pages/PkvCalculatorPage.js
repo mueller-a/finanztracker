@@ -1083,7 +1083,7 @@ export default function PkvCalculatorPage({ isDark = false }) {
 
             {/* KPIs */}
             {pkvData.length > 0 && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(188px, 1fr))', gap: 16, alignItems: 'stretch' }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(188px, 1fr))' }, gap: 2, alignItems: 'stretch' }}>
                 <KpiCard
                   label={pkv.employmentStatus === 'angestellt' && kpis.first?.agZuschuss > 0 ? `Mtl. Netto-Aufwand AN ${kpis.first?.year}` : `Mtl. Beitrag ${kpis.first?.year}`}
                   value={pkv.employmentStatus === 'angestellt' && kpis.first?.agZuschuss > 0 ? fmt(kpis.first?.nettoMonthly, 2) : fmt(kpis.first?.monthly, 2)}
@@ -1094,7 +1094,7 @@ export default function PkvCalculatorPage({ isDark = false }) {
                 <KpiCard label="BRK kumuliert" value={kpis.totalBrk > 0 ? fmt(kpis.totalBrk, 0) : '—'} sub={kpis.brkCount > 0 ? `${kpis.brkCount} Jahre mit BRK` : 'Noch keine eingetragen'} color="#5b8dee" isDark={isDark} />
                 <KpiCard label="Beitrag bei Renteneintritt" value={fmt(kpis.renteD?.monthly, 2)} sub={`ab Alter ${pkv.rzFromAge} (${kpis.renteD?.year})`} color="#e8b84b" isDark={isDark} />
                 <KpiCard label="Beitragsanstieg gesamt" value={(kpis.anstieg >= 0 ? '+' : '') + (kpis.anstieg?.toFixed(0) ?? '—') + ' %'} sub={`${fmt(kpis.first?.monthly, 2)} → ${fmt(kpis.last?.monthly, 2)}`} color="#ef4444" isDark={isDark} />
-              </div>
+              </Box>
             )}
 
             {/* Chart */}

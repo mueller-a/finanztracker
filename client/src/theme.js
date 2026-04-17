@@ -55,7 +55,11 @@ const components = {
   MuiTextField: {
     defaultProps: { variant: 'outlined', size: 'small' },
     styleOverrides: {
-      root: { '& .MuiOutlinedInput-root': { borderRadius: borderRadius } },
+      root: {
+        '& .MuiOutlinedInput-root': { borderRadius: borderRadius },
+        // iOS Safari zoomt bei font-size < 16px in Inputs — 1rem (= 16px) verhindert das
+        '& .MuiInputBase-input': { fontSize: '1rem' },
+      },
     },
   },
   MuiSelect: {

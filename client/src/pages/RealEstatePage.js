@@ -80,9 +80,9 @@ function PropertyForm({ property, onSave, onCancel }) {
         <CurrencyField label="Grundstücksanteil" adornment="%" decimals={0}
           value={f.land_value_ratio} onChange={(v) => set('land_value_ratio', v === '' ? 0 : v)}
           inputProps={{ min: 0, max: 100, step: 1 }} fullWidth />
-        <TextField type="number" label="Wohnfläche (m²)" size="small" fullWidth
+        <TextField type="number" inputProps={{ inputMode: "decimal" }} label="Wohnfläche (m²)" size="small" fullWidth
           value={f.living_space || ''} onChange={(e) => set('living_space', e.target.value)} />
-        <TextField type="number" label="Baujahr" size="small" fullWidth
+        <TextField type="number" inputProps={{ inputMode: "numeric" }} label="Baujahr" size="small" fullWidth
           value={f.build_year || ''} onChange={(e) => set('build_year', e.target.value)} />
         {f.type === 'vermietet' && (
           <>
@@ -217,7 +217,7 @@ function PropertyDetail({ property, mortgages: propMortgages, onBack, onAddMortg
 
       {/* KPIs */}
       <Box sx={{
-        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(188px, 1fr))', gap: 2,
+        display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(188px, 1fr))' }, gap: 2,
       }}>
         <StatCard label="Marktwert" value={fmtEuro(marktwert)} accent="#0ea5e9" />
         <StatCard label="Restschuld" value={fmtEuro(totalRestschuld)} sub={ltv + '% LTV'} accent="#ef4444" />
@@ -535,7 +535,7 @@ export default function RealEstatePage() {
       {/* Portfolio KPIs */}
       {properties.length > 0 && (
         <Box sx={{
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(188px, 1fr))', gap: 2, mb: 2.5,
+          display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(188px, 1fr))' }, gap: 2, mb: 2.5,
         }}>
           <StatCard label="Netto-Vermögen" value={fmtEuro(portfolio.nettoVermoegen)}
             sub={fmtEuro(portfolio.totalMarkt) + ' Marktwert'}

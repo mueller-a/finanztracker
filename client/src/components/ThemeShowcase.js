@@ -35,7 +35,7 @@ export default function ThemeShowcase({ isDark, onToggleDark }) {
     <Box>
       {/* ── KPI Cards (mui Wrapper) ──────────────────────────────────── */}
       <Section title="KPI Cards (KpiCard wrapper)">
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(188px, 1fr))', gap: 2 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(188px, 1fr))' }, gap: 2 }}>
           <KpiCard title="Gesamtkapital" value="855.073 €" sub="alle Policen kumuliert" accent="primary" />
           <KpiCard title="Mögl. Monatsrente" value="5.667 €/M" sub="erreichbar (brutto)" accent="success" />
           <KpiCard title="Netto-Monatsrente" value="4.230 €/M" sub="nach Steuer (PKV: 0€ SV)" accent="primary" />

@@ -167,7 +167,7 @@ function AdvancesProgressChart({ tariff, cost }) {
         {/* KPI-Reihe analog zum 188px-Grid */}
         <Box sx={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(188px, 1fr))',
+          gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(188px, 1fr))' },
           gap: 1.5,
         }}>
           <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'action.hover' }}>
