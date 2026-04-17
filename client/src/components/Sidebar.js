@@ -57,9 +57,10 @@ function NavIcon({ name, ...props }) {
 const COLLAPSED_WIDTH = 64;
 const EXPANDED_WIDTH  = 280;
 
-export default function Sidebar({ isDark, onToggleDark }) {
+export default function Sidebar({ isDark, onToggleDark, mobile = false, onNavigate }) {
   const theme = useTheme();
   const [collapsed, setCollapsed] = useState(false);
+  const isCollapsed = mobile ? false : collapsed;
   const [openGroups, setOpenGroups] = useState(() => {
     const initial = {};
     navItems.forEach((item) => { if (item.children) initial[item.path] = true; });
@@ -116,22 +117,24 @@ export default function Sidebar({ isDark, onToggleDark }) {
 
   // ── Shared list-item button (top-level) ────────────────────────────────────
   function NavButton({ to, active, icon, label, badgeContent, onClick, title }) {
-    // Only forward router-specific props when we actually render a NavLink.
-    // A plain <button> would otherwise receive `end="false"` / `to=undefined` as DOM attrs.
     const routerProps = to
       ? { component: NavLink, to, end: to === '/' }
       : { component: 'button', type: 'button' };
+    function handleClick(e) {
+      if (onClick) onClick(e);
+      if (to && mobile && onNavigate) onNavigate();
+    }
     const content = (
       <ListItemButton
         {...routerProps}
         selected={active}
-        onClick={onClick}
+        onClick={handleClick}
         sx={{
           borderRadius: 1,
           mb: 0.25,
           minHeight: 40,
-          justifyContent: collapsed ? 'center' : 'flex-start',
-          px: collapsed ? 0 : 1.5,
+          justifyContent: isCollapsed ? 'center' : 'flex-start',
+          px: isCollapsed ? 0 : 1.5,
           color: active ? 'primary.main' : 'text.secondary',
           bgcolor: active ? (theme.palette.mode === 'dark' ? 'rgba(167,139,250,0.12)' : 'rgba(124,58,237,0.08)') : 'transparent',
           '&:hover': {
@@ -156,7 +159,7 @@ export default function Sidebar({ isDark, onToggleDark }) {
           }} />
         )}
         <ListItemIcon sx={{
-          minWidth: collapsed ? 0 : 32,
+          minWidth: isCollapsed ? 0 : 32,
           color: active ? 'primary.main' : 'inherit',
           justifyContent: 'center',
         }}>
@@ -166,7 +169,7 @@ export default function Sidebar({ isDark, onToggleDark }) {
             </Badge>
           ) : icon}
         </ListItemIcon>
-        {!collapsed && (
+        {!isCollapsed && (
           <ListItemText
             primary={label}
             primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: 600 }}
@@ -175,7 +178,7 @@ export default function Sidebar({ isDark, onToggleDark }) {
       </ListItemButton>
     );
 
-    if (collapsed && title) {
+    if (isCollapsed && title) {
       return <Tooltip title={title} placement="right" arrow>{content}</Tooltip>;
     }
     return content;
@@ -188,6 +191,7 @@ export default function Sidebar({ isDark, onToggleDark }) {
         component={NavLink}
         to={to}
         selected={active}
+        onClick={mobile && onNavigate ? onNavigate : undefined}
         sx={{
           borderRadius: 1.25,
           minHeight: 36,
@@ -225,24 +229,24 @@ export default function Sidebar({ isDark, onToggleDark }) {
       component="nav"
       aria-label="Hauptnavigation"
       sx={{
-        width: collapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH,
+        width: mobile ? 280 : isCollapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH,
         minHeight: '100vh',
         bgcolor: 'background.paper',
         borderRight: 1,
         borderColor: 'divider',
         display: 'flex',
         flexDirection: 'column',
-        p: collapsed ? '20px 12px' : '20px 16px',
+        p: isCollapsed ? '20px 12px' : '20px 16px',
         position: 'relative',
         transition: 'width 0.3s cubic-bezier(0.4,0,0.2,1)',
         flexShrink: 0,
       }}
     >
-      {/* ── Collapse toggle ─────────────────────────────────────────────── */}
-      <IconButton
+      {/* ── Collapse toggle (nur Desktop) ─────────────────────────────── */}
+      {!mobile && <IconButton
         onClick={() => setCollapsed((v) => !v)}
         size="small"
-        aria-label={collapsed ? 'Sidebar ausklappen' : 'Sidebar einklappen'}
+        aria-label={isCollapsed ? 'Sidebar ausklappen' : 'Sidebar einklappen'}
         sx={{
           position: 'absolute',
           top: 14,
@@ -258,16 +262,16 @@ export default function Sidebar({ isDark, onToggleDark }) {
           '&:hover': { bgcolor: 'background.paper' },
         }}
       >
-        {collapsed ? <ChevronRightIcon sx={{ fontSize: 14 }} /> : <ChevronLeftIcon sx={{ fontSize: 14 }} />}
-      </IconButton>
+        {isCollapsed ? <ChevronRightIcon sx={{ fontSize: 14 }} /> : <ChevronLeftIcon sx={{ fontSize: 14 }} />}
+      </IconButton>}
 
       {/* ── Logo ────────────────────────────────────────────────────────── */}
       <Stack
         direction="row"
         alignItems="center"
         spacing={1.25}
-        justifyContent={collapsed ? 'center' : 'flex-start'}
-        sx={{ mb: 4, pl: collapsed ? 0 : 0.5 }}
+        justifyContent={isCollapsed ? 'center' : 'flex-start'}
+        sx={{ mb: 4, pl: isCollapsed ? 0 : 0.5 }}
       >
         <Box sx={{
           width: 32, height: 32, borderRadius: 1.25,
@@ -277,7 +281,7 @@ export default function Sidebar({ isDark, onToggleDark }) {
         }}>
           <ShieldOutlinedIcon sx={{ fontSize: 18, color: '#fff' }} />
         </Box>
-        {!collapsed && (
+        {!isCollapsed && (
           <Typography sx={{
             fontWeight: 700, fontSize: '1rem',
             letterSpacing: '-0.01em', whiteSpace: 'nowrap',
@@ -288,7 +292,7 @@ export default function Sidebar({ isDark, onToggleDark }) {
       </Stack>
 
       {/* ── Section label ───────────────────────────────────────────────── */}
-      {!collapsed && (
+      {!isCollapsed && (
         <Typography variant="overline" sx={{
           color: 'text.disabled',
           fontWeight: 700,
@@ -311,7 +315,7 @@ export default function Sidebar({ isDark, onToggleDark }) {
               ? redCount
               : undefined;
 
-            if (collapsed) {
+            if (isCollapsed) {
               // Collapsed: link directly to first active child or first child
               const activePath = item.children.find((c) => location.pathname === c.path || location.pathname.startsWith(c.path + '/'));
               const target = activePath?.path ?? item.children[0].path;
@@ -424,9 +428,9 @@ export default function Sidebar({ isDark, onToggleDark }) {
           <Stack
             direction="row"
             alignItems="center"
-            spacing={collapsed ? 0 : 1.25}
-            justifyContent={collapsed ? 'center' : 'flex-start'}
-            sx={{ p: collapsed ? '8px 0' : '8px 12px', mb: 0.25 }}
+            spacing={isCollapsed ? 0 : 1.25}
+            justifyContent={isCollapsed ? 'center' : 'flex-start'}
+            sx={{ p: isCollapsed ? '8px 0' : '8px 12px', mb: 0.25 }}
           >
             {user.user_metadata?.avatar_url ? (
               <Avatar
@@ -439,7 +443,7 @@ export default function Sidebar({ isDark, onToggleDark }) {
                 {(user.user_metadata?.full_name ?? user.email ?? '?')[0].toUpperCase()}
               </Avatar>
             )}
-            {!collapsed && (
+            {!isCollapsed && (
               <Box sx={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
                 <Typography sx={{
                   fontSize: '0.78rem', fontWeight: 600,
