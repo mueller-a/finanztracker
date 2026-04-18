@@ -27,3 +27,15 @@ html {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 148, 180, 0.6);
 }
+
+/* Charts: Höhe auf Mobile reduzieren (Recharts ResponsiveContainer
+   akzeptiert keine responsive Props, daher CSS-Override) */
+@media (max-width: 600px) {
+  .recharts-responsive-container {
+    max-height: 200px !important;
+  }
+  /* Legenden kompakter */
+  .recharts-legend-wrapper {
+    font-size: 0.6rem !important;
+  }
+}

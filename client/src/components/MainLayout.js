@@ -150,7 +150,7 @@ export default function MainLayout({ isDark, onToggleDark }) {
             {current?.label ?? 'Finanztracker'}
           </Typography>
         </Box>
-        <Box component="main" sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', p: 4 }}>
+        <Box component="main" sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', p: { xs: 2, sm: 3, md: 4 } }}>
           <Outlet context={{ isDark, onToggleDark }} />
         </Box>
       </Box>

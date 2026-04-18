@@ -973,7 +973,7 @@ function TilgungsplanTab({ debts, payments, schedulesMap, onAddPayment, onEditPa
 
       {/* Amortization table */}
       <Paper variant="outlined" sx={{ borderRadius: 1, overflow: 'hidden' }}>
-        <Box sx={{ overflowY: 'auto', maxHeight: 480 }}>
+        <Box sx={{ overflow: 'auto', maxHeight: 480 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>

@@ -82,7 +82,7 @@ const components = {
   },
   MuiTableContainer: {
     styleOverrides: {
-      root: { borderRadius: borderRadius },
+      root: { borderRadius: borderRadius, overflowX: 'auto' },
     },
   },
   MuiTableCell: {
