@@ -230,9 +230,9 @@ export default function Sidebar({ isDark, onToggleDark, mobile = false, onNaviga
       aria-label="Hauptnavigation"
       sx={{
         width: mobile ? 280 : isCollapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH,
-        minHeight: '100vh',
+        height: '100vh',
         bgcolor: 'background.paper',
-        borderRight: 1,
+        borderRight: mobile ? 0 : 1,
         borderColor: 'divider',
         display: 'flex',
         flexDirection: 'column',
@@ -240,6 +240,7 @@ export default function Sidebar({ isDark, onToggleDark, mobile = false, onNaviga
         position: 'relative',
         transition: 'width 0.3s cubic-bezier(0.4,0,0.2,1)',
         flexShrink: 0,
+        overflow: 'hidden',
       }}
     >
       {/* ── Collapse toggle (nur Desktop) ─────────────────────────────── */}
@@ -305,7 +306,8 @@ export default function Sidebar({ isDark, onToggleDark, mobile = false, onNaviga
         </Typography>
       )}
 
-      {/* ── Nav ─────────────────────────────────────────────────────────── */}
+      {/* ── Nav (scrollbar wenn zu viele Items für die Viewport-Höhe) ── */}
+      <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', mx: -0.5, px: 0.5 }}>
       <List dense disablePadding sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
         {visibleItems.map((item) => {
           if (item.children) {
@@ -420,9 +422,10 @@ export default function Sidebar({ isDark, onToggleDark, mobile = false, onNaviga
           );
         })}
       </List>
+      </Box>
 
-      {/* ── Bottom: user + dark-mode + logout ───────────────────────────── */}
-      <Box sx={{ mt: 'auto', pt: 2, borderTop: 1, borderColor: 'divider' }}>
+      {/* ── Bottom: user + dark-mode + logout (fixiert am Ende) ────────── */}
+      <Box sx={{ flexShrink: 0, pt: 2, borderTop: 1, borderColor: 'divider' }}>
         {/* User row */}
         {user && (
           <Stack
