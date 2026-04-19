@@ -3,8 +3,9 @@ import {
   Box, Stack, Typography, IconButton, Chip, Collapse,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, TableFooter,
   TextField, InputAdornment, ToggleButton, ToggleButtonGroup,
-  Paper,
+  Paper, Divider, useMediaQuery,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import SearchIcon from '@mui/icons-material/Search';
@@ -216,8 +217,112 @@ function CategoryRow({ category, years, viewMode, onEdit, onDeleteEntry, onDelet
   );
 }
 
+// ─── Mobile Category Card ────────────────────────────────────────────────────
+function MobileCategoryCard({ category, years, viewMode, onEdit, onDeleteEntry, onDeleteCategory }) {
+  const [expanded, setExpanded] = useState(false);
+  const [confirm,  setConfirm]  = useState(null);
+
+  const latestEntry = category.entries[category.entries.length - 1];
+  const totalRow = category.entries
+    .filter((e) => years.includes(e.year))
+    .reduce((sum, e) => sum + toDisplay(e.premium, e.payment_interval, viewMode), 0);
+
+  return (
+    <Paper variant="outlined" sx={{ borderRadius: 1, p: 1.5, borderLeft: `3px solid ${category.color}` }}>
+      {/* Header: Name + Total + Actions */}
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography variant="body2" sx={{ fontWeight: 700 }}>{category.name}</Typography>
+          {category.description && (
+            <Typography variant="caption" color="text.secondary" noWrap>{category.description}</Typography>
+          )}
+        </Box>
+        <Typography variant="body2" sx={{ fontWeight: 700, fontFamily: 'monospace', flexShrink: 0 }}>
+          {fmt(totalRow)} €
+        </Typography>
+      </Stack>
+
+      {/* Anbieter + Intervall */}
+      {latestEntry && (
+        <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+          <Chip label={latestEntry.provider} size="small" sx={{ height: 20, fontSize: '0.65rem', bgcolor: 'primary.main', color: 'primary.contrastText' }} />
+          <Chip label={INTERVAL_LABELS[latestEntry.payment_interval] ?? latestEntry.payment_interval} size="small" sx={{ height: 20, fontSize: '0.65rem' }} />
+        </Stack>
+      )}
+
+      {/* Year values (letzte 3 Jahre inline) */}
+      <Stack direction="row" spacing={1.5} sx={{ mb: 1, flexWrap: 'wrap' }}>
+        {years.slice(0, 3).map((year, idx) => {
+          const entry = category.entries.find((e) => e.year === year);
+          const prevYear  = years[idx + 1];
+          const prevEntry = prevYear ? category.entries.find((e) => e.year === prevYear) : null;
+          const value     = entry ? toDisplay(entry.premium, entry.payment_interval, viewMode) : null;
+          const prevVal   = prevEntry ? toDisplay(prevEntry.premium, prevEntry.payment_interval, viewMode) : null;
+          return (
+            <Box key={year} sx={{ minWidth: 80 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>{year}</Typography>
+              <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 500 }}>
+                {value != null ? `${fmt(value)} €` : '–'}
+              </Typography>
+              {value != null && <DeltaBadge current={value} previous={prevVal} />}
+            </Box>
+          );
+        })}
+      </Stack>
+
+      {/* Actions */}
+      <Stack direction="row" spacing={0.5} justifyContent="flex-end" alignItems="center" sx={{ borderTop: 1, borderColor: 'divider', pt: 1 }}>
+        <IconButton size="small" onClick={() => setExpanded((v) => !v)} title={expanded ? 'Verlauf schließen' : 'Verlauf'}>
+          {expanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+        </IconButton>
+        <IconButton size="small" onClick={() => onEdit(category.id)} title="Bearbeiten">
+          <EditOutlinedIcon fontSize="small" />
+        </IconButton>
+        <IconButton size="small" color="error" onClick={() => setConfirm({ type: 'category' })} title="Löschen">
+          <DeleteOutlineIcon fontSize="small" />
+        </IconButton>
+      </Stack>
+
+      {/* Expandable History */}
+      <Collapse in={expanded} timeout="auto" unmountOnExit>
+        <Stack spacing={0.75} sx={{ mt: 1, pt: 1, borderTop: 1, borderColor: 'divider' }}>
+          {category.entries.map((e) => (
+            <Stack key={e.id} direction="row" justifyContent="space-between" alignItems="center"
+              sx={{ bgcolor: 'action.hover', borderRadius: 1, px: 1, py: 0.5 }}>
+              <Typography variant="caption" sx={{ fontWeight: 700 }}>{e.year}</Typography>
+              <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
+                {e.premium.toLocaleString('de-DE', { minimumFractionDigits: 2 })} € / {INTERVAL_LABELS[e.payment_interval]?.toLowerCase() ?? e.payment_interval}
+              </Typography>
+              <Chip label={e.provider} size="small" sx={{ height: 18, fontSize: '0.6rem' }} />
+              <IconButton size="small" color="error" onClick={() => setConfirm({ type: 'entry', year: e.year })} sx={{ p: 0.25 }}>
+                <DeleteOutlineIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+            </Stack>
+          ))}
+        </Stack>
+      </Collapse>
+
+      <ConfirmDialog
+        open={!!confirm}
+        title="Bist du sicher?"
+        message={confirm?.type === 'category'
+          ? `Die Kategorie „${category.name}" und alle Einträge werden gelöscht.`
+          : `Der Eintrag für ${confirm?.year} wird gelöscht.`}
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => {
+          if (confirm?.type === 'category') onDeleteCategory(category.id);
+          else onDeleteEntry(category.id, confirm.year);
+          setConfirm(null);
+        }}
+      />
+    </Paper>
+  );
+}
+
 // ─── InsuranceTable ───────────────────────────────────────────────────────────
 export default function InsuranceTable({ categories, onEdit, onDeleteEntry, onDeleteCategory }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [sortField, setSortField] = useState('name');
   const [sortDir,   setSortDir]   = useState('asc');
   const [search,    setSearch]    = useState('');
@@ -293,7 +398,40 @@ export default function InsuranceTable({ categories, onEdit, onDeleteEntry, onDe
         </Stack>
       </Stack>
 
-      {/* Table */}
+      {/* Mobile Card View */}
+      {isMobile ? (
+        <Stack spacing={1.5}>
+          {sorted.map((cat) => (
+            <MobileCategoryCard
+              key={cat.id}
+              category={cat}
+              years={years}
+              viewMode={viewMode}
+              onEdit={onEdit}
+              onDeleteEntry={onDeleteEntry}
+              onDeleteCategory={onDeleteCategory}
+            />
+          ))}
+          {sorted.length === 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+              Keine Kategorien gefunden.
+            </Typography>
+          )}
+          {/* Gesamt-Footer */}
+          <Paper variant="outlined" sx={{ borderRadius: 1, p: 1.5, bgcolor: 'action.hover' }}>
+            <Stack direction="row" justifyContent="space-between">
+              <Typography variant="body2" sx={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: 'text.secondary' }}>
+                Gesamt/{viewMode === 'jahr' ? 'Jahr' : 'Monat'}
+              </Typography>
+              <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 700, color: 'primary.main' }}>
+                {fmt(grandTotal)} €
+              </Typography>
+            </Stack>
+          </Paper>
+        </Stack>
+      ) : (
+
+      /* Desktop Table */
       <TableContainer component={Paper} elevation={0} sx={{ border: 1, borderColor: 'divider' }}>
         <Table size="small" stickyHeader>
           <TableHead>
@@ -372,6 +510,7 @@ export default function InsuranceTable({ categories, onEdit, onDeleteEntry, onDe
           </TableFooter>
         </Table>
       </TableContainer>
+      )}
     </Stack>
   );
 }

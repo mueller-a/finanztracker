@@ -3,6 +3,7 @@ import {
   Box, Stack, Typography, Card, CardContent, Table, TableHead, TableBody,
   TableRow, TableCell, IconButton, TextField, Button, InputAdornment,
   CircularProgress, Alert, Skeleton, Chip, Tooltip as MuiTooltip,
+  Paper, Divider, useMediaQuery,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import {
@@ -26,8 +27,92 @@ const fmtPct = (v) => v == null || isNaN(v) ? '–' : (v >= 0 ? '+' : '') + v.to
 
 const CURRENT_YEAR = new Date().getFullYear();
 
+// ─── Mobile Salary Card ──────────────────────────────────────────────────────
+function MobileSalaryCard({ row, isEditing, editDraft, setEditDraft, startEdit, cancelEdit, saveEdit, handleDelete, busy, estimateNet }) {
+  const theme = useTheme();
+  const isProj = !!row.is_projection;
+
+  if (isEditing) {
+    return (
+      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1, bgcolor: 'action.hover' }}>
+        <Stack spacing={1.5}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="body2" sx={{ fontWeight: 700, fontFamily: 'monospace' }}>{row.year}</Typography>
+            <Stack direction="row" spacing={0.5}>
+              <IconButton size="small" color="success" onClick={() => saveEdit(row.year)} disabled={busy}><CheckIcon fontSize="small" /></IconButton>
+              <IconButton size="small" onClick={cancelEdit} disabled={busy}><CloseIcon fontSize="small" /></IconButton>
+            </Stack>
+          </Stack>
+          <TextField size="small" fullWidth type="number" label="Jahresgehalt (Brutto)"
+            value={editDraft.annual_gross}
+            onChange={(e) => setEditDraft((d) => ({ ...d, annual_gross: e.target.value }))}
+            inputProps={{ inputMode: 'decimal' }}
+            InputProps={{ endAdornment: <InputAdornment position="end">€</InputAdornment> }}
+          />
+          <TextField size="small" fullWidth type="number" label="Netto / Monat"
+            placeholder={(() => { const e = estimateNet(parseFloat(editDraft.annual_gross)); return e ? `~${Math.round(e)}` : 'auto'; })()}
+            value={editDraft.net_monthly ?? ''}
+            onChange={(e) => setEditDraft((d) => ({ ...d, net_monthly: e.target.value }))}
+            inputProps={{ inputMode: 'decimal' }}
+            InputProps={{ endAdornment: <InputAdornment position="end">€</InputAdornment> }}
+          />
+        </Stack>
+      </Paper>
+    );
+  }
+
+  return (
+    <Paper variant="outlined" sx={{
+      p: 1.5, borderRadius: 1,
+      ...(isProj ? { borderLeft: `3px solid ${theme.palette.warning.main}`, fontStyle: 'italic' } : {}),
+    }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.75 }}>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Typography variant="body2" sx={{ fontWeight: 700, fontFamily: 'monospace' }}>{row.year}</Typography>
+          {isProj && <Chip label="Prognose" size="small" color="warning" variant="outlined" sx={{ height: 18, fontSize: '0.6rem' }} />}
+        </Stack>
+        <Stack direction="row" spacing={0.5}>
+          <IconButton size="small" onClick={() => startEdit(row)}><EditOutlinedIcon fontSize="small" /></IconButton>
+          <IconButton size="small" color="error" onClick={() => handleDelete(row.year)} disabled={busy}><DeleteOutlineIcon fontSize="small" /></IconButton>
+        </Stack>
+      </Stack>
+      <Stack direction="row" spacing={2} sx={{ mb: 0.5 }}>
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="caption" color="text.secondary">Brutto/Jahr</Typography>
+          <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{fmt0(row.annual_gross)}</Typography>
+        </Box>
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="caption" color="text.secondary">Netto/Monat</Typography>
+          <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>{row.net_monthly != null ? fmt2(row.net_monthly) : '–'}</Typography>
+        </Box>
+      </Stack>
+      <Stack direction="row" spacing={2}>
+        <Box>
+          <Typography variant="caption" color="text.secondary">Steigerung</Typography>
+          <Typography variant="caption" sx={{
+            display: 'block', fontFamily: 'monospace', fontWeight: 600,
+            color: row.steigerungPct == null ? 'text.disabled' : row.steigerungPct >= 0 ? 'success.main' : 'error.main',
+          }}>{fmtPct(row.steigerungPct)}</Typography>
+        </Box>
+        <Box>
+          <Typography variant="caption" color="text.secondary">Inflation</Typography>
+          <Typography variant="caption" sx={{ display: 'block', fontFamily: 'monospace', color: 'warning.main' }}>{fmtPct(row.inflationPct)}</Typography>
+        </Box>
+        <Box>
+          <Typography variant="caption" color="text.secondary">Real-Gehalt</Typography>
+          <Typography variant="caption" sx={{
+            display: 'block', fontFamily: 'monospace',
+            color: row.realPctVsBase >= 0 ? 'success.main' : 'error.main',
+          }}>{row.realGross != null ? fmt0(row.realGross) : '–'}</Typography>
+        </Box>
+      </Stack>
+    </Paper>
+  );
+}
+
 export default function SalaryHistoryTab({ baseParams }) {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { rows, loading, error, upsertYear, deleteYear, bulkProjection, clearProjections } = useSalaryHistory();
   const { vpi, status: inflStatus, error: inflError } = useInflationData();
 
@@ -232,14 +317,39 @@ export default function SalaryHistoryTab({ baseParams }) {
         </Alert>
       )}
 
-      {/* Tabelle */}
+      {/* Tabelle / Mobile Cards */}
       <Card elevation={2} sx={{ borderRadius: 1 }}>
         <CardContent sx={{ p: 0 }}>
           {loading ? (
             <Stack spacing={1} sx={{ p: 2 }}>
               {[1, 2, 3, 4].map((i) => <Skeleton key={i} variant="rounded" height={48} />)}
             </Stack>
+          ) : isMobile ? (
+            /* ── Mobile Card View ── */
+            <Stack spacing={1} sx={{ p: 1.5 }}>
+              {enriched.length === 0 && !showAddRow && (
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                  Noch keine Einträge. Klicke „Jahr hinzufügen".
+                </Typography>
+              )}
+              {enriched.map((row) => (
+                <MobileSalaryCard
+                  key={row.year}
+                  row={row}
+                  isEditing={editingYear === row.year}
+                  editDraft={editDraft}
+                  setEditDraft={setEditDraft}
+                  startEdit={startEdit}
+                  cancelEdit={cancelEdit}
+                  saveEdit={saveEdit}
+                  handleDelete={handleDelete}
+                  busy={busy}
+                  estimateNet={estimateNet}
+                />
+              ))}
+            </Stack>
           ) : (
+            /* ── Desktop Table ── */
             <Table size="small">
               <TableHead>
                 <TableRow sx={{ '& th': { fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'text.secondary' } }}>
