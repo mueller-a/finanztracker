@@ -3,7 +3,7 @@ import {
   Box, Stack, Typography, Button, IconButton, TextField, MenuItem,
   Checkbox, FormControlLabel, ToggleButton, ToggleButtonGroup,
   Tooltip as MuiTooltip, Alert, AlertTitle, CircularProgress, Chip,
-  Divider, Tabs, Tab, Link as MuiLink,
+  Divider, Tabs, Tab, Link as MuiLink, Paper,
   Accordion, AccordionSummary, AccordionDetails,
   Table, TableBody, TableCell, TableRow,
 } from '@mui/material';
