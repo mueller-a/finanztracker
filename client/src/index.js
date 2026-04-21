@@ -1,11 +1,11 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { ThemeProvider, CssBaseline, Box, CircularProgress } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import 'dayjs/locale/de';
-import { lightTheme, darkTheme } from './theme';
+import { lightTheme } from './theme';
 import './index.css';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -98,23 +98,11 @@ function AppRoutes({ isDark, onToggleDark }) {
 }
 
 function ThemeShell() {
-  const { darkMode, setDarkMode } = useModules();
-  const [isDark, setIsDark] = useState(
-    () => window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false
-  );
-
-  // Sync from DB once loaded (overrides OS preference)
-  useEffect(() => {
-    if (darkMode != null) setIsDark(darkMode);
-  }, [darkMode]);
-
-  function handleToggle() {
-    const next = !isDark;
-    setIsDark(next);
-    setDarkMode(next);
-  }
-
-  const theme = useMemo(() => (isDark ? darkTheme : lightTheme), [isDark]);
+  // Dark Mode ist während des Fiscal-Gallery-Redesigns deaktiviert —
+  // alle Seiten werden auf die helle Palette (navy/emerald) optimiert.
+  const isDark = false;
+  const handleToggle = () => {};
+  const theme = lightTheme;
 
   return (
     <ContractAlertProvider>

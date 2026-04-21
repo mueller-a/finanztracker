@@ -474,15 +474,6 @@ export default function Sidebar({ isDark, onToggleDark, mobile = false, onNaviga
           title="Einstellungen"
         />
 
-        {/* Dark mode toggle */}
-        <NavButton
-          onClick={onToggleDark}
-          active={false}
-          icon={isDark ? <Brightness7Icon fontSize="small" /> : <Brightness4Icon fontSize="small" />}
-          label={isDark ? 'Light Mode' : 'Dark Mode'}
-          title={isDark ? 'Light Mode' : 'Dark Mode'}
-        />
-
         {/* Logout */}
         <NavButton
           onClick={signOut}

@@ -158,38 +158,39 @@ function FinancialPulseBar({ insights, loading }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // SEKTION B — Modul-Status-Kacheln
 // ─────────────────────────────────────────────────────────────────────────────
-function ModuleCard({ icon, title, accent, loading, children, onClick, hiddenFromUsers = false }) {
+function ModuleCard({ icon, title, loading, children, onClick, hiddenFromUsers = false }) {
   return (
     <Card
-      elevation={2}
+      elevation={0}
       onClick={onClick}
-      sx={{
-        borderRadius: 1,
+      sx={(t) => ({
+        borderRadius: 3,                             // xl = 12px
+        bgcolor: 'background.paper',                 // surface-container-lowest
         minHeight: 188,
         cursor: onClick ? 'pointer' : 'default',
-        transition: 'transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease',
+        transition: `box-shadow ${t.transitions.duration.standard}ms, opacity ${t.transitions.duration.short}ms`,
         opacity: hiddenFromUsers ? 0.6 : 1,
-        // Dezente gestrichelte Border kennzeichnet "für User unsichtbar" (Admin-Vorschau).
         ...(hiddenFromUsers ? { borderStyle: 'dashed', borderWidth: 1, borderColor: 'divider' } : {}),
         '&:hover': onClick ? {
-          transform: 'translateY(-2px)',
-          boxShadow: 6,
+          boxShadow: '0 20px 40px -15px rgba(11, 28, 48, 0.06)',  // tinted shadow per DS §4
           opacity: 1,
         } : {},
-      }}
+      })}
     >
-      <CardContent sx={{ p: 2.25, display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.25 }}>
+      <CardContent sx={{ p: 3, display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2 }}>
+          {/* Uniform Icon-Box: surface-highest bg + on-surface fg (Fiscal Gallery) */}
           <Box sx={{
-            width: 32, height: 32, borderRadius: 1.25,
-            bgcolor: `${accent}22`, color: accent,
+            width: 40, height: 40, borderRadius: 2,
+            bgcolor: 'surface.highest',
+            color: 'text.primary',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             {icon}
           </Box>
-          <Typography variant="caption" sx={{
-            color: 'text.secondary', fontWeight: 700, letterSpacing: '0.08em',
-            textTransform: 'uppercase',
+          <Typography variant="overline" sx={{
+            color: 'text.secondary',
+            fontWeight: 700,
           }}>
             {title}
           </Typography>
@@ -253,7 +254,7 @@ function ModuleStatusGrid({ data, loading, navigate }) {
       <ModuleCard
         icon={<ShieldOutlinedIcon />}
         title="Versicherungen"
-        accent="#7c3aed"
+
         loading={loading}
         hiddenFromUsers={isHiddenFromUsers('insurance')}
         onClick={() => navigate('/versicherungen')}
@@ -280,7 +281,7 @@ function ModuleStatusGrid({ data, loading, navigate }) {
       <ModuleCard
         icon={<BoltOutlinedIcon />}
         title="Strom"
-        accent="#f59e0b"
+
         loading={loading}
         hiddenFromUsers={isHiddenFromUsers('electricity')}
         onClick={() => navigate('/strom')}
@@ -320,7 +321,7 @@ function ModuleStatusGrid({ data, loading, navigate }) {
       <ModuleCard
         icon={<AccountBalanceOutlinedIcon />}
         title="Verbindlichkeiten"
-        accent="#ef4444"
+
         loading={loading}
         hiddenFromUsers={isHiddenFromUsers('debts')}
         onClick={() => navigate('/verbindlichkeiten')}
@@ -361,7 +362,7 @@ function ModuleStatusGrid({ data, loading, navigate }) {
       <ModuleCard
         icon={<ElderlyOutlinedIcon />}
         title="Ruhestand"
-        accent="#0ea5e9"
+
         loading={loading}
         hiddenFromUsers={isHiddenFromUsers('retirement')}
         onClick={() => navigate('/guthaben/rente')}
@@ -693,18 +694,24 @@ export default function OverviewPage() {
 
   return (
     <Box>
-      <Stack spacing={3}>
-        {/* Header */}
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-end" flexWrap="wrap" spacing={1}>
-          <Box>
-            <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.25 }}>
-              {greeting()}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {DATE_FMT.format(TODAY)} · Deine Finanz-Zentrale
-            </Typography>
-          </Box>
-        </Stack>
+      <Stack spacing={4}>
+        {/* Editorial Header — Fiscal Gallery */}
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="overline" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>
+            {DATE_FMT.format(TODAY)}
+          </Typography>
+          <Typography variant="h3" sx={{
+            fontWeight: 800,
+            letterSpacing: '-0.02em',
+            lineHeight: 1.1,
+            mb: 0.5,
+          }}>
+            {greeting()}.
+          </Typography>
+          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
+            Deine Finanz-Zentrale — kuratiert und auf einen Blick.
+          </Typography>
+        </Box>
 
         {/* Missing birthday hint */}
         {!birthday && (
