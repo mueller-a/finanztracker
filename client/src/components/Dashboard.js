@@ -91,7 +91,8 @@ function TotalCostChart({ categories, viewMode }) {
   const data   = buildStackedData(categories, viewMode);
   const suffix = viewMode === 'monat' ? '/Monat' : '/Jahr';
   const isDark = theme.palette.mode === 'dark';
-  const totalLine = isDark ? '#c4b5fd' : '#4c1d95';
+  // Total line uses primary (navy) — primary focal line per Fiscal Gallery
+  const totalLine = theme.palette.primary.main;
 
   return (
     <SectionCard

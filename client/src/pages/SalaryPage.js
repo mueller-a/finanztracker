@@ -618,30 +618,39 @@ export default function SalaryPage() {
             </ToggleButtonGroup>
           </Stack>
 
-          {/* Netto hero */}
-          <Box sx={{
-            bgcolor: 'primary.main',
+          {/* Netto hero — Editorial Navy Block (Fiscal Gallery) */}
+          <Paper sx={(t) => ({
+            position: 'relative',
+            overflow: 'hidden',
+            bgcolor: 'primary.dark',
             color: 'primary.contrastText',
-            borderRadius: 1,
-            p: 3,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 2,
-          }}>
-            <Box>
-              <Typography variant="caption" sx={{ display: 'block', opacity: 0.85, fontWeight: 600 }}>
+            borderRadius: 3,
+            p: { xs: 4, sm: 5, md: 6 },
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              inset: 0,
+              background: `linear-gradient(135deg, ${t.palette.primary.dark} 0%, ${t.palette.primary.main} 100%)`,
+              opacity: 0.5,
+              pointerEvents: 'none',
+            },
+          })}>
+            <Box sx={{ position: 'relative', zIndex: 1 }}>
+              <Typography variant="overline" sx={{ color: 'primary.light', display: 'block', mb: 2 }}>
                 Nettoeinkommen{suf}
               </Typography>
-              <Typography variant="caption" sx={{ display: 'block', opacity: 0.7 }}>
-                nach allen Abzügen
+              <Typography variant="h2" sx={{
+                fontWeight: 900,
+                letterSpacing: '-0.02em',
+                lineHeight: 1,
+              }}>
+                {fmtE(result.netto)}
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 1, color: 'primary.light' }}>
+                nach allen Abzügen · Steuerrecht {gh.ghYear || new Date().getFullYear()}
               </Typography>
             </Box>
-            <Typography variant="h4" sx={{ fontWeight: 700, fontFamily: 'monospace' }}>
-              {fmtE(result.netto)}
-            </Typography>
-          </Box>
+          </Paper>
 
           {/* BMF Validation — nur für Admin-Nutzer (Diagnose-Tool) */}
           {isAdmin && (
@@ -804,35 +813,29 @@ export default function SalaryPage() {
           {/* PKV vs GKV netto comparison */}
           {(gh.ghKvType === 'pkv' && gh.ghPkvBeitrag > 0) && (
             <SectionCard title="PKV vs. GKV · Netto-Vergleich">
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 1.5, mb: 1.5 }}>
-                <Box sx={{
-                  bgcolor: theme.palette.mode === 'dark' ? 'rgba(232,184,75,0.07)' : 'rgba(232,184,75,0.06)',
-                  borderRadius: 1, p: 1.5,
-                }}>
-                  <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.06em', mb: 0.5 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2, mb: 2 }}>
+                <Paper sx={{ bgcolor: 'surface.low', borderRadius: 3, p: 2.5 }}>
+                  <Typography variant="overline" sx={{ display: 'block', color: 'text.secondary', mb: 0.5 }}>
                     Netto mit PKV (AN)
                   </Typography>
-                  <Typography variant="h6" sx={{ color: '#e8b84b', fontWeight: 700, fontFamily: 'monospace' }}>
-                    {fmtEuro(comp.nettoPkv, 2)}/Monat
+                  <Typography variant="h5" sx={{ color: 'text.primary', fontWeight: 800 }}>
+                    {fmtEuro(comp.nettoPkv, 2)}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
                     PKV-AN {fmtEuro(comp.kvPkv, 2)} · AG {fmtEuro(comp.agZ, 2)}
                   </Typography>
-                </Box>
-                <Box sx={{
-                  bgcolor: theme.palette.mode === 'dark' ? 'rgba(91,141,238,0.07)' : 'rgba(91,141,238,0.06)',
-                  borderRadius: 1, p: 1.5,
-                }}>
-                  <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.06em', mb: 0.5 }}>
+                </Paper>
+                <Paper sx={{ bgcolor: 'surface.low', borderRadius: 3, p: 2.5 }}>
+                  <Typography variant="overline" sx={{ display: 'block', color: 'text.secondary', mb: 0.5 }}>
                     Netto mit GKV (AN)
                   </Typography>
-                  <Typography variant="h6" sx={{ color: '#5b8dee', fontWeight: 700, fontFamily: 'monospace' }}>
-                    {fmtEuro(comp.nettoGkv, 2)}/Monat
+                  <Typography variant="h5" sx={{ color: 'secondary.main', fontWeight: 800 }}>
+                    {fmtEuro(comp.nettoGkv, 2)}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
                     KV {fmtEuro(comp.kvGkv, 2)} + PV {fmtEuro(comp.pvGkv, 2)}
                   </Typography>
-                </Box>
+                </Paper>
               </Box>
               <Alert
                 severity={Math.abs(comp.nettoDiff) < 1 ? 'info' : comp.nettoDiff > 0 ? 'success' : 'error'}

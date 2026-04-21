@@ -229,9 +229,9 @@ export default function InsurancesPage() {
       {/* KPI Cards */}
       <Box sx={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(188px, 1fr))' },
         gap: 2,
-        mb: 3,
+        mb: 4,
       }}>
         <KpiCard
           title={`Gesamtkosten (${viewMode === 'monat' ? 'Monat' : 'Jahr'})`}
