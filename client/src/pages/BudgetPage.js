@@ -13,8 +13,9 @@ import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import BoltIcon from '@mui/icons-material/Bolt';
 import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import { useBudget } from '../hooks/useBudget';
-import { PageHeader } from '../components/mui';
+import { PageHeader, ConfirmDialog } from '../components/mui';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const MONTHS_DE = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
@@ -1146,13 +1147,23 @@ export default function BudgetPage() {
 
   const {
     items, loading, error, importing, isEmpty,
-    addItem, updateItem, deleteItem, reorderItems,
+    addItem, updateItem, deleteItem, reorderItems, resetMonth,
     autoImport, copyFromPrevMonth,
     fetchImportCandidates, importSelected,
   } = useBudget(month, year);
 
   const [copyErr, setCopyErr] = useState('');
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const timers = useRef({});
+
+  async function handleReset() {
+    setResetting(true);
+    setCopyErr('');
+    try { await resetMonth(); setResetOpen(false); }
+    catch (e) { setCopyErr(e.message); }
+    finally { setResetting(false); }
+  }
 
   const handleCommit = useCallback((id, field, rawValue) => {
     clearTimeout(timers.current[id]);
@@ -1197,8 +1208,27 @@ export default function BudgetPage() {
             >
               {importing ? 'Importiere…' : 'Alles importieren'}
             </Button>
+            <Button
+              size="small"
+              color="error"
+              variant="outlined"
+              onClick={() => setResetOpen(true)}
+              startIcon={<RestartAltIcon />}
+            >
+              Zurücksetzen
+            </Button>
           </Stack>
         ) : null}
+      />
+
+      <ConfirmDialog
+        open={resetOpen}
+        title={`Monat ${month}/${year} zurücksetzen?`}
+        message={`Alle ${items.length} Einträge für diesen Monat werden dauerhaft gelöscht. Das lässt sich nicht rückgängig machen.`}
+        confirmLabel="Zurücksetzen"
+        loading={resetting}
+        onCancel={() => setResetOpen(false)}
+        onConfirm={handleReset}
       />
 
       <Stack spacing={2.5}>

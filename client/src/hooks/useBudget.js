@@ -180,6 +180,17 @@ export function useBudget(month, year) {
     setItems((prev) => prev.filter((i) => i.id !== id));
   }, []);
 
+  // ── Reset month (alle Items des gewählten Monats löschen) ─────────────────
+  const resetMonth = useCallback(async () => {
+    const { error: sbError } = await supabase
+      .from('custom_budget_items')
+      .delete()
+      .eq('month', month)
+      .eq('year',  year);
+    if (sbError) throw new Error(sbError.message);
+    setItems([]);
+  }, [month, year]);
+
   // ── Fetch all import candidates (for selective import modal) ──────────────
   const fetchImportCandidates = useCallback(async () => {
     const [insRes, tariffRes, debtsRes, savingsRes, debtPaysRes] = await Promise.all([
@@ -400,7 +411,7 @@ export function useBudget(month, year) {
 
   return {
     items, loading, error, importing, isEmpty,
-    addItem, updateItem, deleteItem, reorderItems,
+    addItem, updateItem, deleteItem, reorderItems, resetMonth,
     autoImport, copyFromPrevMonth,
     fetchImportCandidates, importSelected,
     refetch: fetchItems,
