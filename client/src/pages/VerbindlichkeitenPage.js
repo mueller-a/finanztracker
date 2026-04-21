@@ -36,6 +36,8 @@ const fmtDateFull = (iso) => new Date(iso).toLocaleDateString('de-DE', { day: '2
 const DEBT_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#dc2626', '#ea580c', '#d97706'];
 
 // ─── Total summary widget ─────────────────────────────────────────────────────
+// The Fiscal Gallery — editorial navy block + sidecar progress card
+// (DESIGN-SYSTEM.md §2 "Primary container + gradient", reference-screens/verbindlichkeiten.html)
 function TotalWidget({ debts, schedulesMap }) {
   const totalDebt     = debts.reduce((s, d) => s + (getCurrentBalance(schedulesMap[d.id] ?? [], TODAY) ?? Number(d.total_amount)), 0);
   const totalOriginal = debts.reduce((s, d) => s + Number(d.total_amount), 0);
@@ -45,53 +47,103 @@ function TotalWidget({ debts, schedulesMap }) {
 
   return (
     <Box sx={{
-      background: 'linear-gradient(135deg, #7f1d1d 0%, #dc2626 60%, #ef4444 100%)',
-      borderRadius: 1,
-      p: '1.75rem 2rem',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      flexWrap: 'wrap',
-      gap: 2,
+      display: 'grid',
+      gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' },
+      gap: 3,
     }}>
-      <Box>
-        <Typography variant="overline" sx={{
-          color: 'rgba(255,255,255,0.7)', fontWeight: 700, letterSpacing: '0.1em',
-          display: 'block', mb: 0.75,
-        }}>
-          Gesamtverbindlichkeiten
-        </Typography>
-        <Typography sx={{
-          color: '#fff', fontSize: '2.25rem', fontWeight: 800, lineHeight: 1, fontFamily: 'monospace',
-        }}>
-          − {fmt2(totalDebt)} €
-        </Typography>
-        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.65)', display: 'block', mt: 0.75 }}>
-          {paidPct}% von {fmt0(totalOriginal)} € abbezahlt · {debts.length} Kredit{debts.length !== 1 ? 'e' : ''}
-        </Typography>
-      </Box>
-      <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
-        {[
-          { label: 'Rate/Monat', val: `${fmt2(totalMonthly)} €` },
-          { label: 'Gesamtzinsen', val: `${fmt0(totalInterest)} €` },
-        ].map(({ label, val }) => (
-          <Box key={label} sx={{
-            background: 'rgba(255,255,255,0.15)',
-            borderRadius: 1,
-            p: '10px 16px',
-            backdropFilter: 'blur(4px)',
-          }}>
-            <Typography variant="caption" sx={{
-              color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', display: 'block',
-            }}>
-              {label}
+      {/* Editorial Navy Block — Gesamtverbindlichkeiten */}
+      <Paper sx={(t) => ({
+        position: 'relative',
+        overflow: 'hidden',
+        bgcolor: 'primary.dark',
+        color: 'primary.contrastText',
+        p: { xs: 4, sm: 5, md: 6 },
+        borderRadius: 3,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        minHeight: 280,
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          inset: 0,
+          background: `linear-gradient(135deg, ${t.palette.primary.dark} 0%, ${t.palette.primary.main} 100%)`,
+          opacity: 0.5,
+          pointerEvents: 'none',
+        },
+      })}>
+        <Box sx={{ position: 'relative', zIndex: 1 }}>
+          <Typography variant="overline" sx={{ color: 'primary.light', display: 'block', mb: 2 }}>
+            Gesamtverbindlichkeiten
+          </Typography>
+          <Stack direction="row" alignItems="baseline" spacing={1.5}>
+            <Typography variant="h2" sx={{ fontWeight: 900, letterSpacing: '-0.02em', lineHeight: 1 }}>
+              − {fmt0(totalDebt)} €
             </Typography>
-            <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: '1rem', fontFamily: 'monospace', mt: 0.25 }}>
-              {val}
+            <Box component="span" className="material-symbols-outlined" sx={{ fontSize: { xs: 28, sm: 40 }, color: 'error.light' }}>
+              trending_down
+            </Box>
+          </Stack>
+          <Typography variant="body2" sx={{ mt: 1, color: 'primary.light' }}>
+            {paidPct}% von {fmt0(totalOriginal)} € abbezahlt · {debts.length} Kredit{debts.length !== 1 ? 'e' : ''}
+          </Typography>
+        </Box>
+
+        <Box sx={{
+          position: 'relative', zIndex: 1, mt: 6,
+          display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4,
+        }}>
+          {[
+            { label: 'Monatliche Rate',      val: totalMonthly },
+            { label: 'Gesamtzinsen (Proj.)', val: totalInterest },
+          ].map(({ label, val }) => (
+            <Box key={label}>
+              <Typography variant="caption" sx={{ color: 'primary.light', display: 'block', mb: 0.5 }}>
+                {label}
+              </Typography>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                {fmt2(val)} €
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      </Paper>
+
+      {/* Side card — Tilgungsfortschritt */}
+      <Paper sx={{
+        bgcolor: 'background.paper',
+        p: 4,
+        borderRadius: 3,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        gap: 3,
+      }}>
+        <Box>
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, mb: 3 }}>
+            Tilgungsfortschritt
+          </Typography>
+          <Stack direction="row" justifyContent="space-between" alignItems="flex-end" sx={{ mb: 1 }}>
+            <Typography variant="h4" sx={{ fontWeight: 700 }}>
+              {paidPct}%
             </Typography>
-          </Box>
-        ))}
-      </Stack>
+            <Typography variant="caption" sx={{ color: 'secondary.main', fontWeight: 600 }}>
+              {paidPct > 0 ? 'In Bearbeitung' : 'Noch nicht begonnen'}
+            </Typography>
+          </Stack>
+          <LinearProgress
+            variant="determinate"
+            value={Math.min(100, paidPct)}
+            color="secondary"
+            sx={{ height: 12, borderRadius: 99, bgcolor: 'action.hover' }}
+          />
+        </Box>
+        <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+          {debts.length > 0
+            ? `Insgesamt ${fmt0(totalInterest)} € Zinsen projiziert über die Laufzeit aller ${debts.length} Kredite.`
+            : 'Noch keine Kredite angelegt.'}
+        </Typography>
+      </Paper>
     </Box>
   );
 }
@@ -129,6 +181,8 @@ function UtilizationBar({ used, limit, color }) {
 }
 
 // ─── Debt Card ────────────────────────────────────────────────────────────────
+// The Fiscal Gallery — white card, editorial layout
+// (reference-screens/verbindlichkeiten.html §"Multi-Column Grid for Liability Cards")
 function DebtCard({ debt, schedule, onEdit, onDelete, onAddPayment, onSimulate }) {
   const rev = isRevolving(debt);
 
@@ -147,6 +201,8 @@ function DebtCard({ debt, schedule, onEdit, onDelete, onAddPayment, onSimulate }
     ? Math.round(((Number(debt.total_amount) - currentBalance) / Number(debt.total_amount)) * 100)
     : 100;
   const monthlyInterest = currentBalance * (Number(debt.interest_rate) / 100 / 12);
+  const paidCount = rev ? null : schedule.filter((e) => new Date(e.date) <= TODAY).length;
+  const totalCount = rev ? null : schedule.length;
 
   const currentEntry = rev
     ? schedule.find((e) => e.isCurrent) ?? schedule[schedule.length - 1]
@@ -154,124 +210,162 @@ function DebtCard({ debt, schedule, onEdit, onDelete, onAddPayment, onSimulate }
   const minRateNext = currentEntry?.minRateNext ?? Math.max(currentBalance * 0.02, 50);
 
   return (
-    <Paper variant="outlined" sx={{
-      borderRadius: 1,
-      p: 2,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 1.75,
-      borderColor: 'divider',
+    <Paper sx={{
+      bgcolor: 'background.paper',
+      borderRadius: 3,
+      p: { xs: 3, sm: 4 },
+      transition: (t) => `box-shadow ${t.transitions.duration.standard}ms`,
+      '&:hover': { boxShadow: '0 20px 40px -15px rgba(11, 28, 48, 0.06)' },
     }}>
-      {/* Header */}
-      <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-        <Stack direction="row" alignItems="center" spacing={1.25}>
+      {/* Header: Icon + Name/Ref + Zinssatz-Chip + Actions */}
+      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 4 }}>
+        <Stack direction="row" alignItems="center" spacing={2} sx={{ minWidth: 0 }}>
           <Box sx={{
-            width: 12, height: 12, borderRadius: '50%',
-            backgroundColor: debt.color_code, flexShrink: 0, mt: 0.25,
-          }} />
-          <Box>
-            <Typography variant="body1" sx={{ fontWeight: 700 }}>{debt.name}</Typography>
-            <Typography variant="caption" color="text.secondary">
-              {fmt2(debt.interest_rate)} % p.a. · seit {fmtDate(debt.start_date)}
+            width: 48, height: 48,
+            bgcolor: 'surface.highest',
+            borderRadius: 2,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <Box
+              component="span"
+              className="material-symbols-outlined"
+              sx={{ fontSize: 24, color: 'text.primary' }}
+            >
+              {rev ? 'credit_card' : 'account_balance'}
+            </Box>
+          </Box>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
+              {debt.name}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: '0.02em' }}>
+              {rev ? 'Rahmenkredit' : 'Ratenkredit'} · seit {fmtDate(debt.start_date)}
             </Typography>
           </Box>
         </Stack>
-        <Stack direction="row" spacing={0.5}>
+        <Stack direction="row" spacing={0.5} alignItems="center" sx={{ flexShrink: 0 }}>
+          <Chip
+            label={`${fmt2(debt.interest_rate)} % p.a.`}
+            size="small"
+            color="success"
+          />
           <IconButton size="small" onClick={() => onEdit(debt)} title="Bearbeiten">
-            <EditOutlinedIcon fontSize="inherit" />
+            <EditOutlinedIcon fontSize="small" />
           </IconButton>
           <IconButton size="small" color="error" onClick={() => onDelete(debt.id)} title="Löschen">
-            <DeleteOutlineIcon fontSize="inherit" />
+            <DeleteOutlineIcon fontSize="small" />
           </IconButton>
         </Stack>
       </Stack>
 
-      {/* Current balance */}
-      <Box>
-        <Typography sx={{ color: 'error.main', fontSize: '1.6rem', fontWeight: 800, fontFamily: 'monospace' }}>
-          − {fmt2(currentBalance)} €
+      {/* Open balance — editorial display */}
+      <Box sx={{ mb: 5 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+          Offener Betrag
         </Typography>
-        <Typography variant="caption" color="text.secondary">
-          von ursprünglich {fmt2(debt.total_amount)} € · {pct}% abbezahlt
+        <Typography variant="h3" sx={{
+          fontWeight: 900,
+          letterSpacing: '-0.02em',
+        }}>
+          {fmt2(currentBalance)} €
         </Typography>
       </Box>
 
-      {/* Progress bar */}
-      <Box sx={{
-        height: 8,
-        background: 'rgba(239,68,68,0.15)',
-        borderRadius: 99,
-        overflow: 'hidden',
-      }}>
-        <Box sx={{
-          height: '100%',
-          width: `${pct}%`,
-          borderRadius: 99,
-          background: `linear-gradient(90deg, ${debt.color_code}cc, ${debt.color_code})`,
-          transition: 'width 0.6s ease',
-        }} />
-      </Box>
+      {/* Progress area */}
+      <Stack spacing={3} sx={{ mb: 5 }}>
+        <Box>
+          <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
+            <Typography variant="caption" color="text.secondary">
+              {rev
+                ? 'Ausnutzung'
+                : `Fortschritt (${paidCount} von ${totalCount} Raten)`}
+            </Typography>
+            <Typography variant="caption">
+              {rev
+                ? `Limit ${fmt0(Number(debt.credit_limit) || 0)} €`
+                : `${fmt0(debt.total_amount)} € Initial`}
+            </Typography>
+          </Stack>
+          <LinearProgress
+            variant="determinate"
+            value={Math.min(100, pct)}
+            color="secondary"
+            sx={{ height: 8, borderRadius: 99, bgcolor: 'action.hover' }}
+          />
+        </Box>
 
-      {/* Ausnutzungsgrad — only for revolving */}
-      {rev && debt.credit_limit && (
-        <UtilizationBar used={currentBalance} limit={Number(debt.credit_limit)} color={debt.color_code} />
-      )}
-
-      {/* Stats grid */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1 }}>
-        {(rev ? [
-          { label: 'Zinsen diesen Monat',         val: `${fmt2(currentEntry?.zinsen ?? monthlyInterest)} €`,                   color: 'error.main' },
-          { label: 'Mindestrate nächster Monat',  val: `${fmt2(minRateNext)} €`,                                                color: 'warning.main' },
-          { label: 'Zinsen (Monatsdurchschnitt)', val: schedule.length > 0 ? `${fmt2(paidInterest / schedule.length)} €` : '–', color: 'text.secondary' },
-          { label: 'Zinsen gesamt bisher',        val: `${fmt2(paidInterest)} €`,                                                color: 'error.main' },
-        ] : [
-          { label: 'Rate/Monat',   val: `${fmt2(debt.monthly_rate)} €`,            color: 'text.primary' },
-          { label: 'Davon Zinsen', val: `${fmt2(monthlyInterest)} €`,               color: 'error.main' },
-          { label: 'Schuldenfrei', val: payoffDate ? fmtDate(payoffDate) : '–',     color: 'success.main' },
-          { label: 'Restzinsen',   val: `${fmt0(totalInterest - paidInterest)} €`,  color: 'warning.main' },
-        ]).map(({ label, val, color }) => (
-          <Box key={label} sx={{
-            bgcolor: 'action.hover',
-            borderRadius: 1.25,
-            p: '8px 10px',
-          }}>
-            <Typography variant="caption" sx={{
-              color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
-              display: 'block', fontSize: '0.6rem',
+        {/* KPI-Grid — 2 surface-low boxes */}
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 3 }}>
+          {(rev ? [
+            { label: 'Zinsen diesen Monat',     val: fmt2(currentEntry?.zinsen ?? monthlyInterest) + ' €', accent: true },
+            { label: 'Mindestrate nächst. Mon.', val: fmt2(minRateNext) + ' €' },
+          ] : [
+            { label: 'Monatliche Rate', val: fmt2(debt.monthly_rate) + ' €' },
+            { label: 'Gezahlte Zinsen', val: fmt2(paidInterest) + ' €', accent: true },
+          ]).map(({ label, val, accent }) => (
+            <Box key={label} sx={{
+              bgcolor: 'surface.low',
+              borderRadius: 2,
+              p: 2,
             }}>
-              {label}
+              <Typography variant="overline" sx={{
+                display: 'block',
+                fontSize: '0.625rem',
+                color: 'text.secondary',
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                mb: 0.5,
+              }}>
+                {label}
+              </Typography>
+              <Typography sx={{
+                fontFamily: (t) => t.typography.h6.fontFamily,
+                fontWeight: 700,
+                fontSize: '1.05rem',
+                color: accent ? 'accent.negative' : 'text.primary',
+              }}>
+                {val}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+
+        {!rev && (
+          <Stack direction="row" justifyContent="space-between">
+            <Typography variant="caption" color="text.secondary">Schuldenfrei</Typography>
+            <Typography variant="caption" color="secondary.main" sx={{ fontWeight: 700 }}>
+              {payoffDate ? fmtDate(payoffDate) : '–'}
             </Typography>
-            <Typography sx={{ color, fontWeight: 700, fontSize: '0.85rem', mt: 0.25, fontFamily: 'monospace' }}>
-              {val}
-            </Typography>
-          </Box>
-        ))}
-      </Box>
+          </Stack>
+        )}
+      </Stack>
 
       {debt.note && (
-        <Typography variant="caption" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+        <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', display: 'block', mb: 2 }}>
           {debt.note}
         </Typography>
       )}
 
-      <Stack direction="row" spacing={1}>
+      {/* Actions: Primary gradient CTA + Secondary */}
+      <Stack direction="row" spacing={1.5}>
         <Button
           fullWidth
-          variant="outlined"
-          color="error"
+          variant="contained"
+          color="primary"
           onClick={() => onAddPayment(debt)}
           startIcon={<AddIcon />}
+          sx={{ py: 1.5 }}
         >
-          {rev ? 'Rückzahlung erfassen' : 'Sondertilgung erfassen'}
+          {rev ? 'Rückzahlung erfassen' : 'Sondertilgung'}
         </Button>
         {rev && (
           <Button
             variant="outlined"
-            color="warning"
+            color="primary"
             onClick={() => onSimulate(debt)}
-            startIcon={<LightbulbOutlinedIcon />}
             title="Zinssimulation: Was spare ich bei Extrazahlung?"
-            sx={{ whiteSpace: 'nowrap' }}
+            sx={{ whiteSpace: 'nowrap', px: 3 }}
           >
             Simulieren
           </Button>

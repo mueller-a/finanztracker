@@ -1,0 +1,195 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   The Fiscal Gallery — Design Tokens
+   Source: DESIGN-SYSTEM.md + reference-screens/*.html (Google Stitch Export)
+   ──────────────────────────────────────────────────────────────────────────
+   Usage: Import this file once at the app root (index.css).
+          All components MUST reference these tokens via var(--token-name).
+          Never hardcode colors, font-sizes, or radii outside this file.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ━━━ 1. COLOR — Surface Hierarchy ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  /* Base canvas (page background) */
+  --color-surface:                  #f8f9ff;
+  --color-surface-bright:           #f8f9ff;
+  --color-background:               #f8f9ff;
+
+  /* Nested sectioning (visual "depth" via tonal layering, not borders) */
+  --color-surface-container-lowest: #ffffff;  /* Interactive cards — "pop" */
+  --color-surface-container-low:    #eff4ff;  /* Sectioning */
+  --color-surface-container:        #e5eeff;  /* Nav hover, input fill */
+  --color-surface-container-high:   #dce9ff;  /* Secondary buttons */
+  --color-surface-container-highest:#d3e4fe;  /* Progress track */
+
+  /* Inverse (dark blocks on light bg) */
+  --color-surface-dim:              #cbdbf5;
+  --color-surface-variant:          #d3e4fe;
+  --color-inverse-surface:          #213145;
+  --color-inverse-on-surface:       #eaf1ff;
+  --color-inverse-primary:          #bec6e0;
+
+  /* ━━━ 2. COLOR — Foreground / Text ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  --color-on-surface:               #0b1c30;  /* Body text (never #000) */
+  --color-on-surface-variant:       #45464d;  /* Secondary text */
+  --color-on-background:            #0b1c30;
+  --color-outline:                  #76777d;
+  --color-outline-variant:          #c6c6cd;  /* "Ghost border" at 15% opacity */
+  --color-surface-tint:             #565e74;
+
+  /* ━━━ 3. COLOR — Primary (Deep Navy / High-Contrast CTAs) ━━━━━━━━━━━━ */
+  --color-primary:                  #000000;  /* Pure black — CTAs only */
+  --color-primary-container:        #131b2e;  /* Navy — Editorial blocks */
+  --color-on-primary:               #ffffff;
+  --color-on-primary-container:     #7c839b;  /* Muted text on dark block */
+  --color-primary-fixed:            #dae2fd;
+  --color-primary-fixed-dim:        #bec6e0;  /* Labels on navy blocks */
+  --color-on-primary-fixed:         #131b2e;
+  --color-on-primary-fixed-variant: #3f465c;
+
+  /* ━━━ 4. COLOR — Secondary (Emerald / Positive Cashflow) ━━━━━━━━━━━━━ */
+  --color-secondary:                #006c49;  /* Income, progress indicator */
+  --color-secondary-container:      #6cf8bb;  /* Positive chip background */
+  --color-on-secondary:             #ffffff;
+  --color-on-secondary-container:   #00714d;  /* Positive chip text */
+  --color-secondary-fixed:          #6ffbbe;
+  --color-secondary-fixed-dim:      #4edea3;
+  --color-on-secondary-fixed:       #002113;
+  --color-on-secondary-fixed-variant:#005236;
+
+  /* ━━━ 5. COLOR — Tertiary (Coral / Outgoing, Expenses) ━━━━━━━━━━━━━━━ */
+  --color-tertiary:                 #000000;
+  --color-tertiary-container:       #40000d;
+  --color-on-tertiary:              #ffffff;
+  --color-on-tertiary-container:    #f23d5c;
+  --color-tertiary-fixed:           #ffdadb;  /* Outgoing chip background */
+  --color-tertiary-fixed-dim:       #ffb2b7;  /* Expenses indicator */
+  --color-on-tertiary-fixed:        #40000d;
+  --color-on-tertiary-fixed-variant:#92002a;
+
+  /* ━━━ 6. COLOR — Error (Destructive, Warnings) ━━━━━━━━━━━━━━━━━━━━━━━ */
+  --color-error:                    #ba1a1a;
+  --color-error-container:          #ffdad6;
+  --color-on-error:                 #ffffff;
+  --color-on-error-container:       #93000a;
+
+  /* ━━━ 7. BORDER RADIUS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  /* The system uses only 4 radius values. "xl" for cards, "lg" for inputs,
+     "full" for pills/progress-bars. Never arbitrary values. */
+  --radius-default: 0.5rem;   /* 8px — same as lg */
+  --radius-lg:      0.5rem;   /* 8px — inputs, chips */
+  --radius-xl:      0.75rem;  /* 12px — cards, primary containers */
+  --radius-2xl:     1.5rem;   /* 24px — buttons (per DESIGN-SYSTEM §5) */
+  --radius-full:    9999px;   /* pills, progress bars, FAB */
+
+  /* ━━━ 8. TYPOGRAPHY ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  /* Dual-font system per DESIGN-SYSTEM §3 */
+  --font-headline: 'Manrope', -apple-system, sans-serif;   /* Display, headlines, numbers */
+  --font-body:     'Inter',   -apple-system, sans-serif;   /* Body, tables, labels */
+  --font-label:    'Inter',   -apple-system, sans-serif;
+  --font-mono:     'JetBrains Mono', ui-monospace, monospace;
+
+  /* Font sizes (rem, based on 16px root) */
+  --font-size-display-lg:  3.5rem;   /* 56px — balance figures focal points */
+  --font-size-display-md:  3rem;     /* 48px — statement numbers */
+  --font-size-display-sm:  2.5rem;   /* 40px — section totals */
+  --font-size-headline-lg: 2.25rem;  /* 36px */
+  --font-size-headline-md: 1.75rem;  /* 28px */
+  --font-size-headline-sm: 1.5rem;   /* 24px */
+  --font-size-title-lg:    1.25rem;  /* 20px — card titles */
+  --font-size-title-md:    1.125rem; /* 18px */
+  --font-size-title-sm:    0.875rem; /* 14px — button text */
+  --font-size-body-lg:     1rem;     /* 16px */
+  --font-size-body-md:     0.875rem; /* 14px — default body */
+  --font-size-body-sm:     0.75rem;  /* 12px — labels, meta */
+  --font-size-label-md:    0.75rem;  /* 12px — chip text */
+  --font-size-label-sm:    0.625rem; /* 10px — uppercase meta */
+
+  /* Font weights */
+  --font-weight-regular:  400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+  --font-weight-black:    800;
+
+  /* Letter-spacing (per DESIGN-SYSTEM §3) */
+  --letter-spacing-tight:  -0.02em;  /* Large currency figures */
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide:   0.08em;   /* Uppercase labels */
+  --letter-spacing-widest: 0.12em;   /* Section overlines */
+
+  /* Line heights */
+  --line-height-tight:   1.1;
+  --line-height-normal:  1.5;
+  --line-height-relaxed: 1.6;
+
+  /* ━━━ 9. SPACING ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  /* Generous whitespace per DESIGN-SYSTEM §6 "Do use 48–64px between
+     major functional sections". Scale based on 4px grid. */
+  --space-0:  0;
+  --space-1:  0.25rem;  /* 4px */
+  --space-2:  0.5rem;   /* 8px */
+  --space-3:  0.75rem;  /* 12px */
+  --space-4:  1rem;     /* 16px — minimum vertical padding per row */
+  --space-5:  1.25rem;  /* 20px */
+  --space-6:  1.5rem;   /* 24px — card inner padding (min) */
+  --space-8:  2rem;     /* 32px — card inner padding (generous) */
+  --space-10: 2.5rem;   /* 40px — editorial card padding */
+  --space-12: 3rem;     /* 48px — between major sections (minimum) */
+  --space-16: 4rem;     /* 64px — between major sections (generous) */
+
+  /* ━━━ 10. ELEVATION — "Tinted Shadows" per DESIGN-SYSTEM §4 ━━━━━━━━━━ */
+  /* Tinted with on-surface at low opacity. Never neutral grey. Large blur. */
+  --shadow-tinted-sm: 0 4px 12px -4px rgba(11, 28, 48, 0.06);
+  --shadow-tinted-md: 0 12px 24px -8px rgba(11, 28, 48, 0.06);
+  --shadow-tinted-lg: 0 20px 40px -15px rgba(11, 28, 48, 0.06);
+  --shadow-tinted-xl: 0 20px 50px -10px rgba(0, 0, 0, 0.3);  /* FAB only */
+
+  /* ━━━ 11. GLASSMORPHISM — per DESIGN-SYSTEM §4 ━━━━━━━━━━━━━━━━━━━━━━━ */
+  --glass-backdrop-blur: blur(20px);
+  --glass-surface-variant-alpha: rgba(211, 228, 254, 0.7);
+
+  /* ━━━ 12. GRADIENTS — per DESIGN-SYSTEM §2 ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  --gradient-primary:   linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-container) 100%);
+  --gradient-editorial: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-container) 100%);
+
+  /* ━━━ 13. TRANSITIONS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  --transition-fast:    120ms ease-out;
+  --transition-normal:  200ms ease-out;
+  --transition-slow:    500ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ━━━ 14. Z-INDEX ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  --z-base:    0;
+  --z-sticky:  10;
+  --z-nav:     50;
+  --z-modal:   1300;
+  --z-tooltip: 1500;
+  --z-fab:     50;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DARK MODE — Inverted surface hierarchy, same accents
+   ══════════════════════════════════════════════════════════════════════════ */
+:root[data-theme="dark"],
+.dark {
+  --color-surface:                  #0b1c30;
+  --color-surface-bright:           #131b2e;
+  --color-background:               #0b1c30;
+
+  --color-surface-container-lowest: #131b2e;
+  --color-surface-container-low:    #1a2438;
+  --color-surface-container:        #213145;
+  --color-surface-container-high:   #2a3a54;
+  --color-surface-container-highest:#36486a;
+
+  --color-surface-dim:              #0b1c30;
+  --color-inverse-surface:          #eaf1ff;
+  --color-inverse-on-surface:       #0b1c30;
+
+  --color-on-surface:               #eaf1ff;
+  --color-on-surface-variant:       #c6c6cd;
+  --color-on-background:            #eaf1ff;
+
+  /* Primary inverts to light accent (light text on dark bg) */
+  --color-primary:                  #bec6e0;
+  --color-on-primary:               #131b2e;
+}
