@@ -3,6 +3,7 @@ import {
   Box, Stack, Typography, Button, IconButton, TextField, MenuItem,
   Dialog, DialogTitle, DialogContent, DialogActions, Checkbox,
   CircularProgress, Alert, Chip, LinearProgress, Paper,
+  Collapse, InputAdornment, useMediaQuery, Divider,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -14,6 +15,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import BoltIcon from '@mui/icons-material/Bolt';
 import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useBudget } from '../hooks/useBudget';
 import { PageHeader, ConfirmDialog } from '../components/mui';
 
@@ -693,9 +695,269 @@ function AddItemRow({ type, onAdd, defaultCategory, isExpense }) {
   );
 }
 
+// ─── Mobile: Edit/Add Sheet für einzelnen Eintrag ────────────────────────────
+function ItemEditSheet({ open, initial, isIncome, onClose, onSave, onDelete }) {
+  const [label,        setLabel]        = useState('');
+  const [amount,       setAmount]       = useState('');
+  const [sharePercent, setSharePercent] = useState(100);
+  const [category,     setCategory]     = useState('sonstiges');
+  const [note,         setNote]         = useState('');
+  const [busy,         setBusy]         = useState(false);
+  const [error,        setError]        = useState(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setLabel(initial?.label ?? '');
+    setAmount(initial?.amount != null ? String(initial.amount) : '');
+    setSharePercent(initial?.share_percent ?? 100);
+    setCategory(initial?.category ?? 'sonstiges');
+    setNote(initial?.note ?? '');
+    setError(null);
+  }, [open, initial]);
+
+  const amtNum   = parseFloat(String(amount).replace(',', '.'));
+  const shareNum = parseFloat(sharePercent);
+  const effective = !isNaN(amtNum) && !isNaN(shareNum) ? amtNum * shareNum / 100 : null;
+
+  async function handleSave() {
+    if (!label.trim()) { setError('Bezeichnung fehlt'); return; }
+    if (isNaN(amtNum) || amtNum < 0) { setError('Betrag ungültig'); return; }
+    if (isNaN(shareNum) || shareNum < 0 || shareNum > 100) { setError('Anteil muss 0-100 sein'); return; }
+    setBusy(true); setError(null);
+    try {
+      await onSave({
+        label: label.trim(),
+        amount: amtNum,
+        share_percent: Math.round(shareNum),
+        note: note.trim() || null,
+        ...(isIncome ? {} : { category }),
+      });
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const isEdit = !!initial?.id;
+
+  return (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs"
+      PaperProps={{ sx: { m: { xs: 0, sm: 2 }, borderRadius: { xs: 0, sm: 1 }, height: { xs: '100%', sm: 'auto' } } }}>
+      <DialogTitle sx={{ pb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {isEdit ? 'Eintrag bearbeiten' : (isIncome ? 'Neue Einnahme' : 'Neue Ausgabe')}
+        <IconButton size="small" onClick={onClose}><CloseIcon fontSize="small" /></IconButton>
+      </DialogTitle>
+      <DialogContent>
+        <Stack spacing={2} sx={{ pt: 1 }}>
+          <TextField
+            autoFocus fullWidth label="Bezeichnung"
+            value={label} onChange={(e) => setLabel(e.target.value)}
+          />
+          {!isIncome && (
+            <TextField
+              select fullWidth label="Kategorie" value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              {CATEGORIES.map((c) => (
+                <MenuItem key={c.id} value={c.id}>{c.emoji} {c.label}</MenuItem>
+              ))}
+            </TextField>
+          )}
+          <Stack direction="row" spacing={1.5}>
+            <TextField
+              fullWidth label="Betrag" type="number" value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              inputProps={{ inputMode: 'decimal', step: 0.01, min: 0 }}
+              InputProps={{ endAdornment: <InputAdornment position="end">€</InputAdornment> }}
+            />
+            <TextField
+              fullWidth label="Anteil" type="number" value={sharePercent}
+              onChange={(e) => setSharePercent(e.target.value)}
+              inputProps={{ inputMode: 'numeric', step: 1, min: 0, max: 100 }}
+              InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+            />
+          </Stack>
+          {effective !== null && (
+            <Box sx={{ bgcolor: 'action.hover', borderRadius: 1, p: 1.25, textAlign: 'right' }}>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Mein Anteil</Typography>
+              <Typography variant="h6" sx={{ fontFamily: 'monospace', fontWeight: 700, color: isIncome ? 'success.main' : 'error.main' }}>
+                {fmt2(effective)} €
+              </Typography>
+            </Box>
+          )}
+          <TextField fullWidth label="Notiz (optional)" value={note}
+            onChange={(e) => setNote(e.target.value)} multiline rows={2} />
+          {error && <Alert severity="error">{error}</Alert>}
+        </Stack>
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2, justifyContent: 'space-between' }}>
+        {isEdit ? (
+          <Button color="error" startIcon={<DeleteOutlineIcon />} onClick={() => onDelete(initial.id)}>
+            Löschen
+          </Button>
+        ) : <span />}
+        <Stack direction="row" spacing={1}>
+          <Button onClick={onClose}>Abbrechen</Button>
+          <Button variant="contained" onClick={handleSave} disabled={busy}>
+            {busy ? '…' : isEdit ? 'Aktualisieren' : 'Speichern'}
+          </Button>
+        </Stack>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+// ─── Mobile: kompakte Item-Zeile (1-Zeiler in Card) ─────────────────────────
+function MobileItemLine({ item, isIncome, onClick }) {
+  const amt      = parseFloat(item.amount);
+  const share    = parseFloat(item.share_percent);
+  const effective = !isNaN(amt) && !isNaN(share) ? amt * share / 100 : null;
+  const dotColor = isIncome
+    ? (SOURCE_META[item.source]?.color ?? '#9090b0')
+    : (CAT_MAP[item.category ?? 'sonstiges']?.color ?? '#8b5cf6');
+
+  return (
+    <Stack direction="row" alignItems="center" spacing={1} onClick={onClick}
+      sx={{
+        py: 1, px: 1.5, borderRadius: 0.75, cursor: 'pointer',
+        '&:hover': { bgcolor: 'action.hover' },
+      }}>
+      <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: dotColor, flexShrink: 0 }} />
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography variant="body2" sx={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {item.label || <em style={{ color: '#999' }}>(ohne Bezeichnung)</em>}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          {!isNaN(amt) ? `${fmt2(amt)} €` : '—'}
+          {!isNaN(share) && share !== 100 && ` · ${share}%`}
+          {item.note && ` · ${item.note}`}
+        </Typography>
+      </Box>
+      <Typography variant="body2" sx={{
+        fontFamily: 'monospace', fontWeight: 700,
+        color: effective !== null ? (isIncome ? 'success.main' : 'text.primary') : 'error.main',
+      }}>
+        {effective !== null ? `${fmt2(effective)} €` : 'Ungültig'}
+      </Typography>
+    </Stack>
+  );
+}
+
+// ─── Mobile: aufklappbare Kategorie-Karte ───────────────────────────────────
+function MobileCategoryCard({ cat, items, subtotal, remaining, totalIncome, onItemClick, onAddClick, defaultOpen }) {
+  const [open, setOpen] = useState(defaultOpen ?? true);
+  const insightColor = remaining < 0 ? 'error.main' : remaining === 0 ? 'warning.main' : 'success.main';
+  const sharePct = totalIncome > 0 ? (subtotal / totalIncome) * 100 : 0;
+
+  return (
+    <Paper variant="outlined" sx={{ borderRadius: 1, borderLeft: `3px solid ${cat.color}`, overflow: 'hidden' }}>
+      <Stack direction="row" alignItems="center" spacing={1} onClick={() => setOpen((v) => !v)}
+        sx={{ px: 1.5, py: 1.25, cursor: 'pointer', bgcolor: 'action.hover' }}>
+        <Typography sx={{ fontSize: '1.1rem' }}>{cat.emoji}</Typography>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography variant="caption" sx={{ fontWeight: 700, color: cat.color, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            {cat.label}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+            {items.length} {items.length === 1 ? 'Eintrag' : 'Einträge'}
+          </Typography>
+        </Box>
+        <Box sx={{ textAlign: 'right' }}>
+          <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 700 }}>
+            {fmt2(subtotal)} €
+          </Typography>
+          {totalIncome > 0 && (
+            <Typography variant="caption" color="text.secondary">{sharePct.toFixed(0)} %</Typography>
+          )}
+        </Box>
+        <ExpandMoreIcon sx={{
+          transition: 'transform 200ms', transform: open ? 'rotate(180deg)' : 'rotate(0)',
+        }} />
+      </Stack>
+
+      <Collapse in={open}>
+        <Stack divider={<Divider flexItem />} spacing={0} sx={{ py: 0.5 }}>
+          {items.length === 0 ? (
+            <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', py: 2, fontStyle: 'italic' }}>
+              Noch keine Einträge
+            </Typography>
+          ) : items.map((item) => (
+            <MobileItemLine key={item.id} item={item} isIncome={false} onClick={() => onItemClick(item)} />
+          ))}
+        </Stack>
+        <Stack direction="row" justifyContent="space-between" alignItems="center"
+          sx={{ px: 1.5, py: 1, borderTop: 1, borderColor: 'divider', bgcolor: 'background.default' }}>
+          <Button size="small" startIcon={<AddIcon />} onClick={onAddClick}>
+            Eintrag
+          </Button>
+          {totalIncome > 0 && (
+            <Typography variant="caption" sx={{ color: insightColor, fontWeight: 600 }}>
+              Verfügbar: {remaining >= 0 ? '+' : ''}{fmt2(remaining)} €
+            </Typography>
+          )}
+        </Stack>
+      </Collapse>
+    </Paper>
+  );
+}
+
+// ─── Mobile: Einnahmen-Karte ────────────────────────────────────────────────
+function MobileIncomeCard({ items, total, onItemClick, onAddClick }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <Paper variant="outlined" sx={{ borderRadius: 1, borderLeft: '3px solid #10b981', overflow: 'hidden' }}>
+      <Stack direction="row" alignItems="center" spacing={1} onClick={() => setOpen((v) => !v)}
+        sx={{ px: 1.5, py: 1.25, cursor: 'pointer', bgcolor: 'rgba(16,185,129,0.08)' }}>
+        <Typography sx={{ fontSize: '1.1rem' }}>💚</Typography>
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="caption" sx={{ fontWeight: 700, color: 'success.main', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Einnahmen
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+            {items.length} {items.length === 1 ? 'Eintrag' : 'Einträge'}
+          </Typography>
+        </Box>
+        <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 700, color: 'success.main' }}>
+          {fmt2(total)} €
+        </Typography>
+        <ExpandMoreIcon sx={{ transition: 'transform 200ms', transform: open ? 'rotate(180deg)' : 'rotate(0)' }} />
+      </Stack>
+      <Collapse in={open}>
+        <Stack divider={<Divider flexItem />} spacing={0} sx={{ py: 0.5 }}>
+          {items.length === 0 ? (
+            <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', py: 2, fontStyle: 'italic' }}>
+              Noch keine Einnahmen
+            </Typography>
+          ) : items.map((item) => (
+            <MobileItemLine key={item.id} item={item} isIncome onClick={() => onItemClick(item)} />
+          ))}
+        </Stack>
+        <Box sx={{ px: 1.5, py: 1, borderTop: 1, borderColor: 'divider', bgcolor: 'background.default' }}>
+          <Button size="small" startIcon={<AddIcon />} onClick={onAddClick}>Einnahme</Button>
+        </Box>
+      </Collapse>
+    </Paper>
+  );
+}
+
 // ─── Income Section (flat, no categories) ────────────────────────────────────
-function IncomeSection({ items, onCommit, onDelete, onAdd, onReorder }) {
+function IncomeSection({ items, onCommit, onDelete, onAdd, onReorder, onOpenSheet }) {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+  // Mobile: aufklappbare Karte mit Item-Zeilen
+  if (isMobile) {
+    const total = items.reduce((s, i) => s + (effectiveAmount(i) ?? 0), 0);
+    return (
+      <MobileIncomeCard
+        items={items}
+        total={total}
+        onItemClick={(item) => onOpenSheet({ type: 'income', initial: item })}
+        onAddClick={() => onOpenSheet({ type: 'income', initial: null })}
+      />
+    );
+  }
 
   const dragId = useRef(null);
   const [overId, setOverId] = useState(null);
@@ -805,8 +1067,9 @@ function IncomeSection({ items, onCommit, onDelete, onAdd, onReorder }) {
 }
 
 // ─── Expense Table with category grouping and cross-category D&D ──────────────
-function ExpenseCategoryTable({ items, totalIncome, onCommit, onDelete, onAdd, onReorder, updateItem }) {
+function ExpenseCategoryTable({ items, totalIncome, onCommit, onDelete, onAdd, onReorder, updateItem, onOpenSheet }) {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const dragId = useRef(null);
   const [overId,    setOverId]    = useState(null);
@@ -933,6 +1196,53 @@ function ExpenseCategoryTable({ items, totalIncome, onCommit, onDelete, onAdd, o
   async function handleAdd(itemData) {
     setLastCategory(itemData.category ?? lastCategory);
     await onAdd(itemData);
+  }
+
+  // ── Mobile: aufklappbare Kategorie-Karten ──────────────────────────────
+  if (isMobile) {
+    const totalExpenses = items.reduce((s, i) => s + (effectiveAmount(i) ?? 0), 0);
+    return (
+      <Stack spacing={1.5}>
+        {/* Summe-Header-Card */}
+        <Paper variant="outlined" sx={{
+          borderRadius: 1, px: 1.5, py: 1.25,
+          bgcolor: 'rgba(239,68,68,0.05)',
+          borderLeft: '3px solid', borderLeftColor: 'error.main',
+        }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between">
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <Typography sx={{ fontSize: '1.1rem' }}>🔴</Typography>
+              <Box>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: 'error.main', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Ausgaben gesamt
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                  {items.length} {items.length === 1 ? 'Eintrag' : 'Einträge'}
+                </Typography>
+              </Box>
+            </Stack>
+            <Typography variant="h6" sx={{ color: 'error.main', fontFamily: 'monospace', fontWeight: 800 }}>
+              {fmt2(totalExpenses)} €
+            </Typography>
+          </Stack>
+        </Paper>
+
+        {/* Kategorie-Karten */}
+        {grouped.map((cat, catIdx) => (
+          <MobileCategoryCard
+            key={cat.id}
+            cat={cat}
+            items={cat.items}
+            subtotal={insights[catIdx].catTotal}
+            remaining={insights[catIdx].remaining}
+            totalIncome={totalIncome}
+            onItemClick={(item) => onOpenSheet({ type: 'expense', initial: item })}
+            onAddClick={() => onOpenSheet({ type: 'expense', initial: { category: cat.id } })}
+            defaultOpen={cat.items.length > 0}
+          />
+        ))}
+      </Stack>
+    );
   }
 
   const TH = ({ children, align = 'right', style: s }) => (
@@ -1155,7 +1465,30 @@ export default function BudgetPage() {
   const [copyErr, setCopyErr] = useState('');
   const [resetOpen, setResetOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
+  // Mobile: Item-Edit-Sheet state
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetType, setSheetType] = useState('expense'); // 'expense' | 'income'
+  const [sheetInitial, setSheetInitial] = useState(null);
   const timers = useRef({});
+
+  function openSheet({ type, initial }) {
+    setSheetType(type);
+    setSheetInitial(initial);
+    setSheetOpen(true);
+  }
+  function closeSheet() { setSheetOpen(false); setSheetInitial(null); }
+  async function handleSheetSave(data) {
+    if (sheetInitial?.id) {
+      await updateItem(sheetInitial.id, data);
+    } else {
+      await addItem({ ...data, type: sheetType });
+    }
+    closeSheet();
+  }
+  async function handleSheetDelete(id) {
+    await deleteItem(id);
+    closeSheet();
+  }
 
   async function handleReset() {
     setResetting(true);
@@ -1279,6 +1612,7 @@ export default function BudgetPage() {
               onDelete={deleteItem}
               onAdd={addItem}
               onReorder={reorderItems}
+              onOpenSheet={openSheet}
             />
             <ExpenseCategoryTable
               items={expenseItems}
@@ -1288,6 +1622,7 @@ export default function BudgetPage() {
               onAdd={addItem}
               onReorder={reorderItems}
               updateItem={updateItem}
+              onOpenSheet={openSheet}
             />
             <NettoFooter incomeItems={incomeItems} expenseItems={expenseItems} />
           </>
@@ -1302,6 +1637,16 @@ export default function BudgetPage() {
           onClose={() => setImportModalOpen(false)}
         />
       )}
+
+      {/* Mobile Item Edit Sheet */}
+      <ItemEditSheet
+        open={sheetOpen}
+        initial={sheetInitial}
+        isIncome={sheetType === 'income'}
+        onClose={closeSheet}
+        onSave={handleSheetSave}
+        onDelete={handleSheetDelete}
+      />
     </Box>
   );
 }
