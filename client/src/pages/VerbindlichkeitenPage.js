@@ -33,7 +33,10 @@ const fmt0 = (n) => Math.round(n).toLocaleString('de-DE');
 const fmtDate = (iso) => new Date(iso).toLocaleDateString('de-DE', { month: '2-digit', year: 'numeric' });
 const fmtDateFull = (iso) => new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-const DEBT_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#dc2626', '#ea580c', '#d97706'];
+// Chart line palette — each debt gets a distinct hue from the Fiscal Gallery
+// accent range (coral / amber / emerald / navy) so lines stay distinguishable
+// without clashing with the editorial aesthetic.
+const DEBT_COLORS = ['#ba1a1a', '#f23d5c', '#b45309', '#006c49', '#131b2e', '#76777d'];
 
 // ─── Total summary widget ─────────────────────────────────────────────────────
 // The Fiscal Gallery — editorial navy block + sidecar progress card
@@ -149,33 +152,26 @@ function TotalWidget({ debts, schedulesMap }) {
 }
 
 // ─── Utilization Bar (revolving) ──────────────────────────────────────────────
-function UtilizationBar({ used, limit, color }) {
+function UtilizationBar({ used, limit }) {
   const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
-  const barColor = pct > 80 ? '#ef4444' : pct > 50 ? '#f97316' : color;
+  // Fiscal Gallery functional colors: coral for warning, deeper coral for critical
+  const severity = pct > 80 ? 'error' : pct > 50 ? 'warning' : 'secondary';
   return (
     <Box>
       <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
-        <Typography variant="caption" sx={{
-          color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
-        }}>
+        <Typography variant="overline" sx={{ color: 'text.secondary' }}>
           Ausnutzung
         </Typography>
-        <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'monospace' }}>
+        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
           {fmt2(used)} € / {fmt2(limit)} € ({pct}%)
         </Typography>
       </Stack>
-      <Box sx={{
-        height: 6,
-        background: 'rgba(239,68,68,0.15)',
-        borderRadius: 99,
-        overflow: 'hidden',
-      }}>
-        <Box sx={{
-          height: '100%', width: `${pct}%`, borderRadius: 99,
-          backgroundColor: barColor,
-          transition: 'width 0.5s ease',
-        }} />
-      </Box>
+      <LinearProgress
+        variant="determinate"
+        value={pct}
+        color={severity}
+        sx={{ height: 6, borderRadius: 99, bgcolor: 'action.hover' }}
+      />
     </Box>
   );
 }
@@ -1276,21 +1272,17 @@ function ZinsAnalyseTab({ debts, schedulesMap }) {
   return (
     <Stack spacing={2.5}>
       {/* KPI row */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 1.5 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2 }}>
         {[
-          { label: 'Zinsen bereits gezahlt', val: `${fmt0(totalPaid)} €`,                color: '#ef4444', icon: '😬' },
-          { label: 'Zinsen noch offen',      val: `${fmt0(totalRemaining)} €`,            color: '#f97316', icon: '⚠️' },
-          { label: 'Gesamtzinslast',         val: `${fmt0(totalPaid + totalRemaining)} €`, color: '#dc2626', icon: '💸' },
-        ].map(({ label, val, color, icon }) => (
-          <Paper key={label} variant="outlined" sx={{ borderRadius: 1, p: '1.25rem', textAlign: 'center' }}>
-            <Typography sx={{ fontSize: '1.5rem', mb: 0.75 }}>{icon}</Typography>
-            <Typography variant="caption" sx={{
-              color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
-              display: 'block',
-            }}>
+          { label: 'Zinsen bereits gezahlt', val: `${fmt0(totalPaid)} €`,                 color: 'accent.negative' },
+          { label: 'Zinsen noch offen',      val: `${fmt0(totalRemaining)} €`,             color: 'warning.main' },
+          { label: 'Gesamtzinslast',         val: `${fmt0(totalPaid + totalRemaining)} €`, color: 'error.main' },
+        ].map(({ label, val, color }) => (
+          <Paper key={label} sx={{ borderRadius: 3, p: 3, textAlign: 'center', bgcolor: 'surface.low' }}>
+            <Typography variant="overline" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>
               {label}
             </Typography>
-            <Typography sx={{ color, fontWeight: 800, fontSize: '1.25rem', fontFamily: 'monospace', mt: 0.5 }}>
+            <Typography variant="h5" sx={{ color, fontWeight: 800 }}>
               {val}
             </Typography>
           </Paper>
