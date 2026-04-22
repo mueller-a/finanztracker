@@ -365,7 +365,7 @@ function DebtCard({ debt, schedule, onEdit, onDelete, onAddPayment, onSimulate }
           startIcon={<AddIcon />}
           sx={{ py: 1.5 }}
         >
-          {rev ? 'Rückzahlung erfassen' : 'Sondertilgung'}
+          {rev ? 'Zahlung erfassen' : 'Sondertilgung'}
         </Button>
         {rev && (
           <Button
