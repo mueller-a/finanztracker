@@ -55,103 +55,248 @@ function estimateNextDue(insEntries) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Primary KPI Card — Editorial Navy Style (siehe design-KPIs.md)
+// ─────────────────────────────────────────────────────────────────────────────
+// Für die 3 Financial-Health-Kennzahlen oben im Dashboard. Status wird über
+// (a) Decorative-Icon und (b) Badge-Ton kommuniziert.
+// eslint-disable-next-line no-unused-vars
+function KpiCardPrimary({ label, value, sub, icon, badge, tone = 'positive' }) {
+  const badgeStyles = {
+    positive: { bg: 'accent.positiveSurface', fg: 'primary.dark' },
+    warning:  { bg: 'warning.main',           fg: 'warning.contrastText' },
+    error:    { bg: 'error.main',             fg: 'error.contrastText' },
+  }[tone] ?? { bg: 'accent.positiveSurface', fg: 'primary.dark' };
+
+  return (
+    <Paper sx={(t) => ({
+      position: 'relative',
+      overflow: 'hidden',
+      bgcolor: 'primary.dark',
+      color: 'primary.contrastText',
+      borderRadius: '12px',
+      p: { xs: 2, sm: 2.25 },
+      minWidth: 0,
+      height: '100%',
+      '&::before': {
+        content: '""',
+        position: 'absolute',
+        inset: 0,
+        background: `linear-gradient(135deg, ${t.palette.primary.dark} 0%, ${t.palette.primary.main} 100%)`,
+        opacity: 0.5,
+        pointerEvents: 'none',
+      },
+    })}>
+      {icon && (
+        <Box component="span" className="material-symbols-outlined" sx={{
+          position: 'absolute', right: -16, bottom: -20,
+          fontSize: 140, color: 'accent.positiveSurface', opacity: 0.1,
+          pointerEvents: 'none', userSelect: 'none', lineHeight: 1, zIndex: 0,
+        }}>
+          {icon}
+        </Box>
+      )}
+      <Box sx={{ position: 'relative', zIndex: 1 }}>
+        <Typography variant="overline" sx={{
+          color: 'primary.light', display: 'block',
+          fontSize: '0.625rem', letterSpacing: '0.08em',
+          lineHeight: 1.15, mb: 1,
+        }}>
+          {label}
+        </Typography>
+        <Typography sx={{
+          fontFamily: '"Manrope", sans-serif',
+          fontWeight: 800, letterSpacing: '-0.01em', lineHeight: 1.1,
+          fontSize: { xs: '1.5rem', sm: '1.75rem' },
+          color: 'primary.contrastText',
+          mb: (badge || sub) ? 1.5 : 0,
+        }}>
+          {value}
+        </Typography>
+        {(badge || sub) && (
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 0.5 }}>
+            {badge && (
+              <Box sx={{
+                px: 1.25, py: 0.5, borderRadius: 99,
+                bgcolor: badgeStyles.bg, color: badgeStyles.fg,
+                fontWeight: 700, fontSize: '0.72rem',
+                letterSpacing: '0.01em', lineHeight: 1, whiteSpace: 'nowrap',
+              }}>
+                {badge}
+              </Box>
+            )}
+            {sub && (
+              <Typography variant="caption" sx={{
+                color: 'primary.light', lineHeight: 1.3, fontSize: '0.72rem',
+              }}>
+                {sub}
+              </Typography>
+            )}
+          </Stack>
+        )}
+      </Box>
+    </Paper>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Secondary KPI Card — Surface Style (siehe design-KPIs.md)
+// ─────────────────────────────────────────────────────────────────────────────
+// Für die 4 Modul-Kacheln (Versicherungen/Strom/Verbindlichkeiten/Ruhestand).
+// Kinder-Content bleibt flexibel (Progress Bars, Chips etc.).
+function ModuleKpiSecondary({ icon, title, onClick, loading, hiddenFromUsers, children }) {
+  return (
+    <Paper
+      onClick={onClick}
+      sx={(t) => ({
+        position: 'relative',
+        overflow: 'hidden',
+        bgcolor: 'background.paper',
+        color: 'text.primary',
+        borderRadius: '12px',
+        p: { xs: 2, sm: 2.25 },
+        borderLeft: '3px solid',
+        borderLeftColor: 'accent.positiveSurface',
+        boxShadow: '0 6px 30px rgba(11, 28, 48, 0.06)',
+        minHeight: 188,
+        cursor: onClick ? 'pointer' : 'default',
+        opacity: hiddenFromUsers ? 0.6 : 1,
+        transition: `box-shadow ${t.transitions.duration.standard}ms, opacity ${t.transitions.duration.short}ms`,
+        ...(hiddenFromUsers ? { borderTopStyle: 'dashed', borderRightStyle: 'dashed', borderBottomStyle: 'dashed', borderTopWidth: 1, borderRightWidth: 1, borderBottomWidth: 1, borderTopColor: 'divider', borderRightColor: 'divider', borderBottomColor: 'divider' } : {}),
+        '&:hover': onClick ? {
+          boxShadow: '0 20px 40px -15px rgba(11, 28, 48, 0.1)',
+          opacity: 1,
+        } : {},
+      })}
+    >
+      {icon && (
+        <Box component="span" className="material-symbols-outlined" sx={{
+          position: 'absolute', right: -12, bottom: -18,
+          fontSize: 120, color: 'accent.positiveSurface', opacity: 0.18,
+          pointerEvents: 'none', userSelect: 'none', lineHeight: 1, zIndex: 0,
+        }}>
+          {icon}
+        </Box>
+      )}
+      <Box sx={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+          <Typography variant="overline" sx={{
+            color: 'text.secondary', fontWeight: 700,
+            letterSpacing: '0.08em', fontSize: '0.625rem', lineHeight: 1.15,
+          }}>
+            {title}
+          </Typography>
+          {hiddenFromUsers && (
+            <MuiTooltip title="Modul ist global deaktiviert — nur für Admins sichtbar" arrow>
+              <VisibilityOffOutlinedIcon sx={{ fontSize: 14, color: 'text.disabled', ml: 'auto' }} />
+            </MuiTooltip>
+          )}
+        </Stack>
+        {loading ? (
+          <Stack spacing={1} sx={{ flex: 1 }}>
+            <Skeleton variant="text" width="70%" height={30} />
+            <Skeleton variant="text" width="55%" />
+            <Skeleton variant="text" width="40%" />
+          </Stack>
+        ) : (
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>{children}</Box>
+        )}
+      </Box>
+    </Paper>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SEKTION A — Financial Health Header (Puls-Leiste)
 // ─────────────────────────────────────────────────────────────────────────────
 function FinancialPulseBar({ insights, loading }) {
-  const theme = useTheme();
-
-  function trendIcon(level) {
-    if (level === 'good')    return <TrendingUpIcon fontSize="small" sx={{ color: 'success.main' }} />;
-    if (level === 'warn')    return <TrendingFlatIcon fontSize="small" sx={{ color: 'warning.main' }} />;
-    if (level === 'bad')     return <TrendingDownIcon fontSize="small" sx={{ color: 'error.main' }} />;
-    return <TrendingFlatIcon fontSize="small" sx={{ color: 'text.disabled' }} />;
-  }
+  // trendIcon entfernt — Status wird jetzt via Badge + Decorative-Icon
+  // in den Primary-KPI-Karten kommuniziert.
 
   const nettoPositive = (insights?.nettoVermoegen ?? 0) >= 0;
-  const nettoLevel    = !insights ? 'none'
-                      : nettoPositive ? 'good' : 'bad';
-
   const runway = insights?.liquiditaetsreichweite;
-  const runwayLevel = runway == null ? 'none'
-                    : runway >= 6    ? 'good'
-                    : runway >= 3    ? 'warn'
-                    : 'bad';
+  const quote  = insights?.sparquote;
 
-  const quote = insights?.sparquote;
-  const quoteLevel = quote == null ? 'none'
-                   : quote >= 20   ? 'good'
-                   : quote >= 10   ? 'warn'
-                   : 'bad';
+  // Mapping: Level → Badge-Ton + Badge-Label + Decorative-Icon
+  const nettoLevel = !insights ? 'none' : nettoPositive ? 'positive' : 'error';
+  const runwayLevel = runway == null ? 'none'
+                    : runway >= 6    ? 'positive'
+                    : runway >= 3    ? 'warning'
+                    : 'error';
+  const quoteLevel  = quote == null  ? 'none'
+                    : quote  >= 20   ? 'positive'
+                    : quote  >= 10   ? 'warning'
+                    : 'error';
 
   const items = [
     {
       label: 'Netto-Vermögen',
+      icon: nettoPositive ? 'trending_up' : 'trending_down',
       value: loading ? null
            : insights
               ? `${nettoPositive ? '+' : '−'} ${fmt0(Math.abs(insights.nettoVermoegen))} €`
               : '–',
-      color: loading ? 'text.primary'
-           : insights ? (nettoPositive ? 'success.main' : 'error.main')
-           : 'text.secondary',
-      trend: nettoLevel,
+      tone:  nettoLevel,
+      badge: !insights ? null : (nettoPositive ? 'Positiv' : 'Negativ'),
+      sub:   insights ? 'Vermögen − Schulden' : null,
     },
     {
       label: 'Liquidity Runway',
+      icon: 'account_balance_wallet',
       value: loading ? null
            : runway != null ? `${runway.toFixed(1).replace('.', ',')} Monate` : '–',
-      color: loading ? 'text.primary'
-           : runwayLevel === 'good' ? 'success.main'
-           : runwayLevel === 'warn' ? 'warning.main'
-           : runwayLevel === 'bad'  ? 'error.main'
-           : 'text.secondary',
-      trend: runwayLevel,
+      tone:  runwayLevel,
+      badge: runway == null ? null
+           : runwayLevel === 'positive' ? '≥ 6 Mo'
+           : runwayLevel === 'warning'  ? '3–6 Mo'
+           :                              '< 3 Mo',
+      sub:   runway != null ? 'Reserve-Reichweite' : null,
     },
     {
       label: 'Sparquote',
+      icon: 'savings',
       value: loading ? null
            : quote != null ? `${quote.toFixed(1).replace('.', ',')} %` : '–',
-      color: loading ? 'text.primary'
-           : quoteLevel === 'good' ? 'success.main'
-           : quoteLevel === 'warn' ? 'warning.main'
-           : quoteLevel === 'bad'  ? 'error.main'
-           : 'text.secondary',
-      trend: quoteLevel,
+      tone:  quoteLevel,
+      badge: quote == null ? null
+           : quoteLevel === 'positive' ? '≥ 20 %'
+           : quoteLevel === 'warning'  ? '≥ 10 %'
+           :                             '< 10 %',
+      sub:   quote != null ? 'Monats-Einkommen' : null,
     },
   ];
 
+  if (loading) {
+    return (
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2 }}>
+        {[0, 1, 2].map((i) => (
+          <Paper key={i} sx={{ bgcolor: 'primary.dark', borderRadius: '12px', p: 2.25, height: 140 }}>
+            <Skeleton variant="text" width="40%" sx={{ bgcolor: 'rgba(255,255,255,0.1)' }} />
+            <Skeleton variant="text" width="70%" height={40} sx={{ bgcolor: 'rgba(255,255,255,0.15)' }} />
+            <Skeleton variant="text" width="30%" sx={{ bgcolor: 'rgba(255,255,255,0.1)' }} />
+          </Paper>
+        ))}
+      </Box>
+    );
+  }
+
   return (
-    <Card elevation={2} sx={{ borderRadius: 1 }}>
-      <CardContent sx={{ py: 2.5, px: 3, '&:last-child': { pb: 2.5 } }}>
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          divider={<Divider orientation="vertical" flexItem />}
-          spacing={2}
-        >
-          {items.map(({ label, value, color, trend }) => (
-            <Stack key={label} spacing={0.5} sx={{ flex: 1, minWidth: 188 }}>
-              <Stack direction="row" alignItems="center" spacing={0.75}>
-                <Typography variant="caption" sx={{
-                  color: 'text.secondary', fontWeight: 700, letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                }}>
-                  {label}
-                </Typography>
-                {!loading && trendIcon(trend)}
-              </Stack>
-              {loading ? (
-                <Skeleton variant="text" width={140} height={40} />
-              ) : (
-                <Typography variant="h4" sx={{
-                  fontWeight: 800, fontFamily: 'monospace', lineHeight: 1.1, color,
-                }}>
-                  {value}
-                </Typography>
-              )}
-            </Stack>
-          ))}
-        </Stack>
-      </CardContent>
-    </Card>
+    <Box sx={{
+      display: 'grid',
+      gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
+      gap: 2,
+    }}>
+      {items.map(({ label, value, icon, tone, badge, sub }) => (
+        <KpiCardPrimary
+          key={label}
+          icon={icon}
+          label={label}
+          value={value ?? '–'}
+          badge={badge}
+          sub={sub}
+          tone={tone === 'none' ? 'positive' : tone}
+        />
+      ))}
+    </Box>
   );
 }
 
@@ -251,43 +396,48 @@ function ModuleStatusGrid({ data, loading, navigate }) {
     }}>
       {/* Versicherungen */}
       {isModuleEnabled('insurance') && (
-      <ModuleCard
-        icon={<ShieldOutlinedIcon />}
+      <ModuleKpiSecondary
+        icon="shield"
         title="Versicherungen"
-
         loading={loading}
         hiddenFromUsers={isHiddenFromUsers('insurance')}
         onClick={() => navigate('/versicherungen')}
       >
-        <Typography variant="h5" sx={{ fontWeight: 800, fontFamily: 'monospace', mb: 0.5 }}>
+        <Typography sx={{
+          fontFamily: '"Manrope", sans-serif', fontWeight: 800,
+          letterSpacing: '-0.01em', lineHeight: 1.1,
+          fontSize: { xs: '1.5rem', sm: '1.75rem' }, mb: 1.25,
+        }}>
           {data?.ins?.count ?? 0}
         </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ mb: 1 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5 }}>
           Aktive Verträge
         </Typography>
         <Box sx={{ mt: 'auto' }}>
-          <Typography variant="caption" sx={{
-            color: 'text.secondary', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+          <Typography variant="overline" sx={{
+            color: 'text.secondary', fontSize: '0.625rem',
+            letterSpacing: '0.08em', lineHeight: 1.15, display: 'block', mb: 0.25,
           }}>
             Nächste Fälligkeit
           </Typography>
           <Typography variant="body2" sx={{ fontWeight: 700 }}>{nextDueStr}</Typography>
         </Box>
-      </ModuleCard>
+      </ModuleKpiSecondary>
       )}
 
       {/* Strom */}
       {isModuleEnabled('electricity') && (
-      <ModuleCard
-        icon={<BoltOutlinedIcon />}
+      <ModuleKpiSecondary
+        icon="bolt"
         title="Strom"
-
         loading={loading}
         hiddenFromUsers={isHiddenFromUsers('electricity')}
         onClick={() => navigate('/strom')}
       >
-        <Typography variant="h5" sx={{
-          fontWeight: 800, fontFamily: 'monospace', mb: 0.5,
+        <Typography sx={{
+          fontFamily: '"Manrope", sans-serif', fontWeight: 800,
+          letterSpacing: '-0.01em', lineHeight: 1.1,
+          fontSize: { xs: '1.5rem', sm: '1.75rem' }, mb: 1.25,
           color: stromStatus.isGood === null ? 'text.primary'
                : stromStatus.isGood         ? 'success.main'
                :                               'error.main',
@@ -296,16 +446,24 @@ function ModuleStatusGrid({ data, loading, navigate }) {
             ? `${stromStatus.isGood ? '+' : '−'} ${fmt2(stromStatus.delta)} €`
             : '–'}
         </Typography>
-        <Chip
-          label={stromStatus.label}
-          color={stromStatus.color}
-          size="small"
-          variant="outlined"
-          sx={{ alignSelf: 'flex-start', mb: 1 }}
-        />
+        <Box sx={{
+          alignSelf: 'flex-start', mb: 1.5,
+          px: 1.25, py: 0.5, borderRadius: 99,
+          bgcolor: stromStatus.color === 'success' ? 'accent.positiveSurface'
+                 : stromStatus.color === 'error'   ? 'error.main'
+                 :                                    'action.hover',
+          color: stromStatus.color === 'success' ? 'primary.dark'
+               : stromStatus.color === 'error'   ? 'error.contrastText'
+               :                                    'text.secondary',
+          fontWeight: 700, fontSize: '0.72rem', letterSpacing: '0.01em',
+          lineHeight: 1, whiteSpace: 'nowrap',
+        }}>
+          {stromStatus.label}
+        </Box>
         <Box sx={{ mt: 'auto' }}>
-          <Typography variant="caption" sx={{
-            color: 'text.secondary', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+          <Typography variant="overline" sx={{
+            color: 'text.secondary', fontSize: '0.625rem',
+            letterSpacing: '0.08em', lineHeight: 1.15, display: 'block', mb: 0.25,
           }}>
             Jahresprognose
           </Typography>
@@ -313,21 +471,23 @@ function ModuleStatusGrid({ data, loading, navigate }) {
             {data?.strom?.forecast ? `${fmt0(data.strom.forecast.total)} kWh` : '–'}
           </Typography>
         </Box>
-      </ModuleCard>
+      </ModuleKpiSecondary>
       )}
 
       {/* Verbindlichkeiten */}
       {isModuleEnabled('debts') && (
-      <ModuleCard
-        icon={<AccountBalanceOutlinedIcon />}
+      <ModuleKpiSecondary
+        icon="account_balance"
         title="Verbindlichkeiten"
-
         loading={loading}
         hiddenFromUsers={isHiddenFromUsers('debts')}
         onClick={() => navigate('/verbindlichkeiten')}
       >
-        <Typography variant="h5" sx={{
-          fontWeight: 800, fontFamily: 'monospace', color: 'error.main', mb: 0.5,
+        <Typography sx={{
+          fontFamily: '"Manrope", sans-serif', fontWeight: 800,
+          letterSpacing: '-0.01em', lineHeight: 1.1,
+          fontSize: { xs: '1.5rem', sm: '1.75rem' },
+          color: 'error.main', mb: 1.25,
         }}>
           − {fmt0(data?.debts?.total ?? 0)} €
         </Typography>
@@ -340,13 +500,14 @@ function ModuleStatusGrid({ data, loading, navigate }) {
           sx={{
             height: 8, borderRadius: 99,
             bgcolor: 'action.hover',
-            '& .MuiLinearProgress-bar': { bgcolor: 'success.main', borderRadius: 99 },
-            mb: 1.25,
+            '& .MuiLinearProgress-bar': { bgcolor: 'accent.positiveSurface', borderRadius: 99 },
+            mb: 1.5,
           }}
         />
         <Box sx={{ mt: 'auto' }}>
-          <Typography variant="caption" sx={{
-            color: 'text.secondary', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+          <Typography variant="overline" sx={{
+            color: 'text.secondary', fontSize: '0.625rem',
+            letterSpacing: '0.08em', lineHeight: 1.15, display: 'block', mb: 0.25,
           }}>
             Schuldenfrei
           </Typography>
@@ -354,30 +515,32 @@ function ModuleStatusGrid({ data, loading, navigate }) {
             {payoffYear ? `${payoffYear}` : '–'}
           </Typography>
         </Box>
-      </ModuleCard>
+      </ModuleKpiSecondary>
       )}
 
       {/* Ruhestand */}
       {isModuleEnabled('retirement') && (
-      <ModuleCard
-        icon={<ElderlyOutlinedIcon />}
+      <ModuleKpiSecondary
+        icon="elderly"
         title="Ruhestand"
-
         loading={loading}
         hiddenFromUsers={isHiddenFromUsers('retirement')}
         onClick={() => navigate('/guthaben/rente')}
       >
-        <Typography variant="h5" sx={{
-          fontWeight: 800, fontFamily: 'monospace', mb: 0.5,
+        <Typography sx={{
+          fontFamily: '"Manrope", sans-serif', fontWeight: 800,
+          letterSpacing: '-0.01em', lineHeight: 1.1,
+          fontSize: { xs: '1.5rem', sm: '1.75rem' }, mb: 1.25,
         }}>
           {data?.retirement?.count ?? 0}
         </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ mb: 1 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5 }}>
           {(data?.retirement?.count ?? 0) === 1 ? 'Vorsorge-Police' : 'Vorsorge-Policen'}
         </Typography>
         <Box sx={{ mt: 'auto' }}>
-          <Typography variant="caption" sx={{
-            color: 'text.secondary', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+          <Typography variant="overline" sx={{
+            color: 'text.secondary', fontSize: '0.625rem',
+            letterSpacing: '0.08em', lineHeight: 1.15, display: 'block', mb: 0.25,
           }}>
             Frühester Rentenbeginn
           </Typography>
@@ -385,7 +548,7 @@ function ModuleStatusGrid({ data, loading, navigate }) {
             {data?.retirement?.nextRentenbeginn ?? '–'}
           </Typography>
         </Box>
-      </ModuleCard>
+      </ModuleKpiSecondary>
       )}
     </Box>
   );

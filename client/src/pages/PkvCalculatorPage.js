@@ -299,7 +299,7 @@ function KpiCard({ label, value, sub, icon, badge, color }) {
       overflow: 'hidden',
       bgcolor: 'primary.dark',
       color: 'primary.contrastText',
-      borderRadius: 3,
+      borderRadius: '12px',
       p: { xs: 2, sm: 2.25 },
       minWidth: 0,
       '&::before': {
