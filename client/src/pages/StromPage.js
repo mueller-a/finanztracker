@@ -117,7 +117,11 @@ function ForecastGauge({ forecast, cost }) {
           <Alert
             severity={isGut ? 'success' : 'error'}
             variant="outlined"
-            icon={<span style={{ fontSize: '1.4rem' }}>{isGut ? '🎉' : '⚠️'}</span>}
+            icon={
+              <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 22 }}>
+                {isGut ? 'savings' : 'warning'}
+              </Box>
+            }
           >
             <Typography variant="body2" sx={{ fontWeight: 700 }}>
               {isGut ? `Guthaben: +${fmt(deltaAbs)} €` : `Nachzahlung: −${fmt(deltaAbs)} €`}
