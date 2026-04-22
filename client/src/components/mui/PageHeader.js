@@ -23,9 +23,9 @@ export default function PageHeader({ title, subtitle, icon, actions, sx }) {
       <Stack direction="row" alignItems="center" spacing={2} sx={{ minWidth: 0 }}>
         {icon && (
           <Box sx={{
-            width: 40,
-            height: 40,
-            borderRadius: 2,
+            width: 64,
+            height: 64,
+            borderRadius: '32px',
             bgcolor: 'surface.highest',
             color: 'text.primary',
             display: 'flex',
@@ -33,7 +33,7 @@ export default function PageHeader({ title, subtitle, icon, actions, sx }) {
             justifyContent: 'center',
             flexShrink: 0,
           }}>
-            <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 22 }}>
+            <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 32 }}>
               {icon}
             </Box>
           </Box>
