@@ -27,6 +27,20 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/de';
 import { PageHeader, SectionCard, DateField } from '../components/mui';
 
+// ─── Chart colors — Fiscal Gallery palette ───────────────────────────────────
+// Recharts needs raw CSS values; these mirror the theme palette + design
+// tokens. The PKV calculator uses distinct accents for 4 semantic series:
+// brutto (neutral focal), eigenanteil (positive), BRK (informational blue
+// accent) and deltas (warning/error).
+const CHART = {
+  positive: '#006c49',  // secondary — Eigenanteil (gain via subsidy)
+  negative: '#ba1a1a',  // error — overruns, losses
+  neutral:  '#131b2e',  // primary_container — Gesamtbeitrag focal line
+  warning:  '#b45309',  // amber — change / warning
+  muted:    '#45464d',  // on_surface_variant
+  grid:     '#c6c6cd',  // outline_variant
+};
+
 // ─── Constants (SV-Werte aus salaryCalculations.js importiert) ────────────────
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -267,9 +281,9 @@ function SectionLabel({ children }) {
   );
 }
 
-// Local KpiCard mit free-form `color` (unter den 6 Brand-Farben gemappt
-// auf das Theme würde detail verlieren). Akzentstreifen links.
-function KpiCard({ label, value, sub, color = '#7c3aed' }) {
+// Local KpiCard mit free-form `color` — Callers übergeben Farbwerte
+// aus der CHART-Konstanten (Fiscal Gallery Palette). Default: navy.
+function KpiCard({ label, value, sub, color = CHART.neutral }) {
   return (
     <Box sx={(theme) => ({
       backgroundColor: 'background.paper',
@@ -341,10 +355,10 @@ function PkvLineChart({ data, mode, showInflation, inflationRate, isDark }) {
   // Nur anzeigen, wenn überhaupt Rückerstattungen eingetragen sind
   const hasBrk = chartData.some((d) => d.brk > 0);
 
-  const colorBrutto = '#e8b84b'; // Gold — Gesamtbeitrag
-  const colorEigen  = '#10b981'; // Grün — Eigenanteil
-  const colorBrk    = '#5b8dee'; // Blau — Beitragsrückerstattung (konsistent mit BRK-KpiCard)
-  const sub         = isDark ? '#a5a0c8' : '#6d6a8a';
+  const colorBrutto = CHART.warning; // Gold — Gesamtbeitrag
+  const colorEigen  = CHART.positive; // Grün — Eigenanteil
+  const colorBrk    = CHART.neutral; // Blau — Beitragsrückerstattung (konsistent mit BRK-KpiCard)
+  const sub         = isDark ? CHART.muted : CHART.muted;
   const tickFormat  = (v) => mode === 'cumulative' ? (v / 1000).toFixed(0) + 'k €' : v + ' €';
   const seriesLabel = (k) => k === 'brutto' ? 'Gesamtbeitrag' : k === 'eigen' ? 'Eigenanteil' : 'Beitragsrückerstattung';
 
@@ -357,7 +371,7 @@ function PkvLineChart({ data, mode, showInflation, inflationRate, isDark }) {
           <YAxis tick={{ fill: sub, fontSize: 10 }} tickFormatter={tickFormat} />
           <RechartTooltip
             formatter={(v, k) => [fmt(v, 2), seriesLabel(k)]}
-            contentStyle={{ background: isDark ? '#1a1744' : '#fff', border: `1px solid ${isDark ? '#2d2a5e' : '#e8e4f8'}`, borderRadius: 8, fontSize: 12 }}
+            contentStyle={{ background: '#ffffff', border: `1px solid ${'#c6c6cd'}`, borderRadius: 8, fontSize: 12 }}
           />
           <Legend formatter={seriesLabel} wrapperStyle={{ fontSize: 11, paddingTop: 4, color: sub }} iconType="circle" iconSize={8} />
           <Line type="monotone" dataKey="brutto" stroke={colorBrutto} strokeWidth={2} dot={false} />
@@ -371,7 +385,7 @@ function PkvLineChart({ data, mode, showInflation, inflationRate, isDark }) {
           <YAxis tick={{ fill: sub, fontSize: 10 }} tickFormatter={tickFormat} />
           <RechartTooltip
             formatter={(v, k) => [fmt(v, 2), seriesLabel(k)]}
-            contentStyle={{ background: isDark ? '#1a1744' : '#fff', border: `1px solid ${isDark ? '#2d2a5e' : '#e8e4f8'}`, borderRadius: 8, fontSize: 12 }}
+            contentStyle={{ background: '#ffffff', border: `1px solid ${'#c6c6cd'}`, borderRadius: 8, fontSize: 12 }}
             cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
           />
           <Legend formatter={seriesLabel} wrapperStyle={{ fontSize: 11, paddingTop: 4, color: sub }} iconType="square" iconSize={10} />
@@ -867,18 +881,18 @@ export default function PkvCalculatorPage({ isDark = false }) {
           {pkv.senkungen.map((s) => (
             <div key={s.id} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
               <input value={s.name} onChange={(e) => updateSenkung(s.id, 'name', e.target.value)}
-                style={{ flex: 1, minWidth: 80, padding: '4px 8px', borderRadius: 6, border: `1px solid ${bdr}`, background: isDark ? '#0f0d2e' : '#fff', color: text, fontSize: '0.78rem' }}
+                style={{ flex: 1, minWidth: 80, padding: '4px 8px', borderRadius: 6, border: `1px solid ${bdr}`, background: '#ffffff', color: text, fontSize: '0.78rem' }}
               />
               <span style={{ color: muted, fontSize: '0.72rem' }}>ab</span>
               <input type="number" value={s.fromAge} min={18} max={110} onChange={(e) => updateSenkung(s.id, 'fromAge', parseInt(e.target.value) || 65)}
-                style={{ width: 44, padding: '4px 6px', borderRadius: 6, border: `1px solid ${bdr}`, background: isDark ? '#0f0d2e' : '#fff', color: text, fontSize: '0.78rem', textAlign: 'right' }}
+                style={{ width: 44, padding: '4px 6px', borderRadius: 6, border: `1px solid ${bdr}`, background: '#ffffff', color: text, fontSize: '0.78rem', textAlign: 'right' }}
               />
               <span style={{ color: muted, fontSize: '0.72rem' }}>J →</span>
               <input type="number" value={s.amount} min={0} step={0.01} onChange={(e) => updateSenkung(s.id, 'amount', parseFloat(e.target.value) || 0)}
-                style={{ width: 60, padding: '4px 6px', borderRadius: 6, border: `1px solid ${bdr}`, background: isDark ? '#0f0d2e' : '#fff', color: text, fontSize: '0.78rem', textAlign: 'right' }}
+                style={{ width: 60, padding: '4px 6px', borderRadius: 6, border: `1px solid ${bdr}`, background: '#ffffff', color: text, fontSize: '0.78rem', textAlign: 'right' }}
               />
               <span style={{ color: muted, fontSize: '0.72rem' }}>€</span>
-              <button onClick={() => removeSenkung(s.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem' }}>✕</button>
+              <button onClick={() => removeSenkung(s.id)} style={{ background: 'transparent', border: 'none', color: CHART.negative, cursor: 'pointer', fontSize: '0.8rem' }}>✕</button>
             </div>
           ))}
           <button onClick={addSenkung}
@@ -897,7 +911,7 @@ export default function PkvCalculatorPage({ isDark = false }) {
           <div style={{ marginBottom: 12 }}>
             <label style={{ color: muted, fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Erwartete monatl. Bruttorente (€)</label>
             <input type="number" value={pkv.rzRente} min={0} step={10} onChange={(e) => updatePkv({ rzRente: parseFloat(e.target.value) || 0 })}
-              style={{ width: '100%', padding: '6px 10px', borderRadius: 8, border: `1px solid ${bdr}`, background: isDark ? '#0f0d2e' : '#f8f7ff', color: text, fontSize: '0.82rem', boxSizing: 'border-box' }} />
+              style={{ width: '100%', padding: '6px 10px', borderRadius: 8, border: `1px solid ${bdr}`, background: '#f8f9ff', color: text, fontSize: '0.82rem', boxSizing: 'border-box' }} />
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', color: text, cursor: 'pointer' }}>
             <input type="checkbox" checked={pkv.rzActive} onChange={(e) => updatePkv({ rzActive: e.target.checked })} />
@@ -944,7 +958,7 @@ export default function PkvCalculatorPage({ isDark = false }) {
       .filter(({ t }) => t.dropAtAge === null || t.dropAtAge === undefined || d.age < t.dropAtAge);
     const droppedCount = yo.length - visibleTarife.length;
 
-    const inpSt = { padding: '4px 8px', borderRadius: 6, border: `1px solid ${bdr}`, background: isDark ? '#0f0d2e' : '#fff', color: text, fontSize: '0.78rem', fontFamily: 'monospace' };
+    const inpSt = { padding: '4px 8px', borderRadius: 6, border: `1px solid ${bdr}`, background: '#ffffff', color: text, fontSize: '0.78rem', fontFamily: 'monospace' };
     const chkSt = { accentColor: accent, width: 13, height: 13 };
     const lblSt = { color: muted, fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.05em' };
 
@@ -974,7 +988,7 @@ export default function PkvCalculatorPage({ isDark = false }) {
                   Tarife {d.year}
                 </span>
                 {hasOverride && (
-                  <span style={{ fontSize: '0.62rem', padding: '2px 6px', borderRadius: 4, background: 'rgba(245,158,11,0.15)', color: '#f59e0b', fontWeight: 700 }}>
+                  <span style={{ fontSize: '0.62rem', padding: '2px 6px', borderRadius: 4, background: 'rgba(245,158,11,0.15)', color: CHART.warning, fontWeight: 700 }}>
                     MANUELL
                   </span>
                 )}
@@ -1010,7 +1024,7 @@ export default function PkvCalculatorPage({ isDark = false }) {
                     <input type="checkbox" checked={!!t.gz} onChange={(e) => updateTarif(origIdx, 'gz', e.target.checked)} style={chkSt} title="Gesetzlicher Zuschlag 10%" />
                   </div>
                   <button onClick={() => removeTarif(origIdx)} title="Tarif entfernen"
-                    style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'rgba(239,68,68,0.1)', color: '#ef4444', cursor: visibleTarife.length > 1 ? 'pointer' : 'not-allowed', fontSize: '0.82rem', opacity: visibleTarife.length > 1 ? 1 : 0.3 }}>
+                    style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'rgba(239,68,68,0.1)', color: CHART.negative, cursor: visibleTarife.length > 1 ? 'pointer' : 'not-allowed', fontSize: '0.82rem', opacity: visibleTarife.length > 1 ? 1 : 0.3 }}>
                     ×
                   </button>
                 </div>
@@ -1088,12 +1102,12 @@ export default function PkvCalculatorPage({ isDark = false }) {
                   label={pkv.employmentStatus === 'angestellt' && kpis.first?.agZuschuss > 0 ? `Mtl. Netto-Aufwand AN ${kpis.first?.year}` : `Mtl. Beitrag ${kpis.first?.year}`}
                   value={pkv.employmentStatus === 'angestellt' && kpis.first?.agZuschuss > 0 ? fmt(kpis.first?.nettoMonthly, 2) : fmt(kpis.first?.monthly, 2)}
                   sub={pkv.employmentStatus === 'angestellt' && kpis.first?.agZuschuss > 0 ? `Brutto: ${fmt(kpis.first?.monthly, 2)}` : `davon GZ: ${fmt(kpis.first?.gz, 2)}`}
-                  color="#e8b84b" isDark={isDark}
+                  color={CHART.warning} isDark={isDark}
                 />
-                <KpiCard label="Gesamtkosten Lebenszeit" value={fmt(kpis.last?.cumulative, 0)} sub={`${pkvData.length} Jahre`} color="#5b8dee" isDark={isDark} />
-                <KpiCard label="BRK kumuliert" value={kpis.totalBrk > 0 ? fmt(kpis.totalBrk, 0) : '—'} sub={kpis.brkCount > 0 ? `${kpis.brkCount} Jahre mit BRK` : 'Noch keine eingetragen'} color="#5b8dee" isDark={isDark} />
-                <KpiCard label="Beitrag bei Renteneintritt" value={fmt(kpis.renteD?.monthly, 2)} sub={`ab Alter ${pkv.rzFromAge} (${kpis.renteD?.year})`} color="#e8b84b" isDark={isDark} />
-                <KpiCard label="Beitragsanstieg gesamt" value={(kpis.anstieg >= 0 ? '+' : '') + (kpis.anstieg?.toFixed(0) ?? '—') + ' %'} sub={`${fmt(kpis.first?.monthly, 2)} → ${fmt(kpis.last?.monthly, 2)}`} color="#ef4444" isDark={isDark} />
+                <KpiCard label="Gesamtkosten Lebenszeit" value={fmt(kpis.last?.cumulative, 0)} sub={`${pkvData.length} Jahre`} color={CHART.neutral} isDark={isDark} />
+                <KpiCard label="BRK kumuliert" value={kpis.totalBrk > 0 ? fmt(kpis.totalBrk, 0) : '—'} sub={kpis.brkCount > 0 ? `${kpis.brkCount} Jahre mit BRK` : 'Noch keine eingetragen'} color={CHART.neutral} isDark={isDark} />
+                <KpiCard label="Beitrag bei Renteneintritt" value={fmt(kpis.renteD?.monthly, 2)} sub={`ab Alter ${pkv.rzFromAge} (${kpis.renteD?.year})`} color={CHART.warning} isDark={isDark} />
+                <KpiCard label="Beitragsanstieg gesamt" value={(kpis.anstieg >= 0 ? '+' : '') + (kpis.anstieg?.toFixed(0) ?? '—') + ' %'} sub={`${fmt(kpis.first?.monthly, 2)} → ${fmt(kpis.last?.monthly, 2)}`} color={CHART.negative} isDark={isDark} />
               </Box>
             )}
 
@@ -1152,36 +1166,36 @@ export default function PkvCalculatorPage({ isDark = false }) {
                         >
                           <td style={{ padding: '8px 12px', color: text, fontWeight: d.isCurrent ? 700 : 400 }}>
                             {d.year}
-                            {d.isCurrent && <span style={{ marginLeft: 6, fontSize: '0.62rem', background: 'rgba(91,141,238,0.18)', color: '#5b8dee', borderRadius: 4, padding: '1px 5px', fontFamily: 'sans-serif' }}>JETZT</span>}
+                            {d.isCurrent && <span style={{ marginLeft: 6, fontSize: '0.62rem', background: 'rgba(91,141,238,0.18)', color: CHART.neutral, borderRadius: 4, padding: '1px 5px', fontFamily: 'sans-serif' }}>JETZT</span>}
                             {d.isFuture && !d.isCurrent && <span style={{ marginLeft: 6, fontSize: '0.62rem', background: 'rgba(167,139,250,0.12)', color: accent, borderRadius: 4, padding: '1px 5px', fontFamily: 'sans-serif' }}>PROG</span>}
-                            {d.hasYearOverride && <span style={{ marginLeft: 6, fontSize: '0.62rem', background: 'rgba(245,158,11,0.15)', color: '#f59e0b', borderRadius: 4, padding: '1px 5px', fontFamily: 'sans-serif' }} title="Manuelle Tarifanpassung">✎</span>}
+                            {d.hasYearOverride && <span style={{ marginLeft: 6, fontSize: '0.62rem', background: 'rgba(245,158,11,0.15)', color: CHART.warning, borderRadius: 4, padding: '1px 5px', fontFamily: 'sans-serif' }} title="Manuelle Tarifanpassung">✎</span>}
                           </td>
                           <td style={{ padding: '8px 12px', color: sub }}>{d.age}</td>
-                          <MuiTooltip arrow placement="top" slotProps={{ tooltip: { sx: { maxWidth: 320, bgcolor: isDark ? '#1c2030' : '#fff', color: isDark ? '#ede9fe' : '#1e1b4b', border: `1px solid ${isDark ? '#2d2a5e' : '#e8e4f8'}`, borderRadius: '10px', p: '10px 14px', fontSize: '0.75rem', fontFamily: 'monospace', boxShadow: '0 4px 20px rgba(0,0,0,0.25)' } } }} title={
+                          <MuiTooltip arrow placement="top" slotProps={{ tooltip: { sx: { maxWidth: 320, bgcolor: '#ffffff', color: '#0b1c30', border: `1px solid ${'#c6c6cd'}`, borderRadius: '10px', p: '10px 14px', fontSize: '0.75rem', fontFamily: 'monospace', boxShadow: '0 4px 20px rgba(0,0,0,0.25)' } } }} title={
                             <div>
                               <div style={{ fontWeight: 700, fontSize: '0.82rem', marginBottom: 2, fontFamily: 'sans-serif' }}>Mtl. Gesamtbeitrag (Brutto)</div>
-                              <div style={{ color: isDark ? '#a5a0c8' : '#6d6a8a', fontSize: '0.7rem', marginBottom: 8, fontFamily: 'sans-serif' }}>Voller Tarifbeitrag vor allen Subventionen</div>
+                              <div style={{ color: isDark ? CHART.muted : CHART.muted, fontSize: '0.7rem', marginBottom: 8, fontFamily: 'sans-serif' }}>Voller Tarifbeitrag vor allen Subventionen</div>
                               {d.breakdown.map((b, i) => (
                                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '2px 0' }}>
                                   <span>{b.name}</span><span>{fmt(b.amount, 2)}</span>
                                 </div>
                               ))}
                               {d.gzActive && d.gzTotalBd > 0 && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '2px 0', color: '#e8b84b' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '2px 0', color: CHART.warning }}>
                                   <span>GZ (10%)</span><span>+{fmt(d.gzTotalBd, 2)}</span>
                                 </div>
                               )}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '4px 0 0', borderTop: `1px solid ${isDark ? '#2d2a5e' : '#e8e4f8'}`, marginTop: 4, fontWeight: 700 }}>
-                                <span>Gesamtbeitrag</span><span style={{ color: '#e8b84b' }}>{fmt(d.gesamtbeitragMtl, 2)}</span>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '4px 0 0', borderTop: `1px solid ${'#c6c6cd'}`, marginTop: 4, fontWeight: 700 }}>
+                                <span>Gesamtbeitrag</span><span style={{ color: CHART.warning }}>{fmt(d.gesamtbeitragMtl, 2)}</span>
                               </div>
                             </div>
                           }>
-                            <td style={{ padding: '8px 12px', color: '#e8b84b', fontWeight: 600, cursor: 'help' }}>{fmt(d.gesamtbeitragMtl, 2)}</td>
+                            <td style={{ padding: '8px 12px', color: CHART.warning, fontWeight: 600, cursor: 'help' }}>{fmt(d.gesamtbeitragMtl, 2)}</td>
                           </MuiTooltip>
-                          <MuiTooltip arrow placement="top" slotProps={{ tooltip: { sx: { maxWidth: 320, bgcolor: isDark ? '#1c2030' : '#fff', color: isDark ? '#ede9fe' : '#1e1b4b', border: `1px solid ${isDark ? '#2d2a5e' : '#e8e4f8'}`, borderRadius: '10px', p: '10px 14px', fontSize: '0.75rem', fontFamily: 'monospace', boxShadow: '0 4px 20px rgba(0,0,0,0.25)' } } }} title={
+                          <MuiTooltip arrow placement="top" slotProps={{ tooltip: { sx: { maxWidth: 320, bgcolor: '#ffffff', color: '#0b1c30', border: `1px solid ${'#c6c6cd'}`, borderRadius: '10px', p: '10px 14px', fontSize: '0.75rem', fontFamily: 'monospace', boxShadow: '0 4px 20px rgba(0,0,0,0.25)' } } }} title={
                             <div>
                               <div style={{ fontWeight: 700, fontSize: '0.82rem', marginBottom: 2, fontFamily: 'sans-serif' }}>Mtl. Eigenanteil (Cashflow)</div>
-                              <div style={{ color: isDark ? '#a5a0c8' : '#6d6a8a', fontSize: '0.7rem', marginBottom: 8, fontFamily: 'sans-serif' }}>
+                              <div style={{ color: isDark ? CHART.muted : CHART.muted, fontSize: '0.7rem', marginBottom: 8, fontFamily: 'sans-serif' }}>
                                 {d.agZuschuss > 0 ? 'Arbeitsphase: Gesamtbeitrag minus AG-Zuschuss'
                                  : d.rzBd > 0    ? 'Rentenphase: Gesamtbeitrag minus KVdR-Zuschuss'
                                  :                  'Kein Zuschuss (Selbstständig)'}
@@ -1190,31 +1204,31 @@ export default function PkvCalculatorPage({ isDark = false }) {
                                 <span>Gesamtbeitrag</span><span>{fmt(d.gesamtbeitragMtl, 2)}</span>
                               </div>
                               {d.agZuschuss > 0 && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '2px 0', color: '#10b981' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '2px 0', color: CHART.positive }}>
                                   <span>AG-Zuschuss (§ 257 SGB V)</span><span>-{fmt(d.agZuschuss, 2)}</span>
                                 </div>
                               )}
                               {d.rzBd > 0 && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '2px 0', color: '#10b981' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '2px 0', color: CHART.positive }}>
                                   <span>KVdR-Zuschuss (§ 106 SGB VI)</span><span>-{fmt(d.rzBd, 2)}</span>
                                 </div>
                               )}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '4px 0 0', borderTop: `1px solid ${isDark ? '#2d2a5e' : '#e8e4f8'}`, marginTop: 4, fontWeight: 700, color: '#10b981' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '4px 0 0', borderTop: `1px solid ${'#c6c6cd'}`, marginTop: 4, fontWeight: 700, color: CHART.positive }}>
                                 <span>Eigenanteil</span><span>{fmt(d.eigenanteilMtl, 2)}</span>
                               </div>
                             </div>
                           }>
-                            <td style={{ padding: '8px 12px', color: (d.agZuschuss > 0 || d.rzBd > 0) ? '#10b981' : text, fontWeight: 600, cursor: 'help' }}>
+                            <td style={{ padding: '8px 12px', color: (d.agZuschuss > 0 || d.rzBd > 0) ? CHART.positive : text, fontWeight: 600, cursor: 'help' }}>
                               {fmt(d.eigenanteilMtl, 2)}
-                              {d.agZuschuss > 0 && <span style={{ fontSize: '0.65rem', color: '#10b981', marginLeft: 4 }}>AN</span>}
-                              {d.rzBd > 0      && <span style={{ fontSize: '0.65rem', color: '#10b981', marginLeft: 4 }}>Rente</span>}
+                              {d.agZuschuss > 0 && <span style={{ fontSize: '0.65rem', color: CHART.positive, marginLeft: 4 }}>AN</span>}
+                              {d.rzBd > 0      && <span style={{ fontSize: '0.65rem', color: CHART.positive, marginLeft: 4 }}>Rente</span>}
                             </td>
                           </MuiTooltip>
-                          <MuiTooltip arrow placement="top" slotProps={{ tooltip: { sx: { maxWidth: 280, bgcolor: isDark ? '#1c2030' : '#fff', color: isDark ? '#ede9fe' : '#1e1b4b', border: `1px solid ${isDark ? '#2d2a5e' : '#e8e4f8'}`, borderRadius: '10px', p: '10px 14px', fontSize: '0.75rem', fontFamily: 'monospace', boxShadow: '0 4px 20px rgba(0,0,0,0.25)' } } }} title={
+                          <MuiTooltip arrow placement="top" slotProps={{ tooltip: { sx: { maxWidth: 280, bgcolor: '#ffffff', color: '#0b1c30', border: `1px solid ${'#c6c6cd'}`, borderRadius: '10px', p: '10px 14px', fontSize: '0.75rem', fontFamily: 'monospace', boxShadow: '0 4px 20px rgba(0,0,0,0.25)' } } }} title={
                             d.freeMonthsVal > 0 ? (
                               <div style={{ fontFamily: 'sans-serif' }}>
                                 <div style={{ fontWeight: 700, marginBottom: 4 }}>{d.freeMonthsVal} beitragsfreie Monate</div>
-                                <div style={{ color: isDark ? '#a5a0c8' : '#6d6a8a', fontSize: '0.75rem' }}>
+                                <div style={{ color: isDark ? CHART.muted : CHART.muted, fontSize: '0.75rem' }}>
                                   {fmt(d.gesamtbeitragMtl, 2)} x {d.monthsInYear} Monate
                                 </div>
                               </div>
@@ -1224,11 +1238,11 @@ export default function PkvCalculatorPage({ isDark = false }) {
                           }>
                             <td style={{ padding: '8px 12px', color: text, cursor: 'help' }}>{fmt(d.annual, 2)}</td>
                           </MuiTooltip>
-                          <td style={{ padding: '8px 12px', color: d.changePct === null ? sub : d.changePct > 0 ? '#ef4444' : '#10b981' }}>
+                          <td style={{ padding: '8px 12px', color: d.changePct === null ? sub : d.changePct > 0 ? CHART.negative : CHART.positive }}>
                             {fmtPct(d.changePct)}
                           </td>
-                          <td style={{ padding: '8px 12px', color: d.brkYear > 0 ? '#10b981' : muted }}>{d.brkYear > 0 ? fmt(d.brkYear, 2) : '—'}</td>
-                          <td style={{ padding: '8px 12px', color: d.gzActive ? '#e8b84b' : muted }}>{d.gzActive ? fmt(d.gz, 2) : 'entfallen'}</td>
+                          <td style={{ padding: '8px 12px', color: d.brkYear > 0 ? CHART.positive : muted }}>{d.brkYear > 0 ? fmt(d.brkYear, 2) : '—'}</td>
+                          <td style={{ padding: '8px 12px', color: d.gzActive ? CHART.warning : muted }}>{d.gzActive ? fmt(d.gz, 2) : 'entfallen'}</td>
                           <td style={{ padding: '8px 12px', color: muted }}>{fmt(d.cumulative, 0)}</td>
                         </tr>
                         {expandedYear === d.year && YearExpandPanel({ d })}
@@ -1290,7 +1304,7 @@ export default function PkvCalculatorPage({ isDark = false }) {
                   <div style={{ background: card, border: `1px solid ${bdr}`, borderRadius: 12, padding: 16 }}>
                     <div style={{ color: text, fontWeight: 700, fontSize: '0.85rem', marginBottom: 14 }}>PKV vs. GKV · Aktueller Vergleich</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 12 }}>
-                      {[['PKV brutto', fmt(pkvMonthly, 2), '#e8b84b'], ['AG-Zuschuss', fmt(agZ, 2), '#10b981'], ['PKV netto (AN)', fmt(pkvNetto, 2), '#e8b84b']].map(([l, v, c]) => (
+                      {[['PKV brutto', fmt(pkvMonthly, 2), CHART.warning], ['AG-Zuschuss', fmt(agZ, 2), CHART.positive], ['PKV netto (AN)', fmt(pkvNetto, 2), CHART.warning]].map(([l, v, c]) => (
                         <div key={l}>
                           <div style={{ fontSize: '0.65rem', color: muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{l}</div>
                           <div style={{ fontSize: '1.1rem', color: c, fontWeight: 700, fontFamily: 'monospace', marginTop: 4 }}>{v}</div>
@@ -1300,14 +1314,14 @@ export default function PkvCalculatorPage({ isDark = false }) {
                     <div style={{ borderTop: `1px solid ${bdr}`, paddingTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                       <div>
                         <div style={{ fontSize: '0.65rem', color: muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>GKV mtl. (AN)</div>
-                        <div style={{ fontSize: '1.1rem', color: '#5b8dee', fontWeight: 700, fontFamily: 'monospace', marginTop: 4 }}>{fmt(gkvAN, 2)}</div>
+                        <div style={{ fontSize: '1.1rem', color: CHART.neutral, fontWeight: 700, fontFamily: 'monospace', marginTop: 4 }}>{fmt(gkvAN, 2)}</div>
                         <div style={{ fontSize: '0.68rem', color: muted }}>KV {fmt(kvGkv, 2)} + PV {fmt(pvGkv, 2)}</div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center' }}>
                         <div style={{
                           width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: '0.78rem', fontFamily: 'monospace', fontWeight: 600,
                           background: Math.abs(diff) < 1 ? 'rgba(255,255,255,0.04)' : diff < 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.08)',
-                          color: Math.abs(diff) < 1 ? muted : diff < 0 ? '#10b981' : '#ef4444',
+                          color: Math.abs(diff) < 1 ? muted : diff < 0 ? CHART.positive : CHART.negative,
                         }}>
                           {Math.abs(diff) < 1 ? '≈ Gleichauf' : diff < 0 ? `PKV günstiger um ${fmt(Math.abs(diff), 2)}/Monat` : `GKV günstiger um ${fmt(diff, 2)}/Monat`}
                         </div>
@@ -1316,7 +1330,7 @@ export default function PkvCalculatorPage({ isDark = false }) {
                   </div>
                   <div style={{ background: card, border: `1px solid ${bdr}`, borderRadius: 12, padding: 16 }}>
                     <div style={{ color: text, fontWeight: 700, fontSize: '0.85rem', marginBottom: 10 }}>Break-even · Ab welchem Bruttogehalt ist PKV günstiger?</div>
-                    <div style={{ fontSize: '1.4rem', color: '#e8b84b', fontWeight: 700, fontFamily: 'monospace', marginBottom: 6 }}>
+                    <div style={{ fontSize: '1.4rem', color: CHART.warning, fontWeight: 700, fontFamily: 'monospace', marginBottom: 6 }}>
                       {beRaw <= GKV_BBG_KV ? fmt(beRaw, 0) + '/Monat' : '> BBG'}
                     </div>
                     <div style={{ fontSize: '0.72rem', color: muted, lineHeight: 1.6 }}>
@@ -1342,11 +1356,11 @@ export default function PkvCalculatorPage({ isDark = false }) {
                     <YAxis tick={{ fill: sub, fontSize: 10 }} tickFormatter={(v) => (v / 1000).toFixed(0) + 'k €'} />
                     <RechartTooltip
                       formatter={(v, name) => [fmt(v, 0), name]}
-                      contentStyle={{ background: isDark ? '#1a1744' : '#fff', border: `1px solid ${bdr}`, borderRadius: 8, fontSize: 12 }}
+                      contentStyle={{ background: '#ffffff', border: `1px solid ${bdr}`, borderRadius: 8, fontSize: 12 }}
                     />
                     <Legend wrapperStyle={{ fontSize: '0.72rem', color: sub }} />
-                    <Line type="monotone" dataKey="gkvCum" name="GKV kumuliert (AN)" stroke="#5b8dee" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="pkvCum" name="PKV kumuliert (netto)" stroke="#e8b84b" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="gkvCum" name="GKV kumuliert (AN)" stroke={CHART.neutral} strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="pkvCum" name="PKV kumuliert (netto)" stroke={CHART.warning} strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -1371,17 +1385,17 @@ export default function PkvCalculatorPage({ isDark = false }) {
                       const diff = r.pkvNetto - r.gkvMo;
                       return (
                         <tr key={r.year} style={{ borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`, background: r.isCurrent ? (isDark ? 'rgba(91,141,238,0.06)' : 'rgba(91,141,238,0.04)') : 'transparent' }}>
-                          <td style={{ padding: '8px 12px', color: text }}>{r.year}{r.isCurrent && <span style={{ marginLeft: 5, fontSize: '0.62rem', background: 'rgba(91,141,238,0.15)', color: '#5b8dee', borderRadius: 4, padding: '1px 4px' }}>JETZT</span>}</td>
+                          <td style={{ padding: '8px 12px', color: text }}>{r.year}{r.isCurrent && <span style={{ marginLeft: 5, fontSize: '0.62rem', background: 'rgba(91,141,238,0.15)', color: CHART.neutral, borderRadius: 4, padding: '1px 4px' }}>JETZT</span>}</td>
                           <td style={{ padding: '8px 12px', color: sub }}>{r.age}</td>
                           <td style={{ padding: '8px 12px', color: text }}>{r.brutto.toLocaleString('de-DE', { maximumFractionDigits: 0 })} €</td>
-                          <td style={{ padding: '8px 12px', color: '#5b8dee' }}>{fmt(r.gkvMo, 2)}</td>
-                          <td style={{ padding: '8px 12px', color: '#e8b84b' }}>{fmt(r.pkvBrutto, 2)}</td>
-                          <td style={{ padding: '8px 12px', color: '#10b981' }}>−{fmt(r.agMo, 2)}</td>
-                          <td style={{ padding: '8px 12px', color: '#e8b84b', fontWeight: 600 }}>{fmt(r.pkvNetto, 2)}</td>
-                          <td style={{ padding: '8px 12px', color: diff < 0 ? '#10b981' : '#ef4444' }}>{(diff >= 0 ? '+' : '') + fmt(diff, 2)}</td>
+                          <td style={{ padding: '8px 12px', color: CHART.neutral }}>{fmt(r.gkvMo, 2)}</td>
+                          <td style={{ padding: '8px 12px', color: CHART.warning }}>{fmt(r.pkvBrutto, 2)}</td>
+                          <td style={{ padding: '8px 12px', color: CHART.positive }}>−{fmt(r.agMo, 2)}</td>
+                          <td style={{ padding: '8px 12px', color: CHART.warning, fontWeight: 600 }}>{fmt(r.pkvNetto, 2)}</td>
+                          <td style={{ padding: '8px 12px', color: diff < 0 ? CHART.positive : CHART.negative }}>{(diff >= 0 ? '+' : '') + fmt(diff, 2)}</td>
                           <td style={{ padding: '8px 12px', color: muted }}>{fmt(r.gkvCum, 0)}</td>
                           <td style={{ padding: '8px 12px', color: muted }}>{fmt(r.pkvCum, 0)}</td>
-                          <td style={{ padding: '8px 12px', color: r.vorteil > 0 ? '#10b981' : '#ef4444', fontWeight: 600 }}>
+                          <td style={{ padding: '8px 12px', color: r.vorteil > 0 ? CHART.positive : CHART.negative, fontWeight: 600 }}>
                             {r.vorteil > 0 ? `PKV +${r.vorteil.toLocaleString('de-DE', { maximumFractionDigits: 0 })} €` : `GKV +${Math.abs(r.vorteil).toLocaleString('de-DE', { maximumFractionDigits: 0 })} €`}
                           </td>
                         </tr>

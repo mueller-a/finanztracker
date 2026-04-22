@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import {
-  Box, Stack, Typography, Button, Alert, CircularProgress, Divider, Paper,
+  Box, Stack, Typography, Button, Alert, CircularProgress, Paper,
 } from '@mui/material';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import { useAuth } from '../context/AuthContext';
 
-// Google "G" logo SVG
+// Google "G" logo — official brand mark (these are Google's fixed brand
+// colors, not UI chrome, so they're allowed to stay as literal hex values.)
 function GoogleLogo() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
@@ -35,117 +36,150 @@ export default function LoginPage() {
   return (
     <Box sx={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0f0d2e 0%, #1a1744 50%, #0f0d2e 100%)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      p: 3,
-      position: 'relative',
-      overflow: 'hidden',
+      bgcolor: 'background.default',    // surface = offwhite
+      display: 'grid',
+      gridTemplateColumns: { xs: '1fr', md: '7fr 5fr' },
     }}>
-      {/* Background decoration */}
-      <Box sx={{ position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-        <Box sx={{
-          position: 'absolute', top: '-10%', right: '-5%', width: 400, height: 400,
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 70%)',
-        }} />
-        <Box sx={{
-          position: 'absolute', bottom: '-5%', left: '-5%', width: 500, height: 500,
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(167,139,250,0.1) 0%, transparent 70%)',
-        }} />
-      </Box>
-
-      <Paper
-        elevation={24}
-        sx={{
-          background: 'rgba(26,23,68,0.85)',
-          backdropFilter: 'blur(20px)',
-          border: '1px solid rgba(124,58,237,0.25)',
-          borderRadius: 4,
-          p: '3rem 2.5rem',
-          width: '100%',
-          maxWidth: 400,
-          position: 'relative',
-        }}
-      >
-        {/* Logo */}
-        <Stack alignItems="center" spacing={1.5} sx={{ mb: 4 }}>
-          <Box sx={{
-            width: 56, height: 56, borderRadius: 1,
-            background: 'linear-gradient(135deg, #7c3aed, #a78bfa)',
+      {/* ── LEFT: Editorial Navy Hero ── */}
+      <Paper sx={(t) => ({
+        position: 'relative',
+        overflow: 'hidden',
+        bgcolor: 'primary.dark',           // #000 (Fiscal Gallery primary)
+        color: 'primary.contrastText',
+        borderRadius: 0,
+        display: { xs: 'none', md: 'flex' },
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        p: { md: 8, lg: 10 },
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          inset: 0,
+          background: `linear-gradient(135deg, ${t.palette.primary.dark} 0%, ${t.palette.primary.main} 100%)`,
+          opacity: 0.6,
+          pointerEvents: 'none',
+        },
+      })}>
+        {/* Brand lockup */}
+        <Stack direction="row" alignItems="center" spacing={2} sx={{ position: 'relative', zIndex: 1 }}>
+          <Paper sx={{
+            width: 48, height: 48, borderRadius: 2,
+            bgcolor: 'primary.main',       // darker navy inside the lighter navy
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 8px 24px rgba(124,58,237,0.4)',
           }}>
-            <ShieldOutlinedIcon sx={{ fontSize: 28, color: '#fff' }} />
+            <ShieldOutlinedIcon sx={{ fontSize: 24, color: 'primary.contrastText' }} />
+          </Paper>
+          <Box>
+            <Typography sx={{
+              fontFamily: 'headline', fontWeight: 800, fontSize: '1.25rem',
+              letterSpacing: '-0.01em',
+            }}>
+              Finanztracker
+            </Typography>
+            <Typography variant="overline" sx={{ color: 'primary.light', fontSize: '0.625rem' }}>
+              The Fiscal Gallery
+            </Typography>
           </Box>
-          <Typography variant="h5" sx={{
-            color: '#ede9fe', fontWeight: 800, letterSpacing: '-0.02em',
-          }}>
-            Finanztracker
-          </Typography>
-          <Typography variant="caption" sx={{
-            color: '#6d6a8a', textAlign: 'center', lineHeight: 1.5,
-          }}>
-            Dein persönliches Finanz-Cockpit.<br />
-            Bitte melde dich an, um fortzufahren.
-          </Typography>
         </Stack>
 
-        {/* Divider */}
-        <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2 }}>
-          <Divider sx={{ flex: 1, borderColor: 'rgba(124,58,237,0.2)' }} />
-          <Typography variant="overline" sx={{
-            color: '#6d6a8a', fontWeight: 700, letterSpacing: '0.08em', whiteSpace: 'nowrap',
-          }}>
-            Anmelden mit
+        {/* Editorial headline */}
+        <Box sx={{ position: 'relative', zIndex: 1, maxWidth: 560 }}>
+          <Typography variant="overline" sx={{ color: 'primary.light', display: 'block', mb: 3 }}>
+            Dein persönliches Finanz-Cockpit
           </Typography>
-          <Divider sx={{ flex: 1, borderColor: 'rgba(124,58,237,0.2)' }} />
-        </Stack>
+          <Typography variant="h2" sx={{
+            fontWeight: 900,
+            letterSpacing: '-0.02em',
+            lineHeight: 1.05,
+            mb: 3,
+          }}>
+            Finanzen wie eine Galerie.
+          </Typography>
+          <Typography sx={{
+            fontSize: '1.05rem',
+            lineHeight: 1.7,
+            color: 'primary.light',
+          }}>
+            Keine Spreadsheets mehr. Stattdessen: kuratierte Einblicke,
+            ruhiges Layout und Zahlen, die sich wie ein Finanz-Journal lesen.
+          </Typography>
+        </Box>
 
-        {/* Google button */}
-        <Button
-          fullWidth
-          onClick={handleGoogleLogin}
-          disabled={loading}
-          startIcon={loading ? <CircularProgress size={18} /> : <GoogleLogo />}
-          sx={{
-            py: 1.5,
-            bgcolor: loading ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.97)',
-            color: '#1f2937',
-            border: '1px solid rgba(255,255,255,0.15)',
-            borderRadius: 1,
-            fontSize: '0.925rem',
-            fontWeight: 600,
-            boxShadow: '0 4px 14px rgba(0,0,0,0.3)',
-            '&:hover': {
-              bgcolor: 'rgba(255,255,255,1)',
-              transform: 'translateY(-1px)',
-              boxShadow: '0 6px 18px rgba(0,0,0,0.35)',
-            },
-            '&.Mui-disabled': {
-              bgcolor: 'rgba(255,255,255,0.05)',
-              color: '#6d6a8a',
-            },
-          }}
-        >
-          {loading ? 'Weiterleitung…' : 'Mit Google anmelden'}
-        </Button>
-
-        {error && (
-          <Alert severity="error" variant="outlined" sx={{ mt: 2 }}>
-            {error}
-          </Alert>
-        )}
-
-        {/* Footer */}
-        <Typography variant="caption" sx={{
-          display: 'block', color: '#4c4878', textAlign: 'center', mt: 3, lineHeight: 1.6,
-        }}>
-          Nur für private Nutzung. Deine Daten bleiben in deiner Supabase-Instanz.
+        {/* Footer meta */}
+        <Typography variant="caption" sx={{ color: 'primary.light', position: 'relative', zIndex: 1 }}>
+          Privat gehostet · Deine Daten bleiben in deiner Supabase-Instanz.
         </Typography>
       </Paper>
+
+      {/* ── RIGHT: Login form ── */}
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        p: { xs: 3, sm: 6 },
+      }}>
+        <Stack spacing={4} sx={{ width: '100%', maxWidth: 380 }}>
+          {/* Mobile-only brand */}
+          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ display: { xs: 'flex', md: 'none' } }}>
+            <Paper sx={{
+              width: 40, height: 40, borderRadius: 2,
+              bgcolor: 'primary.dark',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <ShieldOutlinedIcon sx={{ fontSize: 22, color: 'primary.contrastText' }} />
+            </Paper>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>Finanztracker</Typography>
+          </Stack>
+
+          <Box>
+            <Typography variant="overline" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>
+              Willkommen zurück
+            </Typography>
+            <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: '-0.02em', mb: 1 }}>
+              Anmelden
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+              Nutze deinen Google-Account, um fortzufahren.
+            </Typography>
+          </Box>
+
+          <Button
+            fullWidth
+            variant="outlined"
+            color="primary"
+            size="large"
+            onClick={handleGoogleLogin}
+            disabled={loading}
+            startIcon={loading ? <CircularProgress size={18} /> : <GoogleLogo />}
+            sx={{
+              py: 1.75,
+              bgcolor: 'background.paper',     // surface-container-lowest
+              color: 'text.primary',
+              border: 'none',
+              '&:hover': {
+                bgcolor: 'surface.low',
+                border: 'none',
+              },
+            }}
+          >
+            {loading ? 'Weiterleitung…' : 'Mit Google anmelden'}
+          </Button>
+
+          {error && (
+            <Alert severity="error" variant="outlined">{error}</Alert>
+          )}
+
+          {/* Mobile-only footer */}
+          <Typography variant="caption" sx={{
+            display: { xs: 'block', md: 'none' },
+            color: 'text.secondary',
+            textAlign: 'center',
+            lineHeight: 1.6,
+          }}>
+            Privat gehostet · Deine Daten bleiben in deiner Supabase-Instanz.
+          </Typography>
+        </Stack>
+      </Box>
     </Box>
   );
 }
