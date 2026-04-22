@@ -15,17 +15,34 @@ import { PageHeader, SectionCard, DateField } from '../components/mui';
 import { AdminModulesPanel } from './AdminModulesPage';
 
 // ── Module cards config ───────────────────────────────────────────────────────
+// Icons sind Material-Symbols-Outlined-Namen (rendern als Ghost-Box wie der
+// PageHeader). Konsistent mit den Modul-Icons in Sidebar + Overview.
 const MODULE_CARDS = [
-  { key: 'show_budget',          label: 'Budget',                  desc: 'Monatliche Einnahmen & Ausgaben tracken',         icon: '📊' },
-  { key: 'show_salary',          label: 'Gehaltsrechner',          desc: 'Nettolohn, Steuer & SV-Berechnung',               icon: '💶' },
-  { key: 'show_insurance',       label: 'Versicherungen',          desc: 'Versicherungskategorien & Beitragsübersicht',     icon: '🛡️' },
-  { key: 'show_pkv_calc',        label: 'PKV-Rechner',             desc: 'Beitragsprognose & GKV-Vergleich',                icon: '🏥' },
-  { key: 'show_electricity',     label: 'Stromübersicht',          desc: 'Verbrauch, Tarife & Kostenentwicklung',           icon: '⚡' },
-  { key: 'show_debts',           label: 'Verbindlichkeiten',       desc: 'Kredite, Tilgungspläne & Sondertilgung',          icon: '🏦' },
-  { key: 'show_savings',         label: 'Guthaben / Asset-Manager',desc: 'Sparziele, Anleihen, Tagesgeld & ETF-Soft-Link',  icon: '💰' },
-  { key: 'show_retirement_plan', label: 'Ruhestandsplanung',       desc: 'Rentenrechner, DRV, bAV & Depot-Vergleich',       icon: '📈' },
-  { key: 'show_real_estate',     label: 'Immobilien',              desc: 'Portfolio, Tilgungspläne, AfA & Steuervorteil',   icon: '🏠' },
+  { key: 'show_budget',          label: 'Budget',                  desc: 'Monatliche Einnahmen & Ausgaben tracken',         icon: 'account_balance_wallet' },
+  { key: 'show_salary',          label: 'Gehaltsrechner',          desc: 'Nettolohn, Steuer & SV-Berechnung',               icon: 'calculate' },
+  { key: 'show_insurance',       label: 'Versicherungen',          desc: 'Versicherungskategorien & Beitragsübersicht',     icon: 'shield' },
+  { key: 'show_pkv_calc',        label: 'PKV-Rechner',             desc: 'Beitragsprognose & GKV-Vergleich',                icon: 'health_and_safety' },
+  { key: 'show_electricity',     label: 'Stromübersicht',          desc: 'Verbrauch, Tarife & Kostenentwicklung',           icon: 'bolt' },
+  { key: 'show_debts',           label: 'Verbindlichkeiten',       desc: 'Kredite, Tilgungspläne & Sondertilgung',          icon: 'account_balance' },
+  { key: 'show_savings',         label: 'Guthaben / Asset-Manager',desc: 'Sparziele, Anleihen, Tagesgeld & ETF-Soft-Link',  icon: 'savings' },
+  { key: 'show_retirement_plan', label: 'Ruhestandsplanung',       desc: 'Rentenrechner, DRV, bAV & Depot-Vergleich',       icon: 'trending_up' },
+  { key: 'show_real_estate',     label: 'Immobilien',              desc: 'Portfolio, Tilgungspläne, AfA & Steuervorteil',   icon: 'home_work' },
 ];
+
+// Kleine Helper-Komponente für die Ghost-Box-Icons in den Settings-Karten
+function ModuleIcon({ name }) {
+  return (
+    <Box sx={{
+      width: 40, height: 40, borderRadius: '20px',
+      bgcolor: 'surface.highest',
+      color: 'text.primary',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      flexShrink: 0,
+    }}>
+      <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 22 }}>{name}</Box>
+    </Box>
+  );
+}
 
 // ── Module tab ────────────────────────────────────────────────────────────────
 function ModuleTab({ modules, setModule, birthday, setBirthday, isPkv, setIsPkv, steuerSatzAlter, setSteuerSatzAlter }) {
@@ -43,7 +60,7 @@ function ModuleTab({ modules, setModule, birthday, setBirthday, isPkv, setIsPkv,
         </Typography>
         <SectionCard dense>
           <Stack direction="row" alignItems="center" spacing={2}>
-            <Typography sx={{ fontSize: '1.5rem', flexShrink: 0 }}>🎂</Typography>
+            <ModuleIcon name="cake" />
             <Box sx={{ flex: 1 }}>
               <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.75 }}>Geburtsdatum</Typography>
               <Box sx={{ maxWidth: 220 }}>
@@ -74,7 +91,7 @@ function ModuleTab({ modules, setModule, birthday, setBirthday, isPkv, setIsPkv,
         <Stack spacing={1.5}>
           <SectionCard dense>
             <Stack direction="row" alignItems="center" spacing={2}>
-              <Typography sx={{ fontSize: '1.5rem', flexShrink: 0 }}>🏥</Typography>
+              <ModuleIcon name="health_and_safety" />
               <Box sx={{ flex: 1 }}>
                 <Typography variant="body2" sx={{ fontWeight: 700 }}>Krankenversicherung im Alter</Typography>
                 <Typography variant="caption" color="text.secondary">
@@ -94,7 +111,7 @@ function ModuleTab({ modules, setModule, birthday, setBirthday, isPkv, setIsPkv,
           </SectionCard>
           <SectionCard dense>
             <Stack direction="row" alignItems="center" spacing={2}>
-              <Typography sx={{ fontSize: '1.5rem', flexShrink: 0 }}>📊</Typography>
+              <ModuleIcon name="percent" />
               <Box sx={{ flex: 1 }}>
                 <Typography variant="body2" sx={{ fontWeight: 700 }}>Steuersatz im Alter</Typography>
                 <Typography variant="caption" color="text.secondary">
@@ -134,7 +151,7 @@ function ModuleTab({ modules, setModule, birthday, setBirthday, isPkv, setIsPkv,
           {MODULE_CARDS.map(({ key, label, desc, icon }) => (
             <SectionCard key={key} dense sx={{ opacity: modules[key] ? 1 : 0.55, transition: 'opacity 0.2s' }}>
               <Stack direction="row" alignItems="center" spacing={2}>
-                <Typography sx={{ fontSize: '1.5rem', flexShrink: 0 }}>{icon}</Typography>
+                <ModuleIcon name={icon} />
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="body2" sx={{ fontWeight: 700 }}>{label}</Typography>
                   <Typography variant="caption" color="text.secondary">{desc}</Typography>

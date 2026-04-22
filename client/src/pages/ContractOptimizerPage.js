@@ -27,25 +27,28 @@ const URGENCY_CHIP_COLOR = {
 };
 
 // ── Summary card ──────────────────────────────────────────────────────────────
-function SummaryCard({ label, value, sub, accent }) {
+// Tone-Map: positive=emerald, negative=coral, neutral=navy (Fiscal Gallery)
+const TONE_COLOR = {
+  positive: 'secondary.main',
+  negative: 'error.main',
+  neutral:  'primary.dark',
+};
+
+function SummaryCard({ label, value, sub, tone = 'neutral' }) {
+  const colorKey = TONE_COLOR[tone];
   return (
-    <Box sx={(theme) => ({
+    <Box sx={{
       backgroundColor: 'background.paper',
-      borderTop: `1px solid ${theme.palette.divider}`,
-      borderRight: `1px solid ${theme.palette.divider}`,
-      borderBottom: `1px solid ${theme.palette.divider}`,
-      borderLeft: `3px solid ${accent}`,
-      borderRadius: 1,
-      p: '16px 18px',
+      borderRadius: 3,
+      p: '20px 22px',
       height: '100%',
-    })}>
-      <Typography variant="caption" sx={{
-        display: 'block', color: 'text.secondary', fontWeight: 700,
-        textTransform: 'uppercase', letterSpacing: '0.08em', mb: 0.75,
-      }}>
+      borderLeft: 3,
+      borderColor: colorKey,
+    }}>
+      <Typography variant="overline" sx={{ display: 'block', color: 'text.secondary', mb: 0.75 }}>
         {label}
       </Typography>
-      <Typography variant="h6" sx={{ color: accent, fontWeight: 700, lineHeight: 1.2 }}>
+      <Typography variant="h6" sx={{ color: colorKey, fontWeight: 700, lineHeight: 1.2 }}>
         {value}
       </Typography>
       {sub && (
@@ -229,14 +232,14 @@ export default function ContractOptimizerPage() {
         gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(188px, 1fr))' },
         gap: 2, mb: 3,
       }}>
-        <SummaryCard label="Monatskosten gesamt" value={fmtEuro(totalMonthly)} sub="alle Verträge" accent="#0ea5e9" />
+        <SummaryCard label="Monatskosten gesamt" value={fmtEuro(totalMonthly)} sub="alle Verträge" tone="neutral" />
         <SummaryCard
           label="Handlungsbedarf"
           value={needsAction}
           sub={needsAction > 0 ? 'Verträge mit Deadline' : 'Alles im Griff'}
-          accent={needsAction > 0 ? '#ef4444' : '#10b981'}
+          tone={needsAction > 0 ? 'negative' : 'positive'}
         />
-        <SummaryCard label="Bereits gekündigt" value={cancelled} sub={`von ${contracts.length} Verträgen`} accent="#10b981" />
+        <SummaryCard label="Bereits gekündigt" value={cancelled} sub={`von ${contracts.length} Verträgen`} tone="positive" />
       </Box>
 
       {/* Contract list */}

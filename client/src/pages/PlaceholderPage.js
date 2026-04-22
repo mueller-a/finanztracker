@@ -2,31 +2,27 @@ import { Box, Stack, Typography, Chip, Paper } from '@mui/material';
 
 const CONFIG = {
   '/etf': {
-    emoji: '📈',
+    icon: 'trending_up',
     label: 'ETF Rentenrechner',
     desc:  'Berechne, wie sich dein monatlicher Sparplan langfristig entwickelt.',
-    color: '#0ea5e9',
     features: ['Sparplan-Simulator', 'Zinseszins-Rechner', 'Entnahmephase planen', 'Portfolioverteilung'],
   },
   '/strom': {
-    emoji: '⚡',
+    icon: 'bolt',
     label: 'Stromübersicht',
     desc:  'Behalte deinen Energieverbrauch und deine Kosten im Blick.',
-    color: '#f59e0b',
     features: ['Verbrauch pro Monat', 'Kosten-Tracking', 'Anbietervergleich', 'CO₂-Bilanz'],
   },
   '/verbindlichkeiten': {
-    emoji: '💳',
+    icon: 'account_balance',
     label: 'Verbindlichkeiten',
     desc:  'Verwalte Kredite, Ratenkäufe und andere offene Verbindlichkeiten.',
-    color: '#f43f5e',
     features: ['Kreditübersicht', 'Tilgungsplan', 'Zinskosten-Analyse', 'Schuldenabbau-Strategie'],
   },
   '/guthaben': {
-    emoji: '🐷',
+    icon: 'savings',
     label: 'Guthaben',
     desc:  'Tracke deine Sparziele, Konten und Investments.',
-    color: '#10b981',
     features: ['Sparziele', 'Kontoverwaltung', 'Entwicklung über Zeit', 'Netto-Vermögen'],
   },
 };
@@ -34,59 +30,55 @@ const CONFIG = {
 export default function PlaceholderPage() {
   const path = window.location.pathname;
   const config = CONFIG[path] ?? {
-    emoji: '🔧', label: 'Tool in Arbeit', desc: '', color: '#7c3aed', features: [],
+    icon: 'construction', label: 'Tool in Arbeit', desc: '', features: [],
   };
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-      <Paper
-        variant="outlined"
-        sx={{
-          borderRadius: 1,
-          p: '3rem 2.5rem',
-          maxWidth: 480,
-          width: '100%',
-          textAlign: 'center',
-        }}
-      >
-        {/* Icon */}
+      <Paper sx={{
+        borderRadius: 3,
+        p: { xs: 4, sm: 6 },
+        maxWidth: 480,
+        width: '100%',
+        textAlign: 'center',
+      }}>
+        {/* Icon — Fiscal Gallery Ghost-Box */}
         <Box sx={{
-          width: 72, height: 72, borderRadius: 1,
-          bgcolor: `${config.color}18`,
+          width: 72, height: 72, borderRadius: '36px',
+          bgcolor: 'surface.highest',
+          color: 'text.primary',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '2rem',
-          mx: 'auto',
-          mb: 2.5,
+          mx: 'auto', mb: 3,
         }}>
-          {config.emoji}
+          <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 36 }}>
+            {config.icon}
+          </Box>
         </Box>
 
         {/* Title */}
-        <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+        <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: '-0.01em', mb: 1 }}>
           {config.label}
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5, lineHeight: 1.6 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3, lineHeight: 1.6 }}>
           {config.desc}
         </Typography>
 
         {/* Planned features */}
         {config.features.length > 0 && (
           <Box sx={{
-            bgcolor: `${config.color}08`,
-            borderRadius: 1,
-            p: 2,
-            mb: 2.5,
+            bgcolor: 'surface.low',
+            borderRadius: 2,
+            p: 2.5,
+            mb: 3,
             textAlign: 'left',
           }}>
-            <Typography variant="overline" sx={{
-              color: 'text.secondary', fontWeight: 700, letterSpacing: '0.08em', display: 'block', mb: 1,
-            }}>
+            <Typography variant="overline" sx={{ color: 'text.secondary', display: 'block', mb: 1.25 }}>
               Geplante Features
             </Typography>
             <Stack component="ul" spacing={0.75} sx={{ listStyle: 'none', p: 0, m: 0 }}>
               {config.features.map((f) => (
                 <Stack key={f} component="li" direction="row" alignItems="center" spacing={1}>
-                  <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: config.color, flexShrink: 0 }} />
+                  <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'primary.dark', flexShrink: 0 }} />
                   <Typography variant="body2">{f}</Typography>
                 </Stack>
               ))}
@@ -94,23 +86,11 @@ export default function PlaceholderPage() {
           </Box>
         )}
 
-        {/* Status badge */}
+        {/* Status badge — emerald per Fiscal Gallery */}
         <Chip
           label="In Entwicklung"
           size="small"
-          sx={{
-            bgcolor: `${config.color}15`,
-            color: config.color,
-            fontWeight: 700,
-            '&::before': {
-              content: '""',
-              display: 'inline-block',
-              width: 6, height: 6,
-              borderRadius: '50%',
-              bgcolor: config.color,
-              mr: 0.75,
-            },
-          }}
+          color="success"
         />
       </Paper>
     </Box>
