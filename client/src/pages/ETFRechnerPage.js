@@ -214,38 +214,93 @@ function SectionLabel({ children, isDark }) {
 }
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
-// MUI-Card mit farbigem Akzent-Streifen links. Der `accent` ist ein freier
-// Hex-Wert (von den Type-Definitionen oben), keine Theme-Palette-Key — daher
-// verwenden wir hier nicht direkt KpiCard, sondern eine schlanke Card-Variante,
-// um die akzentuierte Visualisierung zu erhalten.
+// Primary KPI-Style gemäß .claude/skills/design-system/design-KPIs.md
+// (Editorial Navy mit Emerald-Decorative-Icon + optional Pill-Badge).
+// `accent` wird legacy weiter entgegengenommen, aber visuell nicht mehr genutzt.
 
-function StatCard({ label, value, sub, accent }) {
+// eslint-disable-next-line no-unused-vars
+function StatCard({ label, value, sub, icon, badge, accent }) {
   return (
-    <Box sx={(theme) => ({
-      backgroundColor: 'background.paper',
-      borderTop: `1px solid ${theme.palette.divider}`,
-      borderRight: `1px solid ${theme.palette.divider}`,
-      borderBottom: `1px solid ${theme.palette.divider}`,
-      borderLeft: `3px solid ${accent}`,
-      borderRadius: 1,
-      padding: '14px 16px',
+    <Paper sx={(t) => ({
+      position: 'relative',
+      overflow: 'hidden',
+      bgcolor: 'primary.dark',
+      color: 'primary.contrastText',
+      borderRadius: 3,
+      p: { xs: 2, sm: 2.25 },
+      minWidth: 0,
       height: '100%',
+      '&::before': {
+        content: '""',
+        position: 'absolute',
+        inset: 0,
+        background: `linear-gradient(135deg, ${t.palette.primary.dark} 0%, ${t.palette.primary.main} 100%)`,
+        opacity: 0.5,
+        pointerEvents: 'none',
+      },
     })}>
-      <Typography variant="caption" sx={{
-        display: 'block', color: 'text.secondary', fontWeight: 700,
-        textTransform: 'uppercase', letterSpacing: '0.08em', mb: 0.75,
-      }}>
-        {label}
-      </Typography>
-      <Typography variant="subtitle1" sx={{ color: accent, fontWeight: 700, lineHeight: 1.2 }}>
-        {value}
-      </Typography>
-      {sub && (
-        <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', mt: 0.5 }}>
-          {sub}
-        </Typography>
+      {icon && (
+        <Box
+          component="span"
+          className="material-symbols-outlined"
+          sx={{
+            position: 'absolute',
+            right: -16, bottom: -20,
+            fontSize: 140,
+            color: 'accent.positiveSurface',
+            opacity: 0.1,
+            pointerEvents: 'none',
+            userSelect: 'none',
+            lineHeight: 1,
+            zIndex: 0,
+          }}
+        >
+          {icon}
+        </Box>
       )}
-    </Box>
+
+      <Box sx={{ position: 'relative', zIndex: 1 }}>
+        <Typography variant="overline" sx={{
+          color: 'primary.light', display: 'block',
+          fontSize: '0.625rem', letterSpacing: '0.08em',
+          lineHeight: 1.15, mb: 1,
+        }}>
+          {label}
+        </Typography>
+        <Typography sx={{
+          fontFamily: '"Manrope", sans-serif',
+          fontWeight: 800,
+          letterSpacing: '-0.01em',
+          lineHeight: 1.1,
+          fontSize: { xs: '1.5rem', sm: '1.75rem' },
+          color: 'primary.contrastText',
+          mb: (badge || sub) ? 1.5 : 0,
+        }}>
+          {value}
+        </Typography>
+        {(badge || sub) && (
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 0.5 }}>
+            {badge && (
+              <Box sx={{
+                px: 1.25, py: 0.5, borderRadius: 99,
+                bgcolor: 'accent.positiveSurface', color: 'primary.dark',
+                fontWeight: 700, fontSize: '0.72rem',
+                letterSpacing: '0.01em', lineHeight: 1, whiteSpace: 'nowrap',
+              }}>
+                {badge}
+              </Box>
+            )}
+            {sub && (
+              <Typography variant="caption" sx={{
+                color: 'primary.light', lineHeight: 1.3, fontSize: '0.72rem',
+              }}>
+                {sub}
+              </Typography>
+            )}
+          </Stack>
+        )}
+      </Box>
+    </Paper>
   );
 }
 
@@ -1899,51 +1954,51 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
 
   const statCards = r ? (
     pol.type === 'drv' ? [
-      { label: 'Bruttorente (angepasst)', value: euro(r.bruttoRente) + '/Monat', sub: 'bei ' + num(r.rentenAnpassung, 1) + '% Anpassung p.a.', accent: CHART.positive },
-      { label: 'Netto-Echt-Rente', value: euro(r.nettoRente) + '/Monat', sub: 'nach Steuer & PKV', accent: CHART.positive },
-      { label: 'Einkommensteuer', value: '-' + euro(r.steuerBetrag) + '/Monat', sub: r.steuerSatz + '% Steuersatz', accent: CHART.negative },
-      { label: 'PKV-Kosten (netto)', value: r.pkvNettobeitrag > 0 ? '-' + euro(r.pkvNettobeitrag) + '/Monat' : 'nicht erfasst', sub: 'inkl. RV-Zuschuss verrechnet', accent: r.pkvNettobeitrag > 0 ? CHART.warning : CHART.muted },
-      { label: 'Anwartschaft (heute)', value: euro(r.anwartschaft) + '/Monat', sub: 'bereits erarbeitet', accent: CHART.neutral },
-      { label: 'Entgeltpunkte', value: num(r.entgeltpunkte, 4) + ' EP', sub: r.yearsToRente + ' Jahre bis Rentenbeginn', accent: pol.color },
+      { icon: 'account_balance', label: 'Bruttorente (angepasst)', value: euro(r.bruttoRente) + '/Mo', badge: num(r.rentenAnpassung, 1) + '% p.a.', sub: 'Anpassung' },
+      { icon: 'payments',        label: 'Netto-Echt-Rente',        value: euro(r.nettoRente) + '/Mo', sub: 'nach Steuer & PKV' },
+      { icon: 'receipt_long',    label: 'Einkommensteuer',         value: '-' + euro(r.steuerBetrag) + '/Mo', badge: r.steuerSatz + '%', sub: 'Steuersatz' },
+      { icon: 'health_and_safety', label: 'PKV-Kosten (netto)',    value: r.pkvNettobeitrag > 0 ? '-' + euro(r.pkvNettobeitrag) + '/Mo' : 'nicht erfasst', sub: 'inkl. RV-Zuschuss verrechnet' },
+      { icon: 'monitoring',      label: 'Anwartschaft (heute)',    value: euro(r.anwartschaft) + '/Mo', sub: 'bereits erarbeitet' },
+      { icon: 'star',            label: 'Entgeltpunkte',           value: num(r.entgeltpunkte, 4) + ' EP', badge: r.yearsToRente + ' J.', sub: 'bis Rentenbeginn' },
     ] : pol.type === 'bav' ? [
-      { label: 'Kapital bei Rente', value: euro(r.kapBeiRente), accent: CHART.warning },
+      { icon: 'monitoring', label: 'Kapital bei Rente', value: euro(r.kapBeiRente) },
       ...(r.payoutStrategy === 'lump_sum' ? [
-        { label: 'Einmalzahlung', value: euro(r.lumpSum), sub: 'Kapitalwahlrecht', accent: CHART.positive },
+        { icon: 'payments', label: 'Einmalzahlung', value: euro(r.lumpSum), sub: 'Kapitalwahlrecht' },
       ] : [
-        { label: 'Bruttorente', value: euro(r.bruttorente) + '/Monat', sub: 'RF ' + num(r.rentenfaktor, 1) + ' per 10.000 €', accent: CHART.neutral },
-        { label: 'Nettorente', value: euro(r.nettorente) + '/Monat', sub: 'nach ' + r.steuerImAlter + '% Steuer', accent: CHART.positive },
+        { icon: 'account_balance', label: 'Bruttorente', value: euro(r.bruttorente) + '/Mo', badge: 'RF ' + num(r.rentenfaktor, 1), sub: 'per 10.000 €' },
+        { icon: 'payments',        label: 'Nettorente',  value: euro(r.nettorente) + '/Mo', badge: r.steuerImAlter + '%', sub: 'Steuer' },
       ]),
-      { label: 'Einzahlungen ges.', value: euro(r.totalEingezahlt), sub: 'davon AG ' + euro(r.agZuschussGesamt), accent: CHART.negative },
-      { label: 'Netto-Verzicht ges.', value: euro(r.nettoVerzichtGesamt), sub: 'tatsächliche Kosten', accent: CHART.warning },
-      { label: 'Steuervorteil ges.', value: euro(r.steuervorteilGesamt), sub: r.grenzsteuersatz + '% Steuer+SV-Ersparnis', accent: CHART.positive },
-      ...(r.breakEvenAlter != null ? [{ label: 'Break-Even', value: 'ab ~' + r.breakEvenAlter + ' Monaten', sub: 'Rente lohnt sich ab dann', accent: CHART.neutral }] : []),
+      { icon: 'savings',    label: 'Einzahlungen ges.',  value: euro(r.totalEingezahlt),    sub: 'davon AG ' + euro(r.agZuschussGesamt) },
+      { icon: 'money_off',  label: 'Netto-Verzicht ges.',value: euro(r.nettoVerzichtGesamt),sub: 'tatsächliche Kosten' },
+      { icon: 'trending_up',label: 'Steuervorteil ges.', value: euro(r.steuervorteilGesamt),badge: r.grenzsteuersatz + '%', sub: 'Steuer+SV-Ersparnis' },
+      ...(r.breakEvenAlter != null ? [{ icon: 'schedule', label: 'Break-Even', value: 'ab ~' + r.breakEvenAlter + ' Mo', sub: 'Rente lohnt sich ab dann' }] : []),
     ] : pol.type === 'avd' ? [
-      { label: 'Kapital bei Rente', value: euro(r.kapBeiRente), accent: CHART.neutral },
-      { label: 'Kaufkraft real', value: euro(r.kapBeiRenteReal), sub: 'heutige Kaufkraft', accent: CHART.warning },
-      { label: 'Mögl. Nettorente', value: euro(r.possibleRente) + '/Monat', sub: 'Brutto: ' + euro(r.possibleRenteBrutto), accent: CHART.positive },
-      { label: 'Einzahlungen ges.', value: euro(r.totalEingezahlt), sub: 'Staat: ' + euro(r.totalStaatlich) + ' (' + r.foerderquote + '%)', accent: CHART.negative },
-      { label: 'Netto-Gewinn', value: euro(r.gewinn), accent: r.gewinn >= 0 ? CHART.positive : CHART.negative },
-      { label: 'Spar / Rente', value: r.sparjahre + ' / ' + r.rentenjahre, sub: 'Jahre', accent: pol.color },
+      { icon: 'monitoring',  label: 'Kapital bei Rente', value: euro(r.kapBeiRente) },
+      { icon: 'show_chart',  label: 'Kaufkraft real',    value: euro(r.kapBeiRenteReal), sub: 'heutige Kaufkraft' },
+      { icon: 'payments',    label: 'Mögl. Nettorente',  value: euro(r.possibleRente) + '/Mo', sub: 'Brutto: ' + euro(r.possibleRenteBrutto) },
+      { icon: 'savings',     label: 'Einzahlungen ges.', value: euro(r.totalEingezahlt),      badge: r.foerderquote + '% Staat', sub: euro(r.totalStaatlich) + ' Förderung' },
+      { icon: 'trending_up', label: 'Netto-Gewinn',      value: euro(r.gewinn), badge: r.gewinn >= 0 ? 'Positiv' : 'Negativ' },
+      { icon: 'schedule',    label: 'Spar / Rente',      value: r.sparjahre + ' / ' + r.rentenjahre, sub: 'Jahre' },
     ] : pol.type === 'depot' ? [
-      { label: 'Kapital brutto', value: euro(r.kapBeiRente), accent: CHART.positive },
-      { label: 'Kapital netto', value: euro(r.kapNetto), sub: 'nach Steuern', accent: CHART.neutral },
-      { label: 'Mögl. Monatsrente', value: euro(r.possibleRente) + '/Monat', accent: CHART.positive },
-      { label: 'Einzahlungen ges.', value: euro(r.totalEingezahlt), accent: CHART.negative },
-      { label: 'Netto-Gewinn', value: euro(r.gewinn), accent: r.gewinn >= 0 ? CHART.positive : CHART.negative },
-      { label: 'Spar / Rente', value: r.sparjahre + ' / ' + r.rentenjahre, sub: 'Jahre', accent: pol.color },
+      { icon: 'monitoring',  label: 'Kapital brutto',    value: euro(r.kapBeiRente) },
+      { icon: 'receipt_long',label: 'Kapital netto',     value: euro(r.kapNetto), sub: 'nach Steuern' },
+      { icon: 'payments',    label: 'Mögl. Monatsrente', value: euro(r.possibleRente) + '/Mo' },
+      { icon: 'savings',     label: 'Einzahlungen ges.', value: euro(r.totalEingezahlt) },
+      { icon: 'trending_up', label: 'Netto-Gewinn',      value: euro(r.gewinn), badge: r.gewinn >= 0 ? 'Positiv' : 'Negativ' },
+      { icon: 'schedule',    label: 'Spar / Rente',      value: r.sparjahre + ' / ' + r.rentenjahre, sub: 'Jahre' },
     ] : [
-      { label: 'Kapital bei Rente', value: euro(r.kapBeiRente), accent: CHART.neutral },
-      { label: 'Kaufkraft real', value: euro(r.kapBeiRenteReal), sub: 'heutige Kaufkraft', accent: CHART.warning },
+      { icon: 'monitoring',  label: 'Kapital bei Rente', value: euro(r.kapBeiRente) },
+      { icon: 'show_chart',  label: 'Kaufkraft real',    value: euro(r.kapBeiRenteReal), sub: 'heutige Kaufkraft' },
       r.payoutStrategy === 'lump_sum'
-        ? { label: 'Einmalzahlung', value: euro(r.lumpSum), sub: 'Kapitalwahlrecht', accent: CHART.positive }
+        ? { icon: 'payments', label: 'Einmalzahlung', value: euro(r.lumpSum), sub: 'Kapitalwahlrecht' }
         : r.rentenfaktor > 0
-          ? { label: 'Rente (Rentenfaktor)', value: euro(r.renteViaFaktor) + '/Monat', sub: 'RF ' + num(r.rentenfaktor, 1) + ' per 10k€', accent: CHART.positive }
-          : { label: 'Mögl. Monatsrente', value: euro(r.possibleRente) + '/Monat', sub: r.rentenjahre + ' J. Rentenphase', accent: CHART.positive },
-      { label: 'Einzahlungen ges.', value: euro(r.totalEingezahlt), sub: 'Kosten: ' + euro(r.gesamtkosten), accent: CHART.negative },
-      { label: 'Netto-Gewinn', value: euro(r.gewinn), sub: 'Faktor ' + num(r.faktor) + 'x', accent: r.gewinn >= 0 ? CHART.positive : CHART.negative },
-      ...(r.payoutStrategy === 'annuity' && r.rentenfaktor === 0 ? [{ label: 'Rentenfaktor', value: 'nicht hinterlegt', sub: 'Bitte aus Vertrag nachtragen', accent: CHART.warning }] : []),
-      ...(r.breakEvenAlter != null ? [{ label: 'Break-Even', value: 'ab Alter ~' + r.breakEvenAlter, sub: 'Rente lohnt sich ab dann', accent: CHART.neutral }] : []),
-      { label: 'Spar / Rente', value: r.sparjahre + ' / ' + r.rentenjahre, sub: 'Jahre', accent: pol.color },
+          ? { icon: 'payments', label: 'Rente (Rentenfaktor)', value: euro(r.renteViaFaktor) + '/Mo', badge: 'RF ' + num(r.rentenfaktor, 1), sub: 'per 10k€' }
+          : { icon: 'payments', label: 'Mögl. Monatsrente',    value: euro(r.possibleRente) + '/Mo', badge: r.rentenjahre + ' J.', sub: 'Rentenphase' },
+      { icon: 'savings',     label: 'Einzahlungen ges.', value: euro(r.totalEingezahlt), sub: 'Kosten: ' + euro(r.gesamtkosten) },
+      { icon: 'trending_up', label: 'Netto-Gewinn',      value: euro(r.gewinn), badge: 'Faktor ' + num(r.faktor) + 'x' },
+      ...(r.payoutStrategy === 'annuity' && r.rentenfaktor === 0 ? [{ icon: 'warning', label: 'Rentenfaktor', value: 'nicht hinterlegt', sub: 'Bitte aus Vertrag nachtragen' }] : []),
+      ...(r.breakEvenAlter != null ? [{ icon: 'schedule', label: 'Break-Even', value: 'ab Alter ~' + r.breakEvenAlter, sub: 'Rente lohnt sich ab dann' }] : []),
+      { icon: 'schedule',    label: 'Spar / Rente',      value: r.sparjahre + ' / ' + r.rentenjahre, sub: 'Jahre' },
     ]
   ) : [];
 
@@ -2071,9 +2126,9 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
 
         {/* Stat cards (hidden in snapshots tab) */}
         {(pol.type === 'avd' || activeSubTab === 'detail') && (
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(188px, 1fr))' }, gap: 2, alignItems: 'stretch' }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(220px, 1fr))' }, gap: 2, alignItems: 'stretch' }}>
           {statCards.map((s, i) => (
-            <StatCard key={i} {...s} isDark={isDark} />
+            <StatCard key={i} {...s} />
           ))}
         </Box>
         )}
@@ -2371,49 +2426,45 @@ function OverviewPanel({ policies, onTabSwitch, isDark }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* 3-Schichten Real-Netto-KPIs (nur Ist-Prognose, 188px Grid) */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(188px, 1fr))' }, gap: 2, alignItems: 'stretch' }}>
+      {/* 3-Schichten Real-Netto-KPIs */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(220px, 1fr))' }, gap: 2, alignItems: 'stretch' }}>
         <StatCard
+          icon="payments"
           label="Netto-Monatsrente gesamt"
-          value={euro(schichten.total) + '/Monat'}
-          sub={'alle 3 Schichten · ' + (isPkv ? 'PKV' : 'GKV')}
-          accent={CHART.neutral}
-          isDark={isDark}
+          value={euro(schichten.total) + '/Mo'}
+          badge={isPkv ? 'PKV' : 'GKV'}
+          sub="alle 3 Schichten"
         />
         <StatCard
+          icon="account_balance"
           label="Schicht 1 · GRV (Netto)"
-          value={euro(schichten.grv) + '/Monat'}
+          value={euro(schichten.grv) + '/Mo'}
           sub={drvPols.length === 0 ? 'noch nicht erfasst' : 'Gesetzliche Rente'}
-          accent={CHART.positive}
-          isDark={isDark}
         />
         <StatCard
+          icon="work"
           label="Schicht 2 · bAV/AVD (Netto)"
-          value={euro(schichten.bav) + '/Monat'}
+          value={euro(schichten.bav) + '/Mo'}
           sub="nachgelagert besteuert"
-          accent={CHART.warning}
-          isDark={isDark}
         />
         <StatCard
+          icon="savings"
           label="Schicht 3 · Privat (Netto)"
-          value={euro(schichten.privat) + '/Monat'}
+          value={euro(schichten.privat) + '/Mo'}
           sub="Ertragsanteil / Abgeltung"
-          accent={CHART.neutral}
-          isDark={isDark}
         />
         <StatCard
+          icon="monitoring"
           label="Gesamtkapital bei Rente"
           value={euro(totals.kap)}
           sub={'Einzahlungen: ' + euro(totals.einz)}
-          accent={CHART.negative}
-          isDark={isDark}
         />
         <StatCard
+          icon="trending_up"
           label="Netto-Gewinn gesamt"
           value={euro(totals.gewinn)}
-          sub={'Faktor ' + num(totals.faktor) + 'x'}
-          accent={totals.gewinn >= 0 ? CHART.positive : CHART.negative}
-          isDark={isDark}
+          badge={'Faktor ' + num(totals.faktor) + 'x'}
+          sub={totals.gewinn >= 0 ? 'Positiv' : 'Negativ'}
         />
       </Box>
 
