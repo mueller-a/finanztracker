@@ -286,35 +286,101 @@ function SectionLabel({ children }) {
   );
 }
 
-// Local KpiCard mit free-form `color` — Callers übergeben Farbwerte
-// aus der CHART-Konstanten (Fiscal Gallery Palette). Default: navy.
-function KpiCard({ label, value, sub, color = CHART.neutral }) {
+// Local KpiCard — Editorial Navy-Style analog Verbindlichkeiten mit
+// Emerald-Highlights (accent.positiveSurface = Icon-Hintergrundfarbe).
+//   - `icon`:  optionaler Material-Symbol-Name (dezente Deko rechts unten)
+//   - `badge`: optionales emerald-Label vor dem Sub-Text
+//   - `color`: legacy (wird ignoriert, alle Karten einheitlich)
+// eslint-disable-next-line no-unused-vars
+function KpiCard({ label, value, sub, icon, badge, color }) {
   return (
-    <Box sx={(theme) => ({
-      backgroundColor: 'background.paper',
-      borderTop: `1px solid ${theme.palette.divider}`,
-      borderRight: `1px solid ${theme.palette.divider}`,
-      borderBottom: `1px solid ${theme.palette.divider}`,
-      borderLeft: `3px solid ${color}`,
-      borderRadius: 1,
-      p: '14px 16px',
+    <Paper sx={(t) => ({
+      position: 'relative',
+      overflow: 'hidden',
+      bgcolor: 'primary.dark',
+      color: 'primary.contrastText',
+      borderRadius: 3,
+      p: { xs: 2, sm: 2.25 },
       minWidth: 0,
+      '&::before': {
+        content: '""',
+        position: 'absolute',
+        inset: 0,
+        background: `linear-gradient(135deg, ${t.palette.primary.dark} 0%, ${t.palette.primary.main} 100%)`,
+        opacity: 0.5,
+        pointerEvents: 'none',
+      },
     })}>
-      <Typography variant="caption" sx={{
-        display: 'block', color: 'text.secondary', fontWeight: 700,
-        textTransform: 'uppercase', letterSpacing: '0.07em', mb: 0.75,
-      }}>
-        {label}
-      </Typography>
-      <Typography variant="subtitle1" sx={{ color, fontWeight: 700, fontFamily: 'monospace', mb: 0.5 }}>
-        {value}
-      </Typography>
-      {sub && (
-        <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary' }}>
-          {sub}
-        </Typography>
+      {/* Decorative background icon — emerald-getönt, sehr subtil */}
+      {icon && (
+        <Box
+          component="span"
+          className="material-symbols-outlined"
+          sx={{
+            position: 'absolute',
+            right: -16, bottom: -20,
+            fontSize: 140,
+            color: 'accent.positiveSurface',
+            opacity: 0.1,
+            pointerEvents: 'none',
+            userSelect: 'none',
+            lineHeight: 1,
+            zIndex: 0,
+          }}
+        >
+          {icon}
+        </Box>
       )}
-    </Box>
+
+      <Box sx={{ position: 'relative', zIndex: 1 }}>
+        <Typography variant="overline" sx={{
+          color: 'primary.light', display: 'block',
+          fontSize: '0.625rem', letterSpacing: '0.08em',
+          lineHeight: 1.15, mb: 1,
+        }}>
+          {label}
+        </Typography>
+        <Typography sx={{
+          fontFamily: '"Manrope", sans-serif',
+          fontWeight: 800,
+          letterSpacing: '-0.01em',
+          lineHeight: 1.1,
+          fontSize: { xs: '1.5rem', sm: '1.75rem' },
+          color: 'primary.contrastText',
+          mb: (badge || sub) ? 1.5 : 0,
+        }}>
+          {value}
+        </Typography>
+        {(badge || sub) && (
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 0.5 }}>
+            {badge && (
+              <Box sx={{
+                px: 1.25, py: 0.5,
+                borderRadius: 99,
+                bgcolor: 'accent.positiveSurface',
+                color: 'primary.dark',
+                fontWeight: 700,
+                fontSize: '0.72rem',
+                letterSpacing: '0.01em',
+                lineHeight: 1,
+                whiteSpace: 'nowrap',
+              }}>
+                {badge}
+              </Box>
+            )}
+            {sub && (
+              <Typography variant="caption" sx={{
+                color: 'primary.light',
+                lineHeight: 1.3,
+                fontSize: '0.72rem',
+              }}>
+                {sub}
+              </Typography>
+            )}
+          </Stack>
+        )}
+      </Box>
+    </Paper>
   );
 }
 
@@ -1303,17 +1369,42 @@ export default function PkvCalculatorPage({ isDark = false }) {
 
             {/* KPIs */}
             {pkvData.length > 0 && (
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(188px, 1fr))' }, gap: 2, alignItems: 'stretch' }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(220px, 1fr))' }, gap: 2, alignItems: 'stretch' }}>
                 <KpiCard
+                  icon="payments"
                   label={pkv.employmentStatus === 'angestellt' && kpis.first?.agZuschuss > 0 ? `Mtl. Netto-Aufwand AN ${kpis.first?.year}` : `Mtl. Beitrag ${kpis.first?.year}`}
                   value={pkv.employmentStatus === 'angestellt' && kpis.first?.agZuschuss > 0 ? fmt(kpis.first?.nettoMonthly, 2) : fmt(kpis.first?.monthly, 2)}
-                  sub={pkv.employmentStatus === 'angestellt' && kpis.first?.agZuschuss > 0 ? `Brutto: ${fmt(kpis.first?.monthly, 2)}` : `davon GZ: ${fmt(kpis.first?.gz, 2)}`}
-                  color={CHART.warning} isDark={isDark}
+                  badge={pkv.employmentStatus === 'angestellt' && kpis.first?.agZuschuss > 0 ? `Brutto ${fmt(kpis.first?.monthly, 0)}` : null}
+                  sub={pkv.employmentStatus === 'angestellt' && kpis.first?.agZuschuss > 0 ? 'Nach AG-Zuschuss' : `davon GZ: ${fmt(kpis.first?.gz, 2)}`}
                 />
-                <KpiCard label="Gesamtkosten Lebenszeit" value={fmt(kpis.last?.cumulative, 0)} sub={`${pkvData.length} Jahre`} color={CHART.neutral} isDark={isDark} />
-                <KpiCard label="BRK kumuliert" value={kpis.totalBrk > 0 ? fmt(kpis.totalBrk, 0) : '—'} sub={kpis.brkCount > 0 ? `${kpis.brkCount} Jahre mit BRK` : 'Noch keine eingetragen'} color={CHART.neutral} isDark={isDark} />
-                <KpiCard label="Beitrag bei Renteneintritt" value={fmt(kpis.renteD?.monthly, 2)} sub={`ab Alter ${pkv.rzFromAge} (${kpis.renteD?.year})`} color={CHART.warning} isDark={isDark} />
-                <KpiCard label="Beitragsanstieg gesamt" value={(kpis.anstieg >= 0 ? '+' : '') + (kpis.anstieg?.toFixed(0) ?? '—') + ' %'} sub={`${fmt(kpis.first?.monthly, 2)} → ${fmt(kpis.last?.monthly, 2)}`} color={CHART.negative} isDark={isDark} />
+                <KpiCard
+                  icon="health_and_safety"
+                  label="Gesamtkosten Lebenszeit"
+                  value={fmt(kpis.last?.cumulative, 0)}
+                  badge={`${pkvData.length} Jahre`}
+                  sub="Kumulierter Beitrag"
+                />
+                <KpiCard
+                  icon="savings"
+                  label="BRK kumuliert"
+                  value={kpis.totalBrk > 0 ? fmt(kpis.totalBrk, 0) : '—'}
+                  badge={kpis.brkCount > 0 ? `${kpis.brkCount} Jahre` : null}
+                  sub={kpis.brkCount > 0 ? 'Beitragsrückerstattung' : 'Noch keine eingetragen'}
+                />
+                <KpiCard
+                  icon="elderly"
+                  label="Beitrag bei Renteneintritt"
+                  value={fmt(kpis.renteD?.monthly, 2)}
+                  badge={`Alter ${pkv.rzFromAge}`}
+                  sub={`im Jahr ${kpis.renteD?.year ?? '—'}`}
+                />
+                <KpiCard
+                  icon="trending_up"
+                  label="Beitragsanstieg gesamt"
+                  value={(kpis.anstieg >= 0 ? '+' : '') + (kpis.anstieg?.toFixed(0) ?? '—') + ' %'}
+                  badge={`${fmt(kpis.first?.monthly, 0)} → ${fmt(kpis.last?.monthly, 0)}`}
+                  sub="über gesamte Laufzeit"
+                />
               </Box>
             )}
 
