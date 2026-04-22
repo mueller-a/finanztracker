@@ -217,7 +217,7 @@ export default function InsurancesPage() {
   return (
     <Box>
       <PageHeader
-        title="Versicherungen"
+        title="Versicherungen" icon="shield"
         subtitle="Übersicht, Vergleich und Verwaltung deiner Versicherungsverträge"
         actions={
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => openModal()}>

@@ -113,7 +113,7 @@ export default function HouseholdBudgetPage() {
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 960, pb: 10 }}>
       <PageHeader
-        title="Gemeinschaftsbudget"
+        title="Gemeinschaftsbudget" icon="groups"
         subtitle="Wochen- und Monatsbudget für das Gemeinschaftskonto"
       />
 
@@ -537,7 +537,7 @@ function SetupScreen({ onCreate, onJoin }) {
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 640 }}>
-      <PageHeader title="Gemeinschaftsbudget" subtitle="Haushalt einrichten" />
+      <PageHeader title="Gemeinschaftsbudget" icon="groups" subtitle="Haushalt einrichten" />
       <Stack spacing={2}>
         <SectionCard title="Neuen Haushalt anlegen">
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>

@@ -1431,7 +1431,7 @@ export default function VerbindlichkeitenPage() {
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
       <PageHeader
-        title="🏦 Verbindlichkeiten"
+        title="Verbindlichkeiten" icon="account_balance"
         subtitle="Kredite & Darlehen tracken, Tilgungsplan einsehen, Zinslast analysieren."
       />
 

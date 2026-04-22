@@ -303,7 +303,7 @@ export default function SettingsPage() {
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 900 }}>
       <PageHeader
-        title="Einstellungen"
+        title="Einstellungen" icon="tune"
         subtitle="Module aktivieren oder deaktivieren. Deaktivierte Module werden aus der Sidebar und dem Dashboard ausgeblendet."
       />
 

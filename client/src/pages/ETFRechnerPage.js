@@ -3032,7 +3032,7 @@ export default function ETFRechnerPage({ isDark }) {
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
       {/* Header */}
       <PageHeader
-        title="Ruhestandsplanung"
+        title="Ruhestandsplanung" icon="trending_up"
         subtitle="Rentenversicherung · AVD Depot · ETF-Depot · Betriebliche Altersvorsorge"
         actions={saveStatus !== 'idle' ? (
           <Typography sx={{ color: statusColor, fontSize: '0.78rem', fontWeight: 600 }}>

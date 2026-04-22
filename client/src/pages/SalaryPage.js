@@ -362,7 +362,7 @@ export default function SalaryPage() {
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 1100 }}>
       <PageHeader
-        title="Gehaltsrechner"
+        title="Gehaltsrechner" icon="calculate"
         subtitle="Netto-Berechnung mit Lohnsteuer, Sozialversicherung & PKV/GKV-Vergleich"
         actions={statusEl}
       />

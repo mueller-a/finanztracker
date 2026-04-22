@@ -219,7 +219,7 @@ export default function ContractOptimizerPage() {
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 960 }}>
       <PageHeader
-        title="Spar-Radar"
+        title="Spar-Radar" icon="radar"
         subtitle={`${contracts.length} Verträge im Blick — Kündigungsfristen & Optimierungspotenzial`}
       />
 

@@ -524,7 +524,7 @@ export default function RealEstatePage() {
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
       <PageHeader
-        title="Immobilien"
+        title="Immobilien" icon="home_work"
         subtitle={`${properties.length} Objekte im Portfolio`}
         actions={
           <Button variant="contained" startIcon={<AddIcon />}

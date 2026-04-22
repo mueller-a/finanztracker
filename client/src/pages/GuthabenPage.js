@@ -1267,7 +1267,7 @@ export default function GuthabenPage() {
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
       <PageHeader
-        title="💼 Asset Manager"
+        title="Asset Manager" icon="savings"
         subtitle="Rücklagen · Tagesgeld · Anleihen · Private Investments"
       />
 

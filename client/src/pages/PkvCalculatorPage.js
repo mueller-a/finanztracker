@@ -1067,7 +1067,7 @@ export default function PkvCalculatorPage({ isDark = false }) {
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, minHeight: '100vh' }}>
       <PageHeader
-        title="PKV Beitragsrechner"
+        title="PKV Beitragsrechner" icon="health_and_safety"
         subtitle="Private Krankenversicherung · Beitragsverlauf · GKV-Vergleich"
         actions={
           <Button variant="outlined" startIcon={<LaunchIcon />} onClick={exportToBudget}>

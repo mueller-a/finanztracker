@@ -2663,7 +2663,7 @@ export default function StromPage() {
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
       <PageHeader
-        title="⚡ Stromübersicht"
+        title="Stromübersicht" icon="bolt"
         subtitle="Zählerstände erfassen, Jahresverbrauch prognostizieren, historische Abrechnungen verwalten."
       />
 

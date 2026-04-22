@@ -119,7 +119,7 @@ export default function AdminModulesPage() {
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
       <PageHeader
-        title="Admin · Module"
+        title="Admin · Module" icon="admin_panel_settings"
         subtitle="Globale Feature-Toggles. Änderungen wirken sofort für alle Nutzer."
       />
       <AdminModulesPanel />

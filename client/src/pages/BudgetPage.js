@@ -1522,7 +1522,7 @@ export default function BudgetPage() {
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
       <PageHeader
-        title="💰 Budget"
+        title="Budget" icon="account_balance_wallet"
         subtitle="Einnahmen & Ausgaben im Monatsüberblick — gegliedert nach Kategorien."
         actions={!isEmpty ? (
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
