@@ -11,7 +11,7 @@ import { useModules, calculateAge } from '../context/ModuleContext';
 import { useAuth } from '../context/AuthContext';
 import { usePkvConfigs } from '../hooks/usePkvConfigs';
 import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  LineChart, Line, BarChart, Bar, ComposedChart, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartTooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import {
@@ -385,10 +385,10 @@ function KpiCard({ label, value, sub, icon, badge, color }) {
 }
 
 // ─── Chart components ─────────────────────────────────────────────────────────
-// Zeigt zwei Serien gleichzeitig:
-//   - "Gesamtbeitrag" (Brutto-PKV-Beitrag, gold)
-//   - "Eigenanteil"   (Cashflow nach AG-/KVdR-Zuschuss, grün)
-// Im "Kumuliert"-Modus zwei Linien, sonst gruppierte Bars.
+// Zwei Darstellungen:
+//   - Monthly/Annual: STACKED Bar (Eigenanteil dunkel + Arbeitgeberanteil
+//     emerald) = Gesamtbeitrag · Rückerstattung als rote Linie (ComposedChart)
+//   - Kumuliert: drei Linien (Gesamtbeitrag, Eigenanteil, Rückerstattung)
 function PkvLineChart({ data, mode, showInflation, inflationRate, isDark }) {
   const chartData = useMemo(() => {
     const todayYear = CURRENT_YEAR;
@@ -413,11 +413,13 @@ function PkvLineChart({ data, mode, showInflation, inflationRate, isDark }) {
         eigen  /= f;
         brk    /= f;
       }
+      const agAnteil = Math.max(0, brutto - eigen);
       return {
-        year:   d.year,
-        brutto: Math.round(brutto * 100) / 100,
-        eigen:  Math.round(eigen  * 100) / 100,
-        brk:    Math.round(brk    * 100) / 100,
+        year:     d.year,
+        brutto:   Math.round(brutto   * 100) / 100,
+        eigen:    Math.round(eigen    * 100) / 100,
+        agAnteil: Math.round(agAnteil * 100) / 100,
+        brk:      Math.round(brk      * 100) / 100,
         isFuture: d.isFuture,
       };
     });
@@ -425,13 +427,21 @@ function PkvLineChart({ data, mode, showInflation, inflationRate, isDark }) {
 
   // Nur anzeigen, wenn überhaupt Rückerstattungen eingetragen sind
   const hasBrk = chartData.some((d) => d.brk > 0);
+  // AG-Zuschuss nur aktiv, wenn Angestellten-Modus → sonst eigen === brutto
+  const hasAg  = chartData.some((d) => d.agAnteil > 0);
 
-  const colorBrutto = CHART.warning; // Gold — Gesamtbeitrag
-  const colorEigen  = CHART.positive; // Grün — Eigenanteil
-  const colorBrk    = CHART.neutral; // Blau — Beitragsrückerstattung (konsistent mit BRK-KpiCard)
-  const sub         = isDark ? CHART.muted : CHART.muted;
-  const tickFormat  = (v) => mode === 'cumulative' ? (v / 1000).toFixed(0) + 'k €' : v + ' €';
-  const seriesLabel = (k) => k === 'brutto' ? 'Gesamtbeitrag' : k === 'eigen' ? 'Eigenanteil' : 'Beitragsrückerstattung';
+  const colorEigen   = CHART.neutral;      // Navy/Schwarz — Eigenanteil
+  const colorAg      = '#6CF8BB';          // Emerald (accent.positiveSurface)
+  const colorBrk     = CHART.negative;     // Rot — Beitragsrückerstattung
+  const colorBrutto  = CHART.warning;      // nur im Kumuliert-Modus als Linie
+  const sub          = isDark ? CHART.muted : CHART.muted;
+  const tickFormat   = (v) => mode === 'cumulative' ? (v / 1000).toFixed(0) + 'k €' : v + ' €';
+  const seriesLabel  = (k) => (
+    k === 'brutto'    ? 'Gesamtbeitrag'
+  : k === 'eigen'     ? 'Eigenanteil'
+  : k === 'agAnteil'  ? 'Arbeitgeberanteil'
+                      : 'Beitragsrückerstattung'
+  );
 
   return (
     <ResponsiveContainer width="100%" height={260}>
@@ -450,7 +460,7 @@ function PkvLineChart({ data, mode, showInflation, inflationRate, isDark }) {
           {hasBrk && <Line type="monotone" dataKey="brk" stroke={colorBrk} strokeWidth={2} strokeDasharray="5 3" dot={false} />}
         </LineChart>
       ) : (
-        <BarChart data={chartData} margin={{ top: 4, right: 12, bottom: 0, left: 0 }} barGap={2}>
+        <ComposedChart data={chartData} margin={{ top: 4, right: 12, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)'} />
           <XAxis dataKey="year" tick={{ fill: sub, fontSize: 10 }} />
           <YAxis tick={{ fill: sub, fontSize: 10 }} tickFormatter={tickFormat} />
@@ -460,10 +470,19 @@ function PkvLineChart({ data, mode, showInflation, inflationRate, isDark }) {
             cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
           />
           <Legend formatter={seriesLabel} wrapperStyle={{ fontSize: 11, paddingTop: 4, color: sub }} iconType="square" iconSize={10} />
-          <Bar dataKey="brutto" fill={colorBrutto} radius={[2, 2, 0, 0]} />
-          <Bar dataKey="eigen"  fill={colorEigen}  radius={[2, 2, 0, 0]} />
-          {hasBrk && <Bar dataKey="brk" fill={colorBrk} radius={[2, 2, 0, 0]} />}
-        </BarChart>
+          {/* Stacked bars: Eigenanteil unten, Arbeitgeberanteil oben = Gesamtbeitrag */}
+          <Bar dataKey="eigen"    stackId="pkv" fill={colorEigen} radius={hasAg ? [0, 0, 0, 0] : [4, 4, 0, 0]} />
+          {hasAg && <Bar dataKey="agAnteil" stackId="pkv" fill={colorAg} radius={[4, 4, 0, 0]} />}
+          {/* Rückerstattung als Linie über den Bars */}
+          {hasBrk && (
+            <Line
+              type="monotone" dataKey="brk"
+              stroke={colorBrk} strokeWidth={2.5}
+              dot={{ r: 3, fill: colorBrk, stroke: '#fff', strokeWidth: 1 }}
+              activeDot={{ r: 4 }}
+            />
+          )}
+        </ComposedChart>
       )}
     </ResponsiveContainer>
   );
