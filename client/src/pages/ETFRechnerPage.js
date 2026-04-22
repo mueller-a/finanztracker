@@ -304,6 +304,89 @@ function StatCard({ label, value, sub, icon, badge, accent }) {
   );
 }
 
+// Secondary KPI-Style gemäß .claude/skills/design-system/design-KPIs.md
+// (helle Surface mit 3px Emerald-Linkstreifen + Tinted Shadow + Emerald-Icon
+// 18% Opacity). Für unterstützende Kennzahlen, die neben Primary-Karten stehen.
+function StatCardSecondary({ label, value, sub, icon, badge }) {
+  return (
+    <Paper sx={{
+      position: 'relative',
+      overflow: 'hidden',
+      bgcolor: 'background.paper',
+      color: 'text.primary',
+      borderRadius: 3,
+      p: { xs: 2, sm: 2.25 },
+      borderLeft: '3px solid',
+      borderLeftColor: 'accent.positiveSurface',
+      boxShadow: '0 6px 30px rgba(11, 28, 48, 0.06)',
+      minWidth: 0,
+      height: '100%',
+    }}>
+      {icon && (
+        <Box
+          component="span"
+          className="material-symbols-outlined"
+          sx={{
+            position: 'absolute',
+            right: -12, bottom: -18,
+            fontSize: 120,
+            color: 'accent.positiveSurface',
+            opacity: 0.18,
+            pointerEvents: 'none',
+            userSelect: 'none',
+            lineHeight: 1,
+            zIndex: 0,
+          }}
+        >
+          {icon}
+        </Box>
+      )}
+
+      <Box sx={{ position: 'relative', zIndex: 1 }}>
+        <Typography variant="overline" sx={{
+          color: 'text.secondary', display: 'block',
+          fontSize: '0.625rem', letterSpacing: '0.08em',
+          lineHeight: 1.15, mb: 1,
+        }}>
+          {label}
+        </Typography>
+        <Typography sx={{
+          fontFamily: '"Manrope", sans-serif',
+          fontWeight: 800,
+          letterSpacing: '-0.01em',
+          lineHeight: 1.1,
+          fontSize: { xs: '1.25rem', sm: '1.5rem' },
+          color: 'text.primary',
+          mb: (badge || sub) ? 1.5 : 0,
+        }}>
+          {value}
+        </Typography>
+        {(badge || sub) && (
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 0.5 }}>
+            {badge && (
+              <Box sx={{
+                px: 1.25, py: 0.5, borderRadius: 99,
+                bgcolor: 'accent.positiveSurface', color: 'primary.dark',
+                fontWeight: 700, fontSize: '0.72rem',
+                letterSpacing: '0.01em', lineHeight: 1, whiteSpace: 'nowrap',
+              }}>
+                {badge}
+              </Box>
+            )}
+            {sub && (
+              <Typography variant="caption" sx={{
+                color: 'text.secondary', lineHeight: 1.3, fontSize: '0.72rem',
+              }}>
+                {sub}
+              </Typography>
+            )}
+          </Stack>
+        )}
+      </Box>
+    </Paper>
+  );
+}
+
 // ── Type selector modal ───────────────────────────────────────────────────────
 
 function TypeSelectorModal({ open, onClose, onSelect }) {
@@ -2435,19 +2518,19 @@ function OverviewPanel({ policies, onTabSwitch, isDark }) {
           badge={isPkv ? 'PKV' : 'GKV'}
           sub="alle 3 Schichten"
         />
-        <StatCard
+        <StatCardSecondary
           icon="account_balance"
           label="Schicht 1 · GRV (Netto)"
           value={euro(schichten.grv) + '/Mo'}
           sub={drvPols.length === 0 ? 'noch nicht erfasst' : 'Gesetzliche Rente'}
         />
-        <StatCard
+        <StatCardSecondary
           icon="work"
           label="Schicht 2 · bAV/AVD (Netto)"
           value={euro(schichten.bav) + '/Mo'}
           sub="nachgelagert besteuert"
         />
-        <StatCard
+        <StatCardSecondary
           icon="savings"
           label="Schicht 3 · Privat (Netto)"
           value={euro(schichten.privat) + '/Mo'}
