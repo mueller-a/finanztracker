@@ -3,6 +3,7 @@ import {
   Slider, Box, Button, IconButton, Tabs, Tab, Stack, Typography, Chip,
   Dialog, DialogTitle, DialogContent, DialogActions, Card, CardContent,
   Alert, TextField, ToggleButton, ToggleButtonGroup, Switch, Paper,
+  Table, TableBody,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
@@ -915,8 +916,8 @@ function DetailTable({ pol, isDark }) {
              : pol.type === 'bav'   ? buildBAVRows(r)
              : buildInsuranceRows(r, pol.params);
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
-      <tbody>
+    <Table size="small" sx={{ borderCollapse: 'collapse', fontSize: '0.78rem' }}>
+      <TableBody>
         {rows.map((row, i) => {
           if (row[0] === '__head') return (
             <tr key={i}>
@@ -942,8 +943,8 @@ function DetailTable({ pol, isDark }) {
             </tr>
           );
         })}
-      </tbody>
-    </table>
+      </TableBody>
+    </Table>
   );
 }
 

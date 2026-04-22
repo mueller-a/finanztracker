@@ -5,6 +5,7 @@ import {
   Alert, CircularProgress, Chip, Paper, LinearProgress,
   Popover, Tooltip as MuiTooltip, InputAdornment, Snackbar,
   ToggleButton, ToggleButtonGroup, FormHelperText,
+  Table, TableHead, TableBody,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
@@ -1075,8 +1076,8 @@ function TilgungsplanTab({ debts, payments, schedulesMap, onAddPayment, onEditPa
       {/* Amortization table */}
       <Paper variant="outlined" sx={{ borderRadius: 1, overflow: 'hidden' }}>
         <Box sx={{ overflow: 'auto', maxHeight: 480 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
+          <Table size="small" sx={{ borderCollapse: 'collapse' }}>
+            <TableHead>
               <tr>
                 {['Monat', 'Rate (€)', 'Zinsen (€)', 'Tilgung (€)', 'Sondertilgung (€)', 'Restschuld (€)'].map((h, i) => (
                   <th key={h} style={{
@@ -1096,8 +1097,8 @@ function TilgungsplanTab({ debts, payments, schedulesMap, onAddPayment, onEditPa
                   </th>
                 ))}
               </tr>
-            </thead>
-            <tbody>
+            </TableHead>
+            <TableBody>
               {schedule.map((entry, i) => {
                 const isToday = entry.monthKey === TODAY_KEY;
                 const isPast  = entry.monthKey < TODAY_KEY;
@@ -1193,8 +1194,8 @@ function TilgungsplanTab({ debts, payments, schedulesMap, onAddPayment, onEditPa
                   </tr>
                 );
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </Box>
         <Stack direction="row" spacing={0.5}
           sx={{ p: '8px 12px', borderTop: 1, borderColor: 'divider', bgcolor: 'action.hover' }}>

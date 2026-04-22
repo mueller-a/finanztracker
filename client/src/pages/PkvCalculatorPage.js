@@ -20,6 +20,7 @@ import {
   Alert, Link as MuiLink, Switch, InputAdornment, IconButton, Paper, Divider,
   Checkbox, FormControlLabel, RadioGroup, Radio, FormControl, FormLabel,
   Dialog, DialogTitle, DialogContent, DialogActions,
+  Table, TableHead, TableBody,
 } from '@mui/material';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import CloseIcon from '@mui/icons-material/Close';
@@ -1349,15 +1350,15 @@ export default function PkvCalculatorPage({ isDark = false }) {
                 <div style={{ color: muted, fontSize: '0.7rem', fontFamily: 'monospace' }}>Zeile anklicken → BRK & Freie Monate bearbeiten</div>
               </div>
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem', fontFamily: 'monospace' }}>
-                  <thead>
+                <Table size="small" sx={{ borderCollapse: 'collapse', fontSize: '0.78rem', fontFamily: 'monospace' }}>
+                  <TableHead>
                     <tr style={{ background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)' }}>
                       {['Jahr', 'Alter', 'Gesamtbeitrag mtl.', 'Eigenanteil mtl.', 'Jährl. Kosten', 'Änderung', 'BRK', 'GZ-Anteil', 'Kumuliert'].map((h) => (
                         <th key={h} style={{ padding: '10px 12px', textAlign: 'left', color: muted, fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
                       ))}
                     </tr>
-                  </thead>
-                  <tbody>
+                  </TableHead>
+                  <TableBody>
                     {pkvData.map((d) => (
                       <React.Fragment key={d.year}>
                         <tr
@@ -1454,8 +1455,8 @@ export default function PkvCalculatorPage({ isDark = false }) {
                         {expandedYear === d.year && YearExpandPanel({ d })}
                       </React.Fragment>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             </div>
 
@@ -1578,15 +1579,15 @@ export default function PkvCalculatorPage({ isDark = false }) {
                 <div style={{ color: text, fontWeight: 700, fontSize: '0.9rem' }}>GKV-Vergleich Jahresübersicht</div>
               </div>
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem', fontFamily: 'monospace' }}>
-                  <thead>
+                <Table size="small" sx={{ borderCollapse: 'collapse', fontSize: '0.78rem', fontFamily: 'monospace' }}>
+                  <TableHead>
                     <tr style={{ background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)' }}>
                       {['Jahr', 'Alter', 'Brutto', 'GKV mtl.', 'PKV brutto', 'AG-Zuschuss', 'PKV netto', 'Differenz', 'GKV kum.', 'PKV kum.', 'Vorteil'].map((h) => (
                         <th key={h} style={{ padding: '10px 12px', textAlign: 'left', color: muted, fontWeight: 700, fontSize: '0.65rem', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
                       ))}
                     </tr>
-                  </thead>
-                  <tbody>
+                  </TableHead>
+                  <TableBody>
                     {gkvProjection.map((r) => {
                       const diff = r.pkvNetto - r.gkvMo;
                       return (
@@ -1607,8 +1608,8 @@ export default function PkvCalculatorPage({ isDark = false }) {
                         </tr>
                       );
                     })}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             </div>
           </div>

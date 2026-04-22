@@ -4,6 +4,7 @@ import {
   Tabs, Tab, Alert, CircularProgress, Chip, Paper, Link as MuiLink,
   LinearProgress, Dialog, DialogTitle, DialogContent, DialogActions,
   Snackbar, Avatar, InputAdornment, AlertTitle, Checkbox, FormControlLabel,
+  Table, TableHead, TableBody,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
@@ -2202,8 +2203,8 @@ function PeriodsTable({ periods, onEdit, onDelete, onOpenBill }) {
   return (
     <Paper variant="outlined" sx={{ borderRadius: 1, overflow: 'hidden' }}>
       <Box sx={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
+        <Table size="small" sx={{ borderCollapse: 'collapse' }}>
+          <TableHead>
             <tr>
               <th style={{ ...headStyle, textAlign: 'left' }}>Periode</th>
               <th style={{ ...headStyle, textAlign: 'left' }}>Anbieter</th>
@@ -2220,8 +2221,8 @@ function PeriodsTable({ periods, onEdit, onDelete, onOpenBill }) {
               <th style={{ ...headStyle, textAlign: 'center' }}>Rechnung</th>
               <th style={headStyle} aria-label="Aktionen"><span style={{ position: 'absolute', left: -9999 }}>Aktionen</span></th>
             </tr>
-          </thead>
-          <tbody>
+          </TableHead>
+          <TableBody>
             {periods.map((p, i) => {
               const gk    = gesamtkosten(p);
               const vz    = vorauszahlung(p);
@@ -2341,8 +2342,8 @@ function PeriodsTable({ periods, onEdit, onDelete, onOpenBill }) {
                 </tr>
               );
             })}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </Box>
     </Paper>
   );
