@@ -238,13 +238,13 @@ function TotalWidget({ goals, entries, etfPolicies }) {
       overflow: 'hidden',
       bgcolor: 'primary.dark',
       color: 'primary.contrastText',
-      borderRadius: 3,
-      p: { xs: 4, sm: 5, md: 6 },
+      borderRadius: '12px',
+      p: { xs: 2.5, sm: 3, md: 3.5 },
       display: 'flex',
       flexDirection: { xs: 'column', md: 'row' },
       alignItems: { xs: 'flex-start', md: 'center' },
       justifyContent: 'space-between',
-      gap: 3,
+      gap: 2.5,
       '&::before': {
         content: '""',
         position: 'absolute',
@@ -255,29 +255,45 @@ function TotalWidget({ goals, entries, etfPolicies }) {
       },
     })}>
       <Box sx={{ position: 'relative', zIndex: 1 }}>
-        <Typography variant="overline" sx={{ color: 'primary.light', display: 'block', mb: 2 }}>
-          Net Worth — Asset Manager
+        <Typography variant="overline" sx={{
+          color: 'primary.light', display: 'block',
+          letterSpacing: '0.08em', lineHeight: 1.15, mb: 0.75,
+        }}>
+          Net Worth
         </Typography>
-        <Typography variant="h2" sx={{ fontWeight: 900, letterSpacing: '-0.02em', lineHeight: 1 }}>
+        <Typography sx={{
+          fontFamily: '"Manrope", sans-serif',
+          fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1,
+          fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
+        }}>
           {fmt2(total)} €
         </Typography>
-        <Typography variant="body2" sx={{ mt: 1, color: 'primary.light' }}>
+        <Typography variant="caption" sx={{
+          mt: 0.5, display: 'block', color: 'primary.light',
+        }}>
           über {goals.length} Asset{goals.length !== 1 ? 's' : ''}
         </Typography>
       </Box>
-      <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap
+      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap
         sx={{ position: 'relative', zIndex: 1 }}>
         {KATEGORIEN.filter(({ value }) => byKat[value] > 0).map(({ value, label }) => (
-          <Paper key={value} sx={{
-            bgcolor: 'primary.main',
+          <Paper key={value} elevation={0} sx={{
+            bgcolor: 'rgba(255,255,255,0.06)',
             color: 'primary.contrastText',
-            borderRadius: 2,
-            px: 2, py: 1,
+            borderRadius: '12px',
+            px: 1.75, py: 1,
+            minWidth: 140,
           }}>
-            <Typography variant="caption" sx={{ color: 'primary.light', display: 'block', mb: 0.25 }}>
+            <Typography variant="caption" sx={{
+              color: 'primary.light', display: 'block',
+              fontSize: '0.625rem', letterSpacing: '0.05em', mb: 0.25,
+            }}>
               {label}
             </Typography>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+            <Typography sx={{
+              fontFamily: '"Manrope", sans-serif',
+              fontWeight: 700, fontSize: '1rem', lineHeight: 1.2,
+            }}>
               {fmt2(byKat[value])} €
             </Typography>
           </Paper>
@@ -311,11 +327,11 @@ function GoalCard({ goal, entries, etfPolicies, onAddEntry, onEdit, onDelete }) 
     <Paper
       variant="outlined"
       sx={{
-        borderRadius: 1,
+        borderRadius: '12px',
         p: 2,
         display: 'flex',
         flexDirection: 'column',
-        gap: 1.75,
+        gap: 1.5,
         borderColor: isAnleihe && maturityAlert ? `${maturityColor}55` : 'divider',
       }}
     >
@@ -517,6 +533,90 @@ function GoalCard({ goal, entries, etfPolicies, onAddEntry, onEdit, onDelete }) 
       >
         Einzahlung / Entnahme
       </Button>
+    </Paper>
+  );
+}
+
+// ─── Compact Goal Card (Sidebar-Variante für Private Investments) ────────────
+function CompactGoalCard({ goal, entries, etfPolicies, onEdit, onDelete }) {
+  const balance   = effectiveBalance(goal, entries, etfPolicies);
+  const hasTarget = goal.target_amount != null && goal.target_amount > 0;
+  const pct       = hasTarget ? Math.min(100, Math.round((balance / goal.target_amount) * 100)) : null;
+  const done      = hasTarget && pct >= 100;
+
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        borderRadius: '12px',
+        p: 1.75,
+        bgcolor: 'background.default',
+        display: 'flex', flexDirection: 'column', gap: 1.25,
+      }}
+    >
+      {/* Header: Icon + (optional) Abgeschlossen-Badge */}
+      <Stack direction="row" alignItems="center" justifyContent="space-between">
+        <Box sx={{
+          width: 36, height: 36, borderRadius: '10px',
+          bgcolor: 'background.paper',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: goal.color_code,
+        }}>
+          <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 20 }}>
+            business_center
+          </Box>
+        </Box>
+        {done && (
+          <Box sx={{
+            px: 1, py: 0.25, borderRadius: 99,
+            bgcolor: 'accent.positiveSurface', color: 'primary.dark',
+            fontWeight: 700, fontSize: '0.68rem', letterSpacing: '0.02em',
+            lineHeight: 1.4,
+          }}>
+            Abgeschlossen
+          </Box>
+        )}
+        <Stack direction="row" spacing={0.25} sx={{ ml: done ? 0 : 'auto' }}>
+          <IconButton size="small" onClick={() => onEdit(goal)} title="Bearbeiten"
+            sx={{ color: 'text.disabled', '&:hover': { color: 'text.primary' } }}>
+            <EditOutlinedIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+          <IconButton size="small" onClick={() => onDelete(goal.id)} title="Löschen"
+            sx={{ color: 'text.disabled', '&:hover': { color: 'error.main' } }}>
+            <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Stack>
+      </Stack>
+
+      {/* Name + Betrag */}
+      <Box>
+        <Typography variant="body2" sx={{ fontWeight: 700, lineHeight: 1.2, mb: 0.25 }}>
+          {goal.name}
+        </Typography>
+        <Typography sx={{
+          fontFamily: '"Manrope", sans-serif',
+          fontWeight: 800, letterSpacing: '-0.01em', lineHeight: 1.1,
+          fontSize: '1.25rem',
+        }}>
+          {fmt2(balance)} €
+        </Typography>
+      </Box>
+
+      {/* Progress-Bar */}
+      {hasTarget && (
+        <LinearProgress
+          variant="determinate"
+          value={pct}
+          sx={{
+            height: 6, borderRadius: 99,
+            bgcolor: 'action.hover',
+            '& .MuiLinearProgress-bar': {
+              bgcolor: done ? 'accent.positiveSurface' : goal.color_code,
+              borderRadius: 99,
+            },
+          }}
+        />
+      )}
     </Paper>
   );
 }
@@ -1330,44 +1430,102 @@ export default function GuthabenPage() {
               </SectionCard>
             )}
 
-            {/* Category sections */}
-            {KATEGORIEN.map(({ value, label }) => {
-              const katGoals = grouped[value] ?? [];
-              if (katGoals.length === 0) return null;
-              const katTotal = katGoals.reduce((s, g) => s + effectiveBalance(g, entries, etfPolicies ?? []), 0);
+            {/* Zweispalten-Layout: aktive Assets links · Private Investments rechts */}
+            {goals.length > 0 && (() => {
+              const mainKats = ['rücklagen', 'tagesgeld', 'anleihen'];
+              const mainGoals = mainKats.flatMap((k) => grouped[k] ?? []);
+              const investGoals = grouped['private_investments'] ?? [];
+              const hasInvest = investGoals.length > 0;
+              const hasMultipleMainKats = mainKats.filter((k) => (grouped[k] ?? []).length > 0).length > 1;
+
+              const onEdit = (goal) => {
+                setEditGoal(goal);
+                setShowGoalForm(false);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              };
+              const onDelete = (id) => {
+                const target = goals.find((x) => x.id === id);
+                setConfirmDelete(target);
+              };
+
               return (
-                <Box key={value}>
-                  <Stack direction="row" alignItems="center" spacing={1.25} sx={{ mb: 1.5 }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{label}</Typography>
-                    <Box sx={{ flex: 1, height: 1, bgcolor: 'divider' }} />
-                    <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-                      {fmt2(katTotal)} €
-                    </Typography>
+                <Box sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', md: hasInvest ? '7fr 5fr' : '1fr' },
+                  gap: 3,
+                  alignItems: 'start',
+                }}>
+                  {/* LEFT — aktive Spar-Assets */}
+                  <Stack spacing={2.5}>
+                    {mainKats.map((kat) => {
+                      const katGoals = grouped[kat] ?? [];
+                      if (katGoals.length === 0) return null;
+                      const katLabel = KATEGORIEN.find((k) => k.value === kat)?.label ?? kat;
+                      const katTotal = katGoals.reduce((s, g) => s + effectiveBalance(g, entries, etfPolicies ?? []), 0);
+                      return (
+                        <Box key={kat}>
+                          {hasMultipleMainKats && (
+                            <Stack direction="row" alignItems="center" spacing={1.25} sx={{ mb: 1.25 }}>
+                              <Typography variant="overline" sx={{
+                                color: 'text.secondary', fontWeight: 700,
+                                letterSpacing: '0.08em', lineHeight: 1.15,
+                              }}>
+                                {katLabel}
+                              </Typography>
+                              <Box sx={{ flex: 1, height: 1, bgcolor: 'divider' }} />
+                              <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+                                {fmt2(katTotal)} €
+                              </Typography>
+                            </Stack>
+                          )}
+                          <Box sx={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                            gap: 2,
+                          }}>
+                            {katGoals.map((g) => (
+                              <GoalCard
+                                key={g.id} goal={g} entries={entries} etfPolicies={etfPolicies ?? []}
+                                onAddEntry={(goal) => setEntryModal(goal)}
+                                onEdit={onEdit}
+                                onDelete={onDelete}
+                              />
+                            ))}
+                          </Box>
+                        </Box>
+                      );
+                    })}
+                    {mainGoals.length === 0 && hasInvest && (
+                      <SectionCard>
+                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+                          Keine Sparziele angelegt. Nutze „Neues Asset" oben, um ein Sparziel oder Tagesgeldkonto zu ergänzen.
+                        </Typography>
+                      </SectionCard>
+                    )}
                   </Stack>
-                  <Box sx={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                    gap: 2,
-                  }}>
-                    {katGoals.map((g) => (
-                      <GoalCard
-                        key={g.id} goal={g} entries={entries} etfPolicies={etfPolicies ?? []}
-                        onAddEntry={(goal) => setEntryModal(goal)}
-                        onEdit={(goal) => {
-                          setEditGoal(goal);
-                          setShowGoalForm(false);
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                        onDelete={(id) => {
-                          const target = goals.find((x) => x.id === id);
-                          setConfirmDelete(target);
-                        }}
-                      />
-                    ))}
-                  </Box>
+
+                  {/* RIGHT — Private Investments Sidebar */}
+                  {hasInvest && (
+                    <Stack spacing={1.5}>
+                      <Stack direction="row" alignItems="baseline" justifyContent="space-between">
+                        <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: '-0.01em' }}>
+                          Private Investments
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {investGoals.length} {investGoals.length === 1 ? 'Asset' : 'Assets'}
+                        </Typography>
+                      </Stack>
+                      {investGoals.map((g) => (
+                        <CompactGoalCard
+                          key={g.id} goal={g} entries={entries} etfPolicies={etfPolicies ?? []}
+                          onEdit={onEdit} onDelete={onDelete}
+                        />
+                      ))}
+                    </Stack>
+                  )}
                 </Box>
               );
-            })}
+            })()}
           </Stack>
         )}
 
