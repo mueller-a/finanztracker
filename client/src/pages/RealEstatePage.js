@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
   Box, Stack, Typography, Button, IconButton, TextField, MenuItem,
-  Slider, Alert, CircularProgress, Chip,
+  Slider, Alert, CircularProgress, Chip, Paper,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
@@ -22,25 +22,27 @@ import {
 import { PageHeader, SectionCard, CurrencyField, DateField } from '../components/mui';
 
 // ── Stat card with accent stripe ──────────────────────────────────────────────
-function StatCard({ label, value, sub, accent }) {
+// severity maps to theme palette: 'info' | 'error' | 'success' | 'warning'
+function StatCard({ label, value, sub, severity = 'info' }) {
+  const colorMap = {
+    info:    'primary.main',       // navy — neutral/informational
+    error:   'accent.negative',    // coral
+    success: 'secondary.main',     // emerald
+    warning: 'warning.main',       // amber
+  };
+  const color = colorMap[severity] ?? colorMap.info;
   return (
-    <Box sx={(theme) => ({
-      backgroundColor: 'background.paper',
-      borderTop: `1px solid ${theme.palette.divider}`,
-      borderRight: `1px solid ${theme.palette.divider}`,
-      borderBottom: `1px solid ${theme.palette.divider}`,
-      borderLeft: `3px solid ${accent}`,
-      borderRadius: 1,
-      p: '14px 16px',
+    <Paper sx={{
+      borderRadius: 3,
+      borderLeft: '3px solid',
+      borderLeftColor: color,
+      p: 2,
       height: '100%',
-    })}>
-      <Typography variant="caption" sx={{
-        display: 'block', color: 'text.secondary', fontWeight: 700,
-        textTransform: 'uppercase', letterSpacing: '0.08em', mb: 0.75,
-      }}>
+    }}>
+      <Typography variant="overline" sx={{ color: 'text.secondary', display: 'block', mb: 0.75 }}>
         {label}
       </Typography>
-      <Typography variant="subtitle1" sx={{ color: accent, fontWeight: 700, lineHeight: 1.2 }}>
+      <Typography variant="subtitle1" sx={{ color, fontWeight: 700, lineHeight: 1.2 }}>
         {value}
       </Typography>
       {sub && (
@@ -48,7 +50,7 @@ function StatCard({ label, value, sub, accent }) {
           {sub}
         </Typography>
       )}
-    </Box>
+    </Paper>
   );
 }
 
@@ -57,7 +59,7 @@ function PropertyForm({ property, onSave, onCancel }) {
   const [f, setF] = useState(property || {
     name: '', type: 'vermietet', purchase_price: '', purchase_date: '',
     market_value: '', land_value_ratio: 20, living_space: '', build_year: '',
-    monthly_rent: 0, monthly_hausgeld: 0, maintenance_reserve: 0, color_code: '#7c3aed',
+    monthly_rent: 0, monthly_hausgeld: 0, maintenance_reserve: 0, color_code: '#131b2e',
   });
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
 
@@ -219,24 +221,24 @@ function PropertyDetail({ property, mortgages: propMortgages, onBack, onAddMortg
       <Box sx={{
         display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(188px, 1fr))' }, gap: 2,
       }}>
-        <StatCard label="Marktwert" value={fmtEuro(marktwert)} accent="#0ea5e9" />
-        <StatCard label="Restschuld" value={fmtEuro(totalRestschuld)} sub={ltv + '% LTV'} accent="#ef4444" />
+        <StatCard label="Marktwert" value={fmtEuro(marktwert)} severity="info" />
+        <StatCard label="Restschuld" value={fmtEuro(totalRestschuld)} sub={ltv + '% LTV'} severity="error" />
         <StatCard label="Netto-Vermögen" value={fmtEuro(marktwert - totalRestschuld)}
-          accent={marktwert - totalRestschuld >= 0 ? '#10b981' : '#ef4444'} />
-        <StatCard label="AfA p.a." value={fmtEuro(afa.jahresAfa)} sub={afa.hinweis} accent="#f59e0b" />
+          severity={marktwert - totalRestschuld >= 0 ? 'success' : 'error'} />
+        <StatCard label="AfA p.a." value={fmtEuro(afa.jahresAfa)} sub={afa.hinweis} severity="warning" />
         {cashflow != null && (
           <StatCard label="Cashflow mtl." value={fmtEuro(cashflow, 2)}
             sub={cashflow >= 0 ? 'Positiv' : 'Negativ'}
-            accent={cashflow >= 0 ? '#10b981' : '#ef4444'} />
+            severity={cashflow >= 0 ? 'success' : 'error'} />
         )}
         {steuerVorteil && steuerVorteil.isNegativ && (
           <StatCard label="Steuervorteil p.a." value={fmtEuro(steuerVorteil.vorteil)}
-            sub={steuerSatzAlter + '% Steuersatz'} accent="#10b981" />
+            sub={steuerSatzAlter + '% Steuersatz'} severity="success" />
         )}
         <StatCard label="Haltefrist §23"
           value={haltefrist.fulfilled ? 'Erfüllt ✓' : haltefrist.remainingYears + ' Jahre'}
           sub={haltefrist.fulfilled ? 'Steuerfreier Verkauf möglich' : 'Steuerfrei ab ' + haltefrist.freeFrom}
-          accent={haltefrist.fulfilled ? '#10b981' : '#f59e0b'} />
+          severity={haltefrist.fulfilled ? 'success' : 'warning'} />
       </Box>
 
       {/* Zinsbindungs-Warnungen */}
@@ -317,7 +319,7 @@ function PropertyDetail({ property, mortgages: propMortgages, onBack, onAddMortg
               }} />
               <Bar dataKey="zinsen" name="Zinsen" fill={theme.palette.error.main} stackId="a" />
               <Bar dataKey="tilgung" name="Tilgung" fill={theme.palette.success.main} stackId="a" radius={[2, 2, 0, 0]} />
-              <Line type="monotone" dataKey="balance" name="Restschuld" stroke="#0ea5e9" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="balance" name="Restschuld" stroke={theme.palette.primary.main} strokeWidth={2} dot={false} />
             </ComposedChart>
           </ResponsiveContainer>
         </SectionCard>
@@ -539,16 +541,16 @@ export default function RealEstatePage() {
         }}>
           <StatCard label="Netto-Vermögen" value={fmtEuro(portfolio.nettoVermoegen)}
             sub={fmtEuro(portfolio.totalMarkt) + ' Marktwert'}
-            accent={portfolio.nettoVermoegen >= 0 ? '#10b981' : '#ef4444'} />
+            severity={portfolio.nettoVermoegen >= 0 ? 'success' : 'error'} />
           <StatCard label="Restschuld gesamt" value={fmtEuro(portfolio.totalSchuld)}
-            sub={portfolio.avgLTV + '% Ø LTV'} accent="#ef4444" />
+            sub={portfolio.avgLTV + '% Ø LTV'} severity="error" />
           <StatCard label="Cashflow mtl." value={fmtEuro(portfolio.totalCashflow, 2)}
             sub={portfolio.totalCashflow >= 0 ? 'Positiv' : 'Zuschussbedarf'}
-            accent={portfolio.totalCashflow >= 0 ? '#10b981' : '#ef4444'} />
+            severity={portfolio.totalCashflow >= 0 ? 'success' : 'error'} />
           <StatCard label="Steuervorteil p.a." value={fmtEuro(portfolio.totalSteuerVorteil)}
-            sub={(steuerSatzAlter || 42) + '% Steuersatz'} accent="#10b981" />
+            sub={(steuerSatzAlter || 42) + '% Steuersatz'} severity="success" />
           <StatCard label="AfA gesamt p.a." value={fmtEuro(portfolio.totalAfA)}
-            sub="Absetzung für Abnutzung" accent="#f59e0b" />
+            sub="Absetzung für Abnutzung" severity="warning" />
         </Box>
       )}
 

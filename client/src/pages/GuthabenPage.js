@@ -20,10 +20,20 @@ import { calcPolicy, calcAVD, calcDepot } from '../utils/etfCalculations';
 import { PageHeader, SectionCard, CurrencyField, DateField, ConfirmDialog } from '../components/mui';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
+// Data-tagging palette for assets/goals. Kept in Fiscal Gallery hues —
+// variants of navy/emerald/amber/coral so all categories feel like parts
+// of a single editorial system rather than a rainbow of unrelated colors.
 const COLOR_PALETTE = [
-  '#7c3aed', '#0ea5e9', '#10b981', '#f59e0b',
-  '#ef4444', '#ec4899', '#8b5cf6', '#06b6d4',
-  '#84cc16', '#f97316',
+  '#131b2e',  // navy (primary_container)
+  '#006c49',  // emerald (secondary)
+  '#b45309',  // amber
+  '#ba1a1a',  // error
+  '#3f465c',  // on_primary_fixed_variant
+  '#f23d5c',  // on_tertiary_container
+  '#00714d',  // on_secondary_container
+  '#565e74',  // surface_tint
+  '#92002a',  // on_tertiary_fixed_variant
+  '#45464d',  // on_surface_variant
 ];
 
 const KATEGORIEN = [
@@ -222,47 +232,57 @@ function TotalWidget({ goals, entries, etfPolicies }) {
   const total = Object.values(byKat).reduce((s, v) => s + v, 0);
 
   return (
-    <Box sx={{
-      background: `linear-gradient(135deg, ${isDark ? '#1e1650' : '#7c3aed'} 0%, ${isDark ? '#2d2172' : '#a78bfa'} 100%)`,
-      borderRadius: 1,
-      p: '1.75rem 2rem',
+    <Paper sx={(t) => ({
+      position: 'relative',
+      overflow: 'hidden',
+      bgcolor: 'primary.dark',
+      color: 'primary.contrastText',
+      borderRadius: 3,
+      p: { xs: 4, sm: 5, md: 6 },
       display: 'flex',
-      alignItems: 'center',
+      flexDirection: { xs: 'column', md: 'row' },
+      alignItems: { xs: 'flex-start', md: 'center' },
       justifyContent: 'space-between',
-      flexWrap: 'wrap',
-      gap: 2,
-    }}>
-      <Box>
-        <Typography variant="overline" sx={{
-          color: 'rgba(255,255,255,0.7)', fontWeight: 700, letterSpacing: '0.1em', display: 'block', mb: 0.75,
-        }}>
+      gap: 3,
+      '&::before': {
+        content: '""',
+        position: 'absolute',
+        inset: 0,
+        background: `linear-gradient(135deg, ${t.palette.primary.dark} 0%, ${t.palette.primary.main} 100%)`,
+        opacity: 0.5,
+        pointerEvents: 'none',
+      },
+    })}>
+      <Box sx={{ position: 'relative', zIndex: 1 }}>
+        <Typography variant="overline" sx={{ color: 'primary.light', display: 'block', mb: 2 }}>
           Net Worth — Asset Manager
         </Typography>
-        <Typography sx={{ color: '#fff', fontSize: '2.25rem', fontWeight: 800, lineHeight: 1 }}>
+        <Typography variant="h2" sx={{ fontWeight: 900, letterSpacing: '-0.02em', lineHeight: 1 }}>
           {fmt2(total)} €
         </Typography>
-        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', display: 'block', mt: 0.75 }}>
+        <Typography variant="body2" sx={{ mt: 1, color: 'primary.light' }}>
           über {goals.length} Asset{goals.length !== 1 ? 's' : ''}
         </Typography>
       </Box>
-      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+      <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap
+        sx={{ position: 'relative', zIndex: 1 }}>
         {KATEGORIEN.filter(({ value }) => byKat[value] > 0).map(({ value, label }) => (
-          <Box key={value} sx={{
-            background: 'rgba(255,255,255,0.15)',
-            borderRadius: 1,
-            p: '8px 14px',
-            backdropFilter: 'blur(4px)',
+          <Paper key={value} sx={{
+            bgcolor: 'primary.main',
+            color: 'primary.contrastText',
+            borderRadius: 2,
+            px: 2, py: 1,
           }}>
-            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', display: 'block', mb: 0.25 }}>
+            <Typography variant="caption" sx={{ color: 'primary.light', display: 'block', mb: 0.25 }}>
               {label}
             </Typography>
-            <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: '0.9rem', fontFamily: 'monospace' }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
               {fmt2(byKat[value])} €
             </Typography>
-          </Box>
+          </Paper>
         ))}
       </Stack>
-    </Box>
+    </Paper>
   );
 }
 
@@ -752,7 +772,7 @@ function EntryModal({ goals, preselectedGoal, onSave, onClose }) {
                   onClick={() => setGoalId(g.id)}
                   sx={{
                     bgcolor: goalId === g.id ? g.color_code : 'transparent',
-                    color: goalId === g.id ? '#fff' : 'text.secondary',
+                    color: goalId === g.id ? 'common.white' : 'text.secondary',
                     border: 2,
                     borderColor: goalId === g.id ? g.color_code : 'divider',
                     fontWeight: 600,
@@ -1112,7 +1132,7 @@ function TransactionHistory({ goals, entries, onDelete }) {
             onClick={() => setFilter(g.id)}
             sx={{
               bgcolor: filter === g.id ? g.color_code : 'transparent',
-              color: filter === g.id ? '#fff' : 'text.secondary',
+              color: filter === g.id ? 'common.white' : 'text.secondary',
               border: 2,
               borderColor: filter === g.id ? g.color_code : 'divider',
               fontWeight: 600,

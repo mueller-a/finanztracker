@@ -3,7 +3,7 @@ import {
   Box, Stack, Typography, Button, IconButton, TextField, MenuItem,
   Tabs, Tab, Alert, CircularProgress, Chip, Paper, Link as MuiLink,
   LinearProgress, Dialog, DialogTitle, DialogContent, DialogActions,
-  Snackbar, Avatar, InputAdornment, AlertTitle,
+  Snackbar, Avatar, InputAdornment, AlertTitle, Checkbox, FormControlLabel,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
@@ -949,12 +949,17 @@ function TariffForm({ tariff, onSave }) {
               )}
             </Paper>
 
-            <Stack direction="row" spacing={1} alignItems="center">
-              <input type="checkbox" checked={isCancelled}
-                onChange={(e) => setIsCancelled(e.target.checked)}
-                style={{ accentColor: '#10b981' }} />
-              <Typography variant="body2">Bereits gekündigt</Typography>
-            </Stack>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={isCancelled}
+                  onChange={(e) => setIsCancelled(e.target.checked)}
+                  color="secondary"
+                  size="small"
+                />
+              }
+              label={<Typography variant="body2">Bereits gekündigt</Typography>}
+            />
             {isCancelled && (
               <Box sx={{ maxWidth: 220 }}>
                 <DateField label="Gekündigt am" value={cancelDate}
