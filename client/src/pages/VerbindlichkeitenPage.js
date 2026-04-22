@@ -79,7 +79,7 @@ function TotalWidget({ debts, schedulesMap }) {
             </Typography>
             <Stack direction="row" alignItems="baseline" spacing={1}>
               <Typography sx={{
-                fontFamily: 'headline',
+                fontFamily: '"Manrope", sans-serif',
                 fontWeight: 900,
                 letterSpacing: '-0.02em',
                 lineHeight: 1,
@@ -106,7 +106,7 @@ function TotalWidget({ debts, schedulesMap }) {
                   {label}
                 </Typography>
                 <Typography sx={{
-                  fontFamily: 'headline',
+                  fontFamily: '"Manrope", sans-serif',
                   fontWeight: 700,
                   fontSize: '1.05rem',
                   lineHeight: 1.2,
@@ -139,7 +139,7 @@ function TotalWidget({ debts, schedulesMap }) {
           </Typography>
         </Stack>
         <Typography sx={{
-          fontFamily: 'headline',
+          fontFamily: '"Manrope", sans-serif',
           fontWeight: 800,
           fontSize: '2rem',
           lineHeight: 1,
@@ -1486,9 +1486,17 @@ export default function VerbindlichkeitenPage() {
             )}
 
             <Box sx={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+              display: 'flex',
+              flexWrap: 'wrap',
               gap: 2,
+              // Max 3 Karten pro Zeile, jede Karte max 400px breit.
+              // flex-basis = 33.33% − gap sorgt dafür, dass eine 4. Karte
+              // immer umbricht. Bei 1-2 Karten stretchen sie bis maxWidth.
+              '& > *': {
+                flex: '1 1 calc(33.333% - 16px)',
+                minWidth: { xs: '100%', sm: 280 },
+                maxWidth: 400,
+              },
             }}>
               {debts.map((d) => (
                 <DebtCard

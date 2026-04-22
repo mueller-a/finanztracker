@@ -75,7 +75,17 @@ function ForecastGauge({ forecast, cost }) {
             <Typography variant="caption" color="text.secondary">Jahresfortschritt</Typography>
             <Typography variant="caption" sx={{ fontWeight: 600 }}>{pct}%</Typography>
           </Stack>
-          <LinearProgress variant="determinate" value={pct} sx={{ height: 10, borderRadius: 99 }} />
+          <LinearProgress
+            variant="determinate"
+            value={pct}
+            sx={{
+              height: 10,
+              borderRadius: 99,
+              bgcolor: 'action.hover',
+              // Emerald-Container (#6cf8bb) wie die P.A.-Chips bei Verbindlichkeiten
+              '& .MuiLinearProgress-bar': { bgcolor: 'accent.positiveSurface' },
+            }}
+          />
           <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
             <Typography variant="caption" color="text.secondary">{forecast.daysObserved} Tage Daten</Typography>
             <Typography variant="caption" color="text.secondary">{forecast.daysRemaining} Tage verbleibend</Typography>
