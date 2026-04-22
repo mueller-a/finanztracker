@@ -38,10 +38,10 @@ const COLOR_PALETTE = [
 ];
 
 const KATEGORIEN = [
-  { value: 'rücklagen',           label: '🏦 Rücklagen' },
-  { value: 'tagesgeld',           label: '💰 Tagesgeldkonto' },
-  { value: 'anleihen',            label: '📜 Anleihen / Bonds' },
-  { value: 'private_investments', label: '🏢 Private Investments' },
+  { value: 'rücklagen',           label: 'Rücklagen',          icon: 'savings' },
+  { value: 'tagesgeld',           label: 'Tagesgeldkonto',     icon: 'account_balance' },
+  { value: 'anleihen',            label: 'Anleihen / Bonds',   icon: 'description' },
+  { value: 'private_investments', label: 'Private Investments',icon: 'business_center' },
 ];
 
 const KUPON_INTERVALLE = [
@@ -328,62 +328,56 @@ function GoalCard({ goal, entries, etfPolicies, onAddEntry, onEdit, onDelete }) 
       variant="outlined"
       sx={{
         borderRadius: '12px',
-        p: 2,
+        p: 2.25,
         display: 'flex',
         flexDirection: 'column',
         gap: 1.5,
         borderColor: isAnleihe && maturityAlert ? `${maturityColor}55` : 'divider',
+        transition: 'border-color 0.15s',
+        '&:hover .goalcard-actions': { opacity: 1 },
       }}
     >
-      {/* Header */}
-      <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-        <Stack direction="row" alignItems="center" spacing={1.25}>
-          <Box sx={{
-            width: 12, height: 12, borderRadius: '50%',
-            backgroundColor: goal.color_code, flexShrink: 0, mt: 0.25,
-          }} />
-          <Box>
-            <Stack direction="row" alignItems="center" spacing={0.75}>
-              <Typography variant="body1" sx={{ fontWeight: 700 }}>{goal.name}</Typography>
-              <Chip
-                label={KAT_LABEL[kat]}
-                size="small"
-                sx={{ height: 18, fontSize: '0.6rem', bgcolor: 'action.hover' }}
-              />
-            </Stack>
-            {hasTarget && (
-              <Typography variant="caption" color="text.secondary">
-                Ziel: {fmt2(goal.target_amount)} €
-              </Typography>
-            )}
+      {/* Header: Icon + Name/Ziel + Betrag (rechtsbündig) + Aktionen (hover) */}
+      <Stack direction="row" alignItems="flex-start" spacing={1.5}>
+        <Box sx={{
+          width: 40, height: 40, borderRadius: '12px',
+          bgcolor: 'accent.positiveSurface',
+          color: 'primary.dark',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 22 }}>
+            {KATEGORIEN.find((k) => k.value === kat)?.icon ?? 'savings'}
           </Box>
-        </Stack>
-        <Stack direction="row" spacing={0.5}>
-          <IconButton size="small" onClick={() => onEdit(goal)} title="Bearbeiten">
-            <EditOutlinedIcon fontSize="inherit" />
-          </IconButton>
-          <IconButton size="small" color="error" onClick={() => onDelete(goal.id)} title="Löschen">
-            <DeleteOutlineIcon fontSize="inherit" />
-          </IconButton>
+        </Box>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography variant="body1" sx={{ fontWeight: 700, lineHeight: 1.25 }}>
+            {goal.name}
+          </Typography>
+          {hasTarget && (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+              Ziel: {fmt2(goal.target_amount)} €
+            </Typography>
+          )}
+          {isEtfLinked && (
+            <Typography variant="caption" sx={{ color: 'primary.main', display: 'block' }}>
+              projiziert · {etfPolicy?.name ?? goal.etf_id}
+            </Typography>
+          )}
+        </Box>
+        <Stack alignItems="flex-end" spacing={0.25}>
+          <Typography sx={{
+            fontFamily: '"Manrope", sans-serif', fontWeight: 800,
+            letterSpacing: '-0.01em', lineHeight: 1.1,
+            fontSize: '1.35rem',
+          }}>
+            {fmt2(balance)} €
+          </Typography>
+          {hasTarget && (
+            <Typography variant="caption" color="text.secondary">{pct}%</Typography>
+          )}
         </Stack>
       </Stack>
-
-      {/* Balance */}
-      <Box>
-        <Typography sx={{ fontSize: '1.6rem', fontWeight: 800, fontFamily: 'monospace' }}>
-          {fmt2(balance)} €
-        </Typography>
-        {isEtfLinked && (
-          <Typography variant="caption" sx={{ color: 'primary.main' }}>
-            📈 Projizierter Wert · {etfPolicy?.name ?? goal.etf_id}
-          </Typography>
-        )}
-        {hasTarget && (
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-            {pct}% von {fmt2(goal.target_amount)} €
-          </Typography>
-        )}
-      </Box>
 
       {/* Progress bar */}
       {hasTarget && (
@@ -391,149 +385,111 @@ function GoalCard({ goal, entries, etfPolicies, onAddEntry, onEdit, onDelete }) 
           variant="determinate"
           value={pct}
           sx={{
-            height: 8, borderRadius: 99,
+            height: 6, borderRadius: 99,
             bgcolor: 'action.hover',
             '& .MuiLinearProgress-bar': {
-              background: `linear-gradient(90deg, ${goal.color_code}cc, ${goal.color_code})`,
+              bgcolor: pct >= 100 ? 'accent.positiveSurface' : goal.color_code,
+              borderRadius: 99,
             },
           }}
         />
       )}
 
-      {/* Tagesgeld info */}
-      {isTagesgeld && goal.zinssatz > 0 && (
-        <Paper variant="outlined" sx={{
-          bgcolor: 'rgba(16,185,129,0.08)',
-          borderColor: 'rgba(16,185,129,0.3)',
-          p: '8px 12px',
-          display: 'flex',
-          gap: 2.5,
-        }}>
-          <Box>
-            <Typography variant="caption" sx={{
-              color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block',
-            }}>
-              Zinssatz p.a.
-            </Typography>
-            <Typography sx={{ color: 'success.main', fontWeight: 700, fontSize: '0.9rem', fontFamily: 'monospace' }}>
-              {fmt4(goal.zinssatz)} %
-            </Typography>
-          </Box>
-          <Box>
-            <Typography variant="caption" sx={{
-              color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block',
-            }}>
-              Zinsen p.a.
-            </Typography>
-            <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', fontFamily: 'monospace' }}>
-              {fmt2(annualZins(goal, entries))} €
-            </Typography>
-          </Box>
-          <Box>
-            <Typography variant="caption" sx={{
-              color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block',
-            }}>
-              Pro Monat
-            </Typography>
-            <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', fontFamily: 'monospace' }}>
-              {fmt2(annualZins(goal, entries) / 12)} €
-            </Typography>
-          </Box>
-        </Paper>
-      )}
-
-      {/* Anleihen info */}
-      {isAnleihe && (
-        <Paper
-          variant="outlined"
-          sx={{
-            bgcolor: maturityAlert ? `${maturityColor}10` : 'action.hover',
-            borderColor: maturityAlert ? `${maturityColor}40` : 'divider',
-            p: '10px 12px',
-          }}
-        >
-          <Box sx={{
-            display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.25,
-            mb: goal.faelligkeitsdatum ? 1 : 0,
-          }}>
-            {[
-              { label: 'Nominalwert', val: goal.nominalwert ? fmt2(goal.nominalwert) + ' €' : '–', color: 'text.primary' },
-              { label: 'Kupon p.a.', val: goal.kupon ? fmt4(goal.kupon) + ' %' : '–', color: 'warning.main' },
-              { label: 'Kupon p.a. (€)', val: goal.kupon && goal.nominalwert ? fmt2(annualKupon(goal)) + ' €' : '–', color: 'text.primary' },
-            ].map(({ label, val, color }) => (
-              <Box key={label}>
-                <Typography variant="caption" sx={{
-                  color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block',
-                }}>
-                  {label}
-                </Typography>
-                <Typography sx={{ color, fontWeight: 700, fontSize: '0.85rem', fontFamily: 'monospace' }}>
-                  {val}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
-          {goal.faelligkeitsdatum && (
-            <Stack direction="row" alignItems="center" spacing={1} sx={{ pt: 1, borderTop: 1, borderColor: 'divider' }}>
-              <Typography>{maturityUrgent ? '🔴' : maturityAlert ? '🟠' : '🟢'}</Typography>
-              <Typography variant="caption" sx={{ color: maturityColor, fontWeight: 700 }}>
-                Fälligkeit: {fmtDate(goal.faelligkeitsdatum)}
-              </Typography>
-              {monthsLeft !== null && monthsLeft >= 0 && (
-                <Typography variant="caption" color="text.secondary">
-                  (in {monthsLeft === 0 ? 'diesem Monat' : `${monthsLeft} Monat${monthsLeft !== 1 ? 'en' : ''}`})
-                </Typography>
-              )}
-              {monthsLeft !== null && monthsLeft < 0 && (
-                <Typography variant="caption" color="text.secondary">abgelaufen</Typography>
-              )}
-            </Stack>
+      {/* Inline meta-row: Tagesgeld-Zins · Monatliche Sparrate · Anleihen-Fälligkeit */}
+      {(isTagesgeld && goal.zinssatz > 0) || Number(goal.monthly_soll) > 0 || isAnleihe ? (
+        <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap sx={{ color: 'text.secondary' }}>
+          {isTagesgeld && goal.zinssatz > 0 && (
+            <MetaChip label="Zins p.a." value={`${fmt4(goal.zinssatz)} %`} accent="success" />
           )}
-        </Paper>
-      )}
+          {Number(goal.monthly_soll) > 0 && (
+            <MetaChip
+              label="Sparrate"
+              value={`${fmt2(goal.monthly_soll)} € / Mo`}
+              accent={offen > 0 ? 'default' : 'success'}
+              sub={offen > 0 ? `offen: ${fmt2(offen)} €` : 'erfüllt'}
+            />
+          )}
+          {isAnleihe && goal.kupon > 0 && (
+            <MetaChip label="Kupon p.a." value={`${fmt4(goal.kupon)} %`} accent="warning" />
+          )}
+          {isAnleihe && goal.faelligkeitsdatum && (
+            <MetaChip
+              label="Fällig"
+              value={fmtDate(goal.faelligkeitsdatum)}
+              accent={maturityUrgent ? 'error' : maturityAlert ? 'warning' : 'default'}
+              sub={monthsLeft !== null && monthsLeft >= 0
+                ? `in ${monthsLeft === 0 ? '< 1 Mo' : `${monthsLeft} Mo`}`
+                : monthsLeft !== null ? 'abgelaufen' : null}
+            />
+          )}
+        </Stack>
+      ) : null}
 
-      {/* SOLL/IST grid */}
-      {(kat === 'rücklagen' || kat === 'tagesgeld') && Number(goal.monthly_soll) > 0 && (
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
-          {[
-            { label: 'SOLL/Monat', val: fmt2(goal.monthly_soll) + ' €', color: 'text.primary' },
-            { label: 'IST diesen Monat', val: fmt2(istThisMonth) + ' €',
-              color: istThisMonth >= goal.monthly_soll ? 'success.main' : 'text.primary' },
-            { label: 'OFFEN', val: fmt2(offen) + ' €',
-              color: offen > 0 ? 'warning.main' : 'success.main' },
-          ].map(({ label, val, color }) => (
-            <Box key={label} sx={{ bgcolor: 'action.hover', borderRadius: 1.25, p: '8px 10px' }}>
-              <Typography variant="caption" sx={{
-                color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
-                display: 'block', fontSize: '0.6rem',
-              }}>
-                {label}
-              </Typography>
-              <Typography sx={{ color, fontWeight: 700, fontSize: '0.85rem', mt: 0.25, fontFamily: 'monospace' }}>
-                {val}
-              </Typography>
-            </Box>
-          ))}
+      {/* Actions: Einzahlung/Entnahme + Edit/Delete (dezent unten) */}
+      <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mt: 'auto', pt: 0.5 }}>
+        <Button
+          size="small"
+          variant="text"
+          startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+          onClick={() => onAddEntry(goal)}
+          sx={{ textTransform: 'none', fontWeight: 600, color: 'text.primary' }}
+        >
+          Zahlung erfassen
+        </Button>
+        <Box className="goalcard-actions" sx={{
+          ml: 'auto',
+          opacity: { xs: 1, md: 0 },
+          transition: 'opacity 0.15s',
+        }}>
+          <IconButton size="small" onClick={() => onEdit(goal)} title="Bearbeiten"
+            sx={{ color: 'text.disabled', '&:hover': { color: 'text.primary' } }}>
+            <EditOutlinedIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+          <IconButton size="small" onClick={() => onDelete(goal.id)} title="Löschen"
+            sx={{ color: 'text.disabled', '&:hover': { color: 'error.main' } }}>
+            <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+          </IconButton>
         </Box>
-      )}
-
-      {/* Quick entry button */}
-      <Button
-        fullWidth
-        variant="outlined"
-        startIcon={<AddIcon />}
-        onClick={() => onAddEntry(goal)}
-        sx={{
-          borderColor: `${goal.color_code}40`,
-          bgcolor: `${goal.color_code}20`,
-          color: goal.color_code,
-          fontWeight: 600,
-          '&:hover': { bgcolor: `${goal.color_code}35`, borderColor: goal.color_code },
-        }}
-      >
-        Einzahlung / Entnahme
-      </Button>
+      </Stack>
     </Paper>
+  );
+}
+
+// Kleines Meta-Chip für Zinssatz, Sparrate, Kupon, Fälligkeit.
+function MetaChip({ label, value, sub, accent = 'default' }) {
+  const accentColor = {
+    success: 'success.main',
+    warning: 'warning.main',
+    error:   'error.main',
+    default: 'text.primary',
+  }[accent];
+  return (
+    <Box sx={{
+      bgcolor: 'background.default',
+      borderRadius: '10px',
+      px: 1.25, py: 0.75,
+      minWidth: 0,
+      flex: '1 1 auto',
+    }}>
+      <Typography variant="caption" sx={{
+        color: 'text.secondary', display: 'block',
+        fontSize: '0.6rem', fontWeight: 600,
+        textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1.2,
+      }}>
+        {label}
+      </Typography>
+      <Typography sx={{
+        fontWeight: 700, fontSize: '0.85rem', lineHeight: 1.25,
+        color: accentColor,
+      }}>
+        {value}
+      </Typography>
+      {sub && (
+        <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem' }}>
+          {sub}
+        </Typography>
+      )}
+    </Box>
   );
 }
 
@@ -558,9 +514,9 @@ function CompactGoalCard({ goal, entries, etfPolicies, onEdit, onDelete }) {
       <Stack direction="row" alignItems="center" justifyContent="space-between">
         <Box sx={{
           width: 36, height: 36, borderRadius: '10px',
-          bgcolor: 'background.paper',
+          bgcolor: 'accent.positiveSurface',
+          color: 'primary.dark',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: goal.color_code,
         }}>
           <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 20 }}>
             business_center
@@ -1370,6 +1326,13 @@ export default function GuthabenPage() {
       <PageHeader
         title="Asset Manager" icon="savings"
         subtitle="Rücklagen · Tagesgeld · Anleihen · Private Investments"
+        actions={
+          !(showGoalForm || editGoal) && activeTab === 'uebersicht' ? (
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setShowGoalForm(true)}>
+              Neues Asset
+            </Button>
+          ) : null
+        }
       />
 
       <Stack spacing={2.5}>
@@ -1385,7 +1348,7 @@ export default function GuthabenPage() {
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
             <Tab value="uebersicht" label="Übersicht" />
-            <Tab value="anleihen" label="📜 Anleihen" />
+            <Tab value="anleihen" label="Anleihen" />
             <Tab value="monatstracker" label="Monatstracker" />
             <Tab value="verlauf" label="Verlauf" />
           </Tabs>
@@ -1394,7 +1357,7 @@ export default function GuthabenPage() {
         {/* Übersicht */}
         {activeTab === 'uebersicht' && (
           <Stack spacing={3}>
-            {(showGoalForm || editGoal) ? (
+            {(showGoalForm || editGoal) && (
               <GoalForm
                 initial={editGoal ? {
                   name: editGoal.name, target_amount: editGoal.target_amount,
@@ -1408,12 +1371,6 @@ export default function GuthabenPage() {
                 onCancel={() => { setShowGoalForm(false); setEditGoal(null); }}
                 etfPolicies={etfPolicies ?? []}
               />
-            ) : (
-              <Stack direction="row" justifyContent="flex-end">
-                <Button variant="contained" startIcon={<AddIcon />} onClick={() => setShowGoalForm(true)}>
-                  Neues Asset
-                </Button>
-              </Stack>
             )}
 
             {goals.length === 0 && !showGoalForm && (
@@ -1460,20 +1417,21 @@ export default function GuthabenPage() {
                     {mainKats.map((kat) => {
                       const katGoals = grouped[kat] ?? [];
                       if (katGoals.length === 0) return null;
-                      const katLabel = KATEGORIEN.find((k) => k.value === kat)?.label ?? kat;
+                      const katMeta = KATEGORIEN.find((k) => k.value === kat);
                       const katTotal = katGoals.reduce((s, g) => s + effectiveBalance(g, entries, etfPolicies ?? []), 0);
                       return (
                         <Box key={kat}>
                           {hasMultipleMainKats && (
-                            <Stack direction="row" alignItems="center" spacing={1.25} sx={{ mb: 1.25 }}>
+                            <Stack direction="row" alignItems="baseline" justifyContent="space-between" sx={{ mb: 1.25 }}>
                               <Typography variant="overline" sx={{
                                 color: 'text.secondary', fontWeight: 700,
                                 letterSpacing: '0.08em', lineHeight: 1.15,
                               }}>
-                                {katLabel}
+                                {katMeta?.label ?? kat}
                               </Typography>
-                              <Box sx={{ flex: 1, height: 1, bgcolor: 'divider' }} />
-                              <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+                              <Typography variant="caption" color="text.secondary" sx={{
+                                fontFamily: '"Manrope", sans-serif', fontWeight: 700,
+                              }}>
                                 {fmt2(katTotal)} €
                               </Typography>
                             </Stack>
@@ -1481,7 +1439,7 @@ export default function GuthabenPage() {
                           <Box sx={{
                             display: 'grid',
                             gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-                            gap: 2,
+                            gap: 1.5,
                           }}>
                             {katGoals.map((g) => (
                               <GoalCard
