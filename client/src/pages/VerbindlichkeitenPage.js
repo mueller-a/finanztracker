@@ -54,18 +54,14 @@ function TotalWidget({ debts, schedulesMap }) {
       gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' },
       gap: 3,
     }}>
-      {/* Editorial Navy Block — Gesamtverbindlichkeiten */}
+      {/* Editorial Navy Block — Gesamtverbindlichkeiten (kompakt) */}
       <Paper sx={(t) => ({
         position: 'relative',
         overflow: 'hidden',
         bgcolor: 'primary.dark',
         color: 'primary.contrastText',
-        p: { xs: 4, sm: 5, md: 6 },
+        p: { xs: 3, sm: 3.5 },
         borderRadius: 3,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        minHeight: 280,
         '&::before': {
           content: '""',
           position: 'absolute',
@@ -75,75 +71,90 @@ function TotalWidget({ debts, schedulesMap }) {
           pointerEvents: 'none',
         },
       })}>
-        <Box sx={{ position: 'relative', zIndex: 1 }}>
-          <Typography variant="overline" sx={{ color: 'primary.light', display: 'block', mb: 2 }}>
-            Gesamtverbindlichkeiten
-          </Typography>
-          <Stack direction="row" alignItems="baseline" spacing={1.5}>
-            <Typography variant="h2" sx={{ fontWeight: 900, letterSpacing: '-0.02em', lineHeight: 1 }}>
-              − {fmt0(totalDebt)} €
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} alignItems={{ sm: 'center' }}
+          justifyContent="space-between" sx={{ position: 'relative', zIndex: 1 }}>
+          <Box>
+            <Typography variant="overline" sx={{ color: 'primary.light', display: 'block', mb: 0.5 }}>
+              Gesamtverbindlichkeiten
             </Typography>
-            <Box component="span" className="material-symbols-outlined" sx={{ fontSize: { xs: 28, sm: 40 }, color: 'error.light' }}>
-              trending_down
-            </Box>
-          </Stack>
-          <Typography variant="body2" sx={{ mt: 1, color: 'primary.light' }}>
-            {paidPct}% von {fmt0(totalOriginal)} € abbezahlt · {debts.length} Kredit{debts.length !== 1 ? 'e' : ''}
-          </Typography>
-        </Box>
+            <Stack direction="row" alignItems="baseline" spacing={1}>
+              <Typography sx={{
+                fontFamily: 'headline',
+                fontWeight: 900,
+                letterSpacing: '-0.02em',
+                lineHeight: 1,
+                fontSize: { xs: '1.75rem', sm: '2rem', md: '2.25rem' },
+              }}>
+                − {fmt0(totalDebt)} €
+              </Typography>
+              <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 22, color: 'error.light' }}>
+                trending_down
+              </Box>
+            </Stack>
+            <Typography variant="caption" sx={{ color: 'primary.light', mt: 0.25, display: 'block' }}>
+              {paidPct}% von {fmt0(totalOriginal)} € abbezahlt · {debts.length} Kredit{debts.length !== 1 ? 'e' : ''}
+            </Typography>
+          </Box>
 
-        <Box sx={{
-          position: 'relative', zIndex: 1, mt: 6,
-          display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4,
-        }}>
-          {[
-            { label: 'Monatliche Rate',      val: totalMonthly },
-            { label: 'Gesamtzinsen (Proj.)', val: totalInterest },
-          ].map(({ label, val }) => (
-            <Box key={label}>
-              <Typography variant="caption" sx={{ color: 'primary.light', display: 'block', mb: 0.5 }}>
-                {label}
-              </Typography>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                {fmt2(val)} €
-              </Typography>
-            </Box>
-          ))}
-        </Box>
+          <Stack direction="row" spacing={3}>
+            {[
+              { label: 'Rate / Monat',   val: totalMonthly },
+              { label: 'Zinsen (Proj.)', val: totalInterest },
+            ].map(({ label, val }) => (
+              <Box key={label}>
+                <Typography variant="caption" sx={{ color: 'primary.light', display: 'block', fontSize: '0.625rem' }}>
+                  {label}
+                </Typography>
+                <Typography sx={{
+                  fontFamily: 'headline',
+                  fontWeight: 700,
+                  fontSize: '1.05rem',
+                  lineHeight: 1.2,
+                  mt: 0.25,
+                }}>
+                  {fmt2(val)} €
+                </Typography>
+              </Box>
+            ))}
+          </Stack>
+        </Stack>
       </Paper>
 
-      {/* Side card — Tilgungsfortschritt */}
+      {/* Side card — Tilgungsfortschritt (kompakt) */}
       <Paper sx={{
         bgcolor: 'background.paper',
-        p: 4,
+        p: { xs: 3, sm: 3.5 },
         borderRadius: 3,
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'space-between',
-        gap: 3,
+        justifyContent: 'center',
+        gap: 1.5,
       }}>
-        <Box>
-          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, mb: 3 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="baseline">
+          <Typography variant="overline" sx={{ color: 'text.secondary' }}>
             Tilgungsfortschritt
           </Typography>
-          <Stack direction="row" justifyContent="space-between" alignItems="flex-end" sx={{ mb: 1 }}>
-            <Typography variant="h4" sx={{ fontWeight: 700 }}>
-              {paidPct}%
-            </Typography>
-            <Typography variant="caption" sx={{ color: 'secondary.main', fontWeight: 600 }}>
-              {paidPct > 0 ? 'In Bearbeitung' : 'Noch nicht begonnen'}
-            </Typography>
-          </Stack>
-          <LinearProgress
-            variant="determinate"
-            value={Math.min(100, paidPct)}
-            color="secondary"
-            sx={{ height: 12, borderRadius: 99, bgcolor: 'action.hover' }}
-          />
-        </Box>
-        <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+          <Typography variant="caption" sx={{ color: 'secondary.main', fontWeight: 700 }}>
+            {paidPct > 0 ? 'In Bearbeitung' : 'Noch nicht begonnen'}
+          </Typography>
+        </Stack>
+        <Typography sx={{
+          fontFamily: 'headline',
+          fontWeight: 800,
+          fontSize: '2rem',
+          lineHeight: 1,
+        }}>
+          {paidPct}%
+        </Typography>
+        <LinearProgress
+          variant="determinate"
+          value={Math.min(100, paidPct)}
+          color="secondary"
+          sx={{ height: 8, borderRadius: 99, bgcolor: 'action.hover' }}
+        />
+        <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.5 }}>
           {debts.length > 0
-            ? `Insgesamt ${fmt0(totalInterest)} € Zinsen projiziert über die Laufzeit aller ${debts.length} Kredite.`
+            ? `Ø ${fmt0(totalInterest / Math.max(1, debts.length))} € Zinsen pro Kredit`
             : 'Noch keine Kredite angelegt.'}
         </Typography>
       </Paper>
