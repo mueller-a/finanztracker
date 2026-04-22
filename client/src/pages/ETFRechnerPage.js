@@ -30,6 +30,18 @@ import {
   KpiCard, SectionCard, PageHeader, CurrencyField, DateField, ConfirmDialog, DataTable,
 } from '../components/mui';
 
+// ── Chart colors — Fiscal Gallery palette ───────────────────────────────────
+// Recharts needs raw CSS values — these mirror theme.palette tokens and
+// design-tokens.css. Never use other hex literals in this file.
+const CHART = {
+  positive: '#006c49',   // secondary — gains, emerald
+  negative: '#ba1a1a',   // error — losses, coral-red
+  neutral:  '#131b2e',   // primary_container — navy focal line
+  warning:  '#b45309',   // amber
+  muted:    '#45464d',   // on_surface_variant
+  grid:     '#c6c6cd',   // outline_variant
+};
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function runCalc(type, params, snapshot, snapshotHistory, policyMeta) {
@@ -89,7 +101,7 @@ const TYPE_DESC = {
   drv:       'Aus Rentenbescheid · Entgeltpunkte · Dynamische Rentenanpassung · PKV-Integration',
 };
 const TYPE_ICON  = { insurance: '💼', avd: '🏛️', depot: '📈', bav: '🏢', drv: '🏛' };
-const TYPE_COLOR = { insurance: '#7c3aed', avd: '#0ea5e9', depot: '#10b981', bav: '#f59e0b', drv: '#22c55e' };
+const TYPE_COLOR = { insurance: CHART.neutral, avd: CHART.neutral, depot: CHART.positive, bav: CHART.warning, drv: CHART.positive };
 
 // ── Theme-Token-Shim ──────────────────────────────────────────────────────────
 // Liest alle Farben/Surfaces aus dem MUI-Theme statt aus hardcoded Hex.
@@ -102,7 +114,7 @@ function useTokens() {
   const isDark = theme.palette.mode === 'dark';
   return {
     card:    theme.palette.background.paper,
-    cardAlt: isDark ? '#16133a' : theme.palette.background.default,
+    cardAlt: isDark ? CHART.neutral : theme.palette.background.default,
     bdr:     theme.palette.divider,
     text:    theme.palette.text.primary,
     sub:     theme.palette.text.secondary,
@@ -114,22 +126,21 @@ function useTokens() {
 }
 
 // ── Recharts custom tooltip ───────────────────────────────────────────────────
+// Uses Paper (surface-container-lowest bg + ghost border via outlined variant)
+// so it inherits the Fiscal Gallery chrome automatically.
 
-function ChartTooltip({ active, payload, label, isDark }) {
+function ChartTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
-  const bg  = isDark ? '#1c2030' : '#ffffff';
-  const bdr = isDark ? '#252a3a' : '#e8e4f8';
   return (
-    <div style={{ background: bg, border: `1px solid ${bdr}`, borderRadius: 8,
-      padding: '8px 12px', fontSize: 12 }}>
-      <div style={{ color: isDark ? '#a5a0c8' : '#6d6a8a', marginBottom: 4 }}>{label}</div>
+    <Paper variant="outlined" sx={{ borderRadius: 2, p: 1.25, fontSize: 12 }}>
+      <Box sx={{ color: 'text.secondary', mb: 0.5 }}>{label}</Box>
       {payload.map((entry) => (
-        <div key={entry.dataKey} style={{ color: entry.color, display: 'flex', gap: 8 }}>
+        <Stack key={entry.dataKey} direction="row" spacing={1} sx={{ color: entry.color }}>
           <span>{entry.name}:</span>
-          <span style={{ fontWeight: 600 }}>{euro(entry.value)}</span>
-        </div>
+          <Box component="span" sx={{ fontWeight: 600 }}>{euro(entry.value)}</Box>
+        </Stack>
       ))}
-    </div>
+    </Paper>
   );
 }
 
@@ -260,7 +271,7 @@ function TypeSelectorModal({ open, onClose, onSelect }) {
               tabIndex={0}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelect(type); }}
               sx={(theme) => ({
-                backgroundColor: theme.palette.mode === 'dark' ? '#16133a' : theme.palette.background.default,
+                backgroundColor: theme.palette.mode === 'dark' ? CHART.neutral : theme.palette.background.default,
                 border: `1px solid ${theme.palette.divider}`,
                 borderRadius: 1,
                 p: 2,
@@ -737,7 +748,7 @@ function BAVSidebar({ params, onChange, color, isDark, isPassive, onPassiveChang
 
 // ── Detail table ──────────────────────────────────────────────────────────────
 
-const COL_MAP = { g: '#10b981', r: '#ef4444', y: '#f59e0b' };
+const COL_MAP = { g: CHART.positive, r: CHART.negative, y: CHART.warning };
 
 function buildInsuranceRows(r, params) {
   const dynInfo = r.dynAktiv ? ('aktiv +' + num(r.dynProzent, 1) + '%/Jahr') : 'deaktiviert';
@@ -1887,50 +1898,50 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
 
   const statCards = r ? (
     pol.type === 'drv' ? [
-      { label: 'Bruttorente (angepasst)', value: euro(r.bruttoRente) + '/Monat', sub: 'bei ' + num(r.rentenAnpassung, 1) + '% Anpassung p.a.', accent: '#22c55e' },
-      { label: 'Netto-Echt-Rente', value: euro(r.nettoRente) + '/Monat', sub: 'nach Steuer & PKV', accent: '#10b981' },
-      { label: 'Einkommensteuer', value: '-' + euro(r.steuerBetrag) + '/Monat', sub: r.steuerSatz + '% Steuersatz', accent: '#ef4444' },
-      { label: 'PKV-Kosten (netto)', value: r.pkvNettobeitrag > 0 ? '-' + euro(r.pkvNettobeitrag) + '/Monat' : 'nicht erfasst', sub: 'inkl. RV-Zuschuss verrechnet', accent: r.pkvNettobeitrag > 0 ? '#f59e0b' : '#6d6a8a' },
-      { label: 'Anwartschaft (heute)', value: euro(r.anwartschaft) + '/Monat', sub: 'bereits erarbeitet', accent: '#0ea5e9' },
+      { label: 'Bruttorente (angepasst)', value: euro(r.bruttoRente) + '/Monat', sub: 'bei ' + num(r.rentenAnpassung, 1) + '% Anpassung p.a.', accent: CHART.positive },
+      { label: 'Netto-Echt-Rente', value: euro(r.nettoRente) + '/Monat', sub: 'nach Steuer & PKV', accent: CHART.positive },
+      { label: 'Einkommensteuer', value: '-' + euro(r.steuerBetrag) + '/Monat', sub: r.steuerSatz + '% Steuersatz', accent: CHART.negative },
+      { label: 'PKV-Kosten (netto)', value: r.pkvNettobeitrag > 0 ? '-' + euro(r.pkvNettobeitrag) + '/Monat' : 'nicht erfasst', sub: 'inkl. RV-Zuschuss verrechnet', accent: r.pkvNettobeitrag > 0 ? CHART.warning : CHART.muted },
+      { label: 'Anwartschaft (heute)', value: euro(r.anwartschaft) + '/Monat', sub: 'bereits erarbeitet', accent: CHART.neutral },
       { label: 'Entgeltpunkte', value: num(r.entgeltpunkte, 4) + ' EP', sub: r.yearsToRente + ' Jahre bis Rentenbeginn', accent: pol.color },
     ] : pol.type === 'bav' ? [
-      { label: 'Kapital bei Rente', value: euro(r.kapBeiRente), accent: '#f59e0b' },
+      { label: 'Kapital bei Rente', value: euro(r.kapBeiRente), accent: CHART.warning },
       ...(r.payoutStrategy === 'lump_sum' ? [
-        { label: 'Einmalzahlung', value: euro(r.lumpSum), sub: 'Kapitalwahlrecht', accent: '#10b981' },
+        { label: 'Einmalzahlung', value: euro(r.lumpSum), sub: 'Kapitalwahlrecht', accent: CHART.positive },
       ] : [
-        { label: 'Bruttorente', value: euro(r.bruttorente) + '/Monat', sub: 'RF ' + num(r.rentenfaktor, 1) + ' per 10.000 €', accent: '#0ea5e9' },
-        { label: 'Nettorente', value: euro(r.nettorente) + '/Monat', sub: 'nach ' + r.steuerImAlter + '% Steuer', accent: '#10b981' },
+        { label: 'Bruttorente', value: euro(r.bruttorente) + '/Monat', sub: 'RF ' + num(r.rentenfaktor, 1) + ' per 10.000 €', accent: CHART.neutral },
+        { label: 'Nettorente', value: euro(r.nettorente) + '/Monat', sub: 'nach ' + r.steuerImAlter + '% Steuer', accent: CHART.positive },
       ]),
-      { label: 'Einzahlungen ges.', value: euro(r.totalEingezahlt), sub: 'davon AG ' + euro(r.agZuschussGesamt), accent: '#ef4444' },
-      { label: 'Netto-Verzicht ges.', value: euro(r.nettoVerzichtGesamt), sub: 'tatsächliche Kosten', accent: '#f59e0b' },
-      { label: 'Steuervorteil ges.', value: euro(r.steuervorteilGesamt), sub: r.grenzsteuersatz + '% Steuer+SV-Ersparnis', accent: '#10b981' },
-      ...(r.breakEvenAlter != null ? [{ label: 'Break-Even', value: 'ab ~' + r.breakEvenAlter + ' Monaten', sub: 'Rente lohnt sich ab dann', accent: '#0ea5e9' }] : []),
+      { label: 'Einzahlungen ges.', value: euro(r.totalEingezahlt), sub: 'davon AG ' + euro(r.agZuschussGesamt), accent: CHART.negative },
+      { label: 'Netto-Verzicht ges.', value: euro(r.nettoVerzichtGesamt), sub: 'tatsächliche Kosten', accent: CHART.warning },
+      { label: 'Steuervorteil ges.', value: euro(r.steuervorteilGesamt), sub: r.grenzsteuersatz + '% Steuer+SV-Ersparnis', accent: CHART.positive },
+      ...(r.breakEvenAlter != null ? [{ label: 'Break-Even', value: 'ab ~' + r.breakEvenAlter + ' Monaten', sub: 'Rente lohnt sich ab dann', accent: CHART.neutral }] : []),
     ] : pol.type === 'avd' ? [
-      { label: 'Kapital bei Rente', value: euro(r.kapBeiRente), accent: '#0ea5e9' },
-      { label: 'Kaufkraft real', value: euro(r.kapBeiRenteReal), sub: 'heutige Kaufkraft', accent: '#f59e0b' },
-      { label: 'Mögl. Nettorente', value: euro(r.possibleRente) + '/Monat', sub: 'Brutto: ' + euro(r.possibleRenteBrutto), accent: '#10b981' },
-      { label: 'Einzahlungen ges.', value: euro(r.totalEingezahlt), sub: 'Staat: ' + euro(r.totalStaatlich) + ' (' + r.foerderquote + '%)', accent: '#ef4444' },
-      { label: 'Netto-Gewinn', value: euro(r.gewinn), accent: r.gewinn >= 0 ? '#10b981' : '#ef4444' },
+      { label: 'Kapital bei Rente', value: euro(r.kapBeiRente), accent: CHART.neutral },
+      { label: 'Kaufkraft real', value: euro(r.kapBeiRenteReal), sub: 'heutige Kaufkraft', accent: CHART.warning },
+      { label: 'Mögl. Nettorente', value: euro(r.possibleRente) + '/Monat', sub: 'Brutto: ' + euro(r.possibleRenteBrutto), accent: CHART.positive },
+      { label: 'Einzahlungen ges.', value: euro(r.totalEingezahlt), sub: 'Staat: ' + euro(r.totalStaatlich) + ' (' + r.foerderquote + '%)', accent: CHART.negative },
+      { label: 'Netto-Gewinn', value: euro(r.gewinn), accent: r.gewinn >= 0 ? CHART.positive : CHART.negative },
       { label: 'Spar / Rente', value: r.sparjahre + ' / ' + r.rentenjahre, sub: 'Jahre', accent: pol.color },
     ] : pol.type === 'depot' ? [
-      { label: 'Kapital brutto', value: euro(r.kapBeiRente), accent: '#10b981' },
-      { label: 'Kapital netto', value: euro(r.kapNetto), sub: 'nach Steuern', accent: '#0ea5e9' },
-      { label: 'Mögl. Monatsrente', value: euro(r.possibleRente) + '/Monat', accent: '#10b981' },
-      { label: 'Einzahlungen ges.', value: euro(r.totalEingezahlt), accent: '#ef4444' },
-      { label: 'Netto-Gewinn', value: euro(r.gewinn), accent: r.gewinn >= 0 ? '#10b981' : '#ef4444' },
+      { label: 'Kapital brutto', value: euro(r.kapBeiRente), accent: CHART.positive },
+      { label: 'Kapital netto', value: euro(r.kapNetto), sub: 'nach Steuern', accent: CHART.neutral },
+      { label: 'Mögl. Monatsrente', value: euro(r.possibleRente) + '/Monat', accent: CHART.positive },
+      { label: 'Einzahlungen ges.', value: euro(r.totalEingezahlt), accent: CHART.negative },
+      { label: 'Netto-Gewinn', value: euro(r.gewinn), accent: r.gewinn >= 0 ? CHART.positive : CHART.negative },
       { label: 'Spar / Rente', value: r.sparjahre + ' / ' + r.rentenjahre, sub: 'Jahre', accent: pol.color },
     ] : [
-      { label: 'Kapital bei Rente', value: euro(r.kapBeiRente), accent: '#0ea5e9' },
-      { label: 'Kaufkraft real', value: euro(r.kapBeiRenteReal), sub: 'heutige Kaufkraft', accent: '#f59e0b' },
+      { label: 'Kapital bei Rente', value: euro(r.kapBeiRente), accent: CHART.neutral },
+      { label: 'Kaufkraft real', value: euro(r.kapBeiRenteReal), sub: 'heutige Kaufkraft', accent: CHART.warning },
       r.payoutStrategy === 'lump_sum'
-        ? { label: 'Einmalzahlung', value: euro(r.lumpSum), sub: 'Kapitalwahlrecht', accent: '#10b981' }
+        ? { label: 'Einmalzahlung', value: euro(r.lumpSum), sub: 'Kapitalwahlrecht', accent: CHART.positive }
         : r.rentenfaktor > 0
-          ? { label: 'Rente (Rentenfaktor)', value: euro(r.renteViaFaktor) + '/Monat', sub: 'RF ' + num(r.rentenfaktor, 1) + ' per 10k€', accent: '#10b981' }
-          : { label: 'Mögl. Monatsrente', value: euro(r.possibleRente) + '/Monat', sub: r.rentenjahre + ' J. Rentenphase', accent: '#10b981' },
-      { label: 'Einzahlungen ges.', value: euro(r.totalEingezahlt), sub: 'Kosten: ' + euro(r.gesamtkosten), accent: '#ef4444' },
-      { label: 'Netto-Gewinn', value: euro(r.gewinn), sub: 'Faktor ' + num(r.faktor) + 'x', accent: r.gewinn >= 0 ? '#10b981' : '#ef4444' },
-      ...(r.payoutStrategy === 'annuity' && r.rentenfaktor === 0 ? [{ label: 'Rentenfaktor', value: 'nicht hinterlegt', sub: 'Bitte aus Vertrag nachtragen', accent: '#f59e0b' }] : []),
-      ...(r.breakEvenAlter != null ? [{ label: 'Break-Even', value: 'ab Alter ~' + r.breakEvenAlter, sub: 'Rente lohnt sich ab dann', accent: '#0ea5e9' }] : []),
+          ? { label: 'Rente (Rentenfaktor)', value: euro(r.renteViaFaktor) + '/Monat', sub: 'RF ' + num(r.rentenfaktor, 1) + ' per 10k€', accent: CHART.positive }
+          : { label: 'Mögl. Monatsrente', value: euro(r.possibleRente) + '/Monat', sub: r.rentenjahre + ' J. Rentenphase', accent: CHART.positive },
+      { label: 'Einzahlungen ges.', value: euro(r.totalEingezahlt), sub: 'Kosten: ' + euro(r.gesamtkosten), accent: CHART.negative },
+      { label: 'Netto-Gewinn', value: euro(r.gewinn), sub: 'Faktor ' + num(r.faktor) + 'x', accent: r.gewinn >= 0 ? CHART.positive : CHART.negative },
+      ...(r.payoutStrategy === 'annuity' && r.rentenfaktor === 0 ? [{ label: 'Rentenfaktor', value: 'nicht hinterlegt', sub: 'Bitte aus Vertrag nachtragen', accent: CHART.warning }] : []),
+      ...(r.breakEvenAlter != null ? [{ label: 'Break-Even', value: 'ab Alter ~' + r.breakEvenAlter, sub: 'Rente lohnt sich ab dann', accent: CHART.neutral }] : []),
       { label: 'Spar / Rente', value: r.sparjahre + ' / ' + r.rentenjahre, sub: 'Jahre', accent: pol.color },
     ]
   ) : [];
@@ -2038,7 +2049,7 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
         {pol.type === 'insurance' && activeSubTab === 'detail' && r?.usingSnapshot && (
           <div style={{
             background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)',
-            borderRadius: 10, padding: '10px 14px', color: '#10b981', fontSize: '0.78rem',
+            borderRadius: 10, padding: '10px 14px', color: CHART.positive, fontSize: '0.78rem',
             display: 'flex', alignItems: 'center', gap: 8,
           }}>
             <span>📊</span>
@@ -2051,7 +2062,7 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
         {(pol.type === 'avd' || activeSubTab === 'detail') && r?.depletionYear && (
           <div style={{
             background: '#ef444415', border: '1px solid #ef4444',
-            borderRadius: 10, padding: '10px 14px', color: '#ef4444', fontSize: '0.82rem',
+            borderRadius: 10, padding: '10px 14px', color: CHART.negative, fontSize: '0.82rem',
           }}>
             ⚠ Kapital erschöpft ab ~{r.depletionYear}. Nachhaltige Rente: {euro(r.possibleRente)}/Monat.
           </div>
@@ -2091,8 +2102,8 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
           <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
             {[
               { color: pol.color, label: 'Nominal' },
-              { color: '#ffd93d', label: 'Real' },
-              { color: '#ff6b6b', label: 'Einzahlungen' },
+              { color: CHART.warning, label: 'Real' },
+              { color: CHART.negative, label: 'Einzahlungen' },
             ].map(l => (
               <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <span style={{ width: 10, height: 10, borderRadius: '50%', background: l.color }} />
@@ -2111,9 +2122,9 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
               <Line type="monotone" dataKey="nominal" name="Kapital nominal"
                 stroke={pol.color} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
               <Line type="monotone" dataKey="real" name="Kapital real"
-                stroke="#ffd93d" strokeWidth={1.5} strokeDasharray="5 4" dot={false} activeDot={{ r: 4 }} />
+                stroke={CHART.warning} strokeWidth={1.5} strokeDasharray="5 4" dot={false} activeDot={{ r: 4 }} />
               <Line type="monotone" dataKey="einzahlungen" name="Einzahlungen"
-                stroke="#ff6b6b" strokeWidth={1.5} strokeDasharray="3 3" dot={false} activeDot={{ r: 4 }} />
+                stroke={CHART.negative} strokeWidth={1.5} strokeDasharray="3 3" dot={false} activeDot={{ r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -2142,8 +2153,8 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
                 <span style={{
                   fontSize: '0.68rem', fontWeight: 700, padding: '3px 8px', borderRadius: 99,
                   background: kaufkraftSteigt ? '#22c55e20' : '#ef444420',
-                  color: kaufkraftSteigt ? '#22c55e' : '#ef4444',
-                  border: `1px solid ${kaufkraftSteigt ? '#22c55e' : '#ef4444'}`,
+                  color: kaufkraftSteigt ? CHART.positive : CHART.negative,
+                  border: `1px solid ${kaufkraftSteigt ? CHART.positive : CHART.negative}`,
                 }}>
                   {kaufkraftSteigt ? '✓ Kaufkraft wächst' : '⚠ Kaufkraft sinkt'}
                 </span>
@@ -2151,8 +2162,8 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
               <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
                 {[
                   { color: pol.color,    label: 'Mit Rentenanpassung' },
-                  { color: '#f59e0b',    label: 'Inflationsäquivalent' },
-                  { color: '#6d6a8a',    label: 'Anwartschaft (heute)' },
+                  { color: CHART.warning,    label: 'Inflationsäquivalent' },
+                  { color: CHART.muted,    label: 'Anwartschaft (heute)' },
                 ].map(l => (
                   <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                     <span style={{ width: 10, height: 10, borderRadius: '50%', background: l.color }} />
@@ -2170,9 +2181,9 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
                   <Line type="monotone" dataKey="angepasst" name="Mit Rentenanpassung"
                     stroke={pol.color} strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
                   <Line type="monotone" dataKey="inflation" name="Inflationsäquivalent"
-                    stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="5 4" dot={false} activeDot={{ r: 4 }} />
+                    stroke={CHART.warning} strokeWidth={1.5} strokeDasharray="5 4" dot={false} activeDot={{ r: 4 }} />
                   <Line type="monotone" dataKey="anwartschaft" name="Anwartschaft (heute)"
-                    stroke="#6d6a8a" strokeWidth={1} strokeDasharray="3 3" dot={false} activeDot={{ r: 3 }} />
+                    stroke={CHART.muted} strokeWidth={1} strokeDasharray="3 3" dot={false} activeDot={{ r: 3 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -2189,19 +2200,19 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 14 }}>
               <div>
                 <div style={{ color: t.sub, fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>Brutto-Einsatz/Monat</div>
-                <div style={{ color: '#ef4444', fontSize: '1rem', fontWeight: 700, fontFamily: 'monospace' }}>{euro(r.sparrate)}</div>
+                <div style={{ color: CHART.negative, fontSize: '1rem', fontWeight: 700, fontFamily: 'monospace' }}>{euro(r.sparrate)}</div>
               </div>
               <div>
                 <div style={{ color: t.sub, fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>Netto-Verzicht/Monat</div>
-                <div style={{ color: '#f59e0b', fontSize: '1rem', fontWeight: 700, fontFamily: 'monospace' }}>{euro(r.nettoVerzicht)}</div>
+                <div style={{ color: CHART.warning, fontSize: '1rem', fontWeight: 700, fontFamily: 'monospace' }}>{euro(r.nettoVerzicht)}</div>
               </div>
               <div>
                 <div style={{ color: t.sub, fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>Steuervorteil/Monat</div>
-                <div style={{ color: '#10b981', fontSize: '1rem', fontWeight: 700, fontFamily: 'monospace' }}>{euro(r.sparrate - r.nettoVerzicht)}</div>
+                <div style={{ color: CHART.positive, fontSize: '1rem', fontWeight: 700, fontFamily: 'monospace' }}>{euro(r.sparrate - r.nettoVerzicht)}</div>
               </div>
               <div>
                 <div style={{ color: t.sub, fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>AG-Zuschuss/Monat</div>
-                <div style={{ color: '#0ea5e9', fontSize: '1rem', fontWeight: 700, fontFamily: 'monospace' }}>{euro(r.agZuschussEur)}</div>
+                <div style={{ color: CHART.neutral, fontSize: '1rem', fontWeight: 700, fontFamily: 'monospace' }}>{euro(r.agZuschussEur)}</div>
               </div>
             </div>
             {/* Visual bar comparison */}
@@ -2240,7 +2251,7 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
                 ETF-Depot mit {euro(r.nettoVerzicht)}/Monat — was du tatsächlich aufgibst
               </div>
               <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
-                {[{ color: pol.color, label: 'bAV Kapital' }, { color: '#10b981', label: 'ETF-Depot (netto)' }].map(l => (
+                {[{ color: pol.color, label: 'bAV Kapital' }, { color: CHART.positive, label: 'ETF-Depot (netto)' }].map(l => (
                   <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                     <span style={{ width: 10, height: 10, borderRadius: '50%', background: l.color }} />
                     <span style={{ color: t.sub, fontSize: '0.72rem' }}>{l.label}</span>
@@ -2256,7 +2267,7 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
                   <Line type="monotone" dataKey="bav" name="bAV Kapital"
                     stroke={pol.color} strokeWidth={2} dot={false} activeDot={{ r: 4 }} connectNulls={false} />
                   <Line type="monotone" dataKey="depot" name="ETF-Depot"
-                    stroke="#10b981" strokeWidth={2} strokeDasharray="5 4" dot={false} activeDot={{ r: 4 }} connectNulls={false} />
+                    stroke={CHART.positive} strokeWidth={2} strokeDasharray="5 4" dot={false} activeDot={{ r: 4 }} connectNulls={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -2350,7 +2361,7 @@ function OverviewPanel({ policies, onTabSwitch, isDark }) {
             Noch keine Policen
           </div>
           <div style={{ color: t.sub, fontSize: '0.875rem' }}>
-            Klicke auf <strong style={{ color: '#7c3aed' }}>+ Hinzufügen</strong> um deine erste Vorsorge anzulegen.
+            Klicke auf <strong style={{ color: CHART.neutral }}>+ Hinzufügen</strong> um deine erste Vorsorge anzulegen.
           </div>
         </div>
       </div>
@@ -2365,42 +2376,42 @@ function OverviewPanel({ policies, onTabSwitch, isDark }) {
           label="Netto-Monatsrente gesamt"
           value={euro(schichten.total) + '/Monat'}
           sub={'alle 3 Schichten · ' + (isPkv ? 'PKV' : 'GKV')}
-          accent="#7c3aed"
+          accent={CHART.neutral}
           isDark={isDark}
         />
         <StatCard
           label="Schicht 1 · GRV (Netto)"
           value={euro(schichten.grv) + '/Monat'}
           sub={drvPols.length === 0 ? 'noch nicht erfasst' : 'Gesetzliche Rente'}
-          accent="#22c55e"
+          accent={CHART.positive}
           isDark={isDark}
         />
         <StatCard
           label="Schicht 2 · bAV/AVD (Netto)"
           value={euro(schichten.bav) + '/Monat'}
           sub="nachgelagert besteuert"
-          accent="#f59e0b"
+          accent={CHART.warning}
           isDark={isDark}
         />
         <StatCard
           label="Schicht 3 · Privat (Netto)"
           value={euro(schichten.privat) + '/Monat'}
           sub="Ertragsanteil / Abgeltung"
-          accent="#0ea5e9"
+          accent={CHART.neutral}
           isDark={isDark}
         />
         <StatCard
           label="Gesamtkapital bei Rente"
           value={euro(totals.kap)}
           sub={'Einzahlungen: ' + euro(totals.einz)}
-          accent="#ef4444"
+          accent={CHART.negative}
           isDark={isDark}
         />
         <StatCard
           label="Netto-Gewinn gesamt"
           value={euro(totals.gewinn)}
           sub={'Faktor ' + num(totals.faktor) + 'x'}
-          accent={totals.gewinn >= 0 ? '#10b981' : '#ef4444'}
+          accent={totals.gewinn >= 0 ? CHART.positive : CHART.negative}
           isDark={isDark}
         />
       </Box>
@@ -2422,7 +2433,7 @@ function OverviewPanel({ policies, onTabSwitch, isDark }) {
                 <div key={pol.id} style={{ display: 'contents' }}>
                   <div style={{ background: t.cardAlt, border: `1px solid ${t.bdr}`, borderRadius: 10, padding: '10px 12px' }}>
                     <div style={{ color: t.sub, fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>Entgeltpunkte</div>
-                    <div style={{ color: '#22c55e', fontWeight: 700, fontSize: '0.9rem', fontFamily: 'monospace' }}>{num(r.entgeltpunkte, 4)} EP</div>
+                    <div style={{ color: CHART.positive, fontWeight: 700, fontSize: '0.9rem', fontFamily: 'monospace' }}>{num(r.entgeltpunkte, 4)} EP</div>
                   </div>
                   <div style={{ background: t.cardAlt, border: `1px solid ${t.bdr}`, borderRadius: 10, padding: '10px 12px' }}>
                     <div style={{ color: t.sub, fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>Anwartschaft</div>
@@ -2430,17 +2441,17 @@ function OverviewPanel({ policies, onTabSwitch, isDark }) {
                   </div>
                   <div style={{ background: t.cardAlt, border: `1px solid ${t.bdr}`, borderRadius: 10, padding: '10px 12px' }}>
                     <div style={{ color: t.sub, fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>Bruttorente {r.rentenJahr}</div>
-                    <div style={{ color: '#22c55e', fontWeight: 700, fontSize: '0.9rem', fontFamily: 'monospace' }}>{euro(r.bruttoRente)}/M</div>
+                    <div style={{ color: CHART.positive, fontWeight: 700, fontSize: '0.9rem', fontFamily: 'monospace' }}>{euro(r.bruttoRente)}/M</div>
                   </div>
                   <div style={{ background: t.cardAlt, border: `1px solid ${t.bdr}`, borderRadius: 10, padding: '10px 12px' }}>
                     <div style={{ color: t.sub, fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>Netto-Echt-Rente</div>
-                    <div style={{ color: '#10b981', fontWeight: 700, fontSize: '0.9rem', fontFamily: 'monospace' }}>{euro(r.nettoRente)}/M</div>
+                    <div style={{ color: CHART.positive, fontWeight: 700, fontSize: '0.9rem', fontFamily: 'monospace' }}>{euro(r.nettoRente)}/M</div>
                     <div style={{ color: t.sub, fontSize: '0.62rem', marginTop: 2 }}>nach Steuer & PKV</div>
                   </div>
                   {r.pkvNettobeitrag > 0 && (
                     <div style={{ background: t.cardAlt, border: `1px solid ${t.bdr}`, borderRadius: 10, padding: '10px 12px' }}>
                       <div style={{ color: t.sub, fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>PKV-Abzug</div>
-                      <div style={{ color: '#f59e0b', fontWeight: 700, fontSize: '0.9rem', fontFamily: 'monospace' }}>-{euro(r.pkvNettobeitrag)}/M</div>
+                      <div style={{ color: CHART.warning, fontWeight: 700, fontSize: '0.9rem', fontFamily: 'monospace' }}>-{euro(r.pkvNettobeitrag)}/M</div>
                       <div style={{ color: t.sub, fontSize: '0.62rem', marginTop: 2 }}>nach RV-Zuschuss</div>
                     </div>
                   )}
@@ -2462,9 +2473,9 @@ function OverviewPanel({ policies, onTabSwitch, isDark }) {
             </div>
             <div style={{ display: 'flex', gap: 12 }}>
               {[
-                { label: 'Netto', value: euro(netRetirement.totalNetto), color: '#10b981' },
-                { label: 'Steuer', value: '-' + euro(netRetirement.totalSteuer), color: '#ef4444' },
-                { label: 'KV/PV', value: isPkv ? '0 €' : '-' + euro(netRetirement.totalSv), color: isPkv ? '#10b981' : '#ef4444' },
+                { label: 'Netto', value: euro(netRetirement.totalNetto), color: CHART.positive },
+                { label: 'Steuer', value: '-' + euro(netRetirement.totalSteuer), color: CHART.negative },
+                { label: 'KV/PV', value: isPkv ? '0 €' : '-' + euro(netRetirement.totalSv), color: isPkv ? CHART.positive : CHART.negative },
               ].map(k => (
                 <div key={k.label} style={{ textAlign: 'right' }}>
                   <div style={{ color: t.sub, fontSize: '0.6rem', textTransform: 'uppercase' }}>{k.label}</div>
@@ -2484,11 +2495,11 @@ function OverviewPanel({ policies, onTabSwitch, isDark }) {
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
                   <span style={{ color: t.text, fontSize: '0.78rem', fontWeight: 600, minWidth: 120 }}>{p.name}</span>
                   <div style={{ flex: 1, height: 8, borderRadius: 99, background: t.bdr, overflow: 'hidden', display: 'flex' }}>
-                    <div style={{ width: netPct + '%', background: '#10b981', height: '100%' }} title={'Netto: ' + euro(p.netto)} />
-                    <div style={{ width: stPct + '%', background: '#ef4444', height: '100%' }} title={'Steuer: ' + euro(p.steuer)} />
-                    {svPct > 0 && <div style={{ width: svPct + '%', background: '#f59e0b', height: '100%' }} title={'SV: ' + euro(p.sv)} />}
+                    <div style={{ width: netPct + '%', background: CHART.positive, height: '100%' }} title={'Netto: ' + euro(p.netto)} />
+                    <div style={{ width: stPct + '%', background: CHART.negative, height: '100%' }} title={'Steuer: ' + euro(p.steuer)} />
+                    {svPct > 0 && <div style={{ width: svPct + '%', background: CHART.warning, height: '100%' }} title={'SV: ' + euro(p.sv)} />}
                   </div>
-                  <span style={{ color: '#10b981', fontSize: '0.75rem', fontWeight: 700, fontFamily: 'monospace', minWidth: 80, textAlign: 'right' }}>
+                  <span style={{ color: CHART.positive, fontSize: '0.75rem', fontWeight: 700, fontFamily: 'monospace', minWidth: 80, textAlign: 'right' }}>
                     {euro(p.netto)}/M
                   </span>
                 </div>
@@ -2497,7 +2508,7 @@ function OverviewPanel({ policies, onTabSwitch, isDark }) {
           </div>
           {isPkv && (
             <div style={{ marginTop: 8, padding: '6px 10px', borderRadius: 8, background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ color: '#10b981', fontSize: '0.72rem', fontWeight: 600 }}>
+              <span style={{ color: CHART.positive, fontSize: '0.72rem', fontWeight: 600 }}>
                 ✓ PKV-Vorteil: Keine SV-Abzüge auf Betriebsrente, DRV & AVD — Ersparnis: {euro(netRetirement.perPolicy.reduce((s, p) => s + (p.type === 'bav' || p.type === 'drv' || p.type === 'avd' ? p.brutto * 0.189 : 0), 0))}/Monat vs. GKV
               </span>
             </div>
@@ -2517,7 +2528,7 @@ function OverviewPanel({ policies, onTabSwitch, isDark }) {
             Kapitalentwicklung Gesamt
           </div>
           <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
-            {[{ color: '#0ea5e9', label: 'Kapital gesamt' }, { color: '#f59e0b', label: 'Einzahlungen' }].map(l => (
+            {[{ color: CHART.neutral, label: 'Kapital gesamt' }, { color: CHART.warning, label: 'Einzahlungen' }].map(l => (
               <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <span style={{ width: 10, height: 10, borderRadius: '50%', background: l.color }} />
                 <span style={{ color: t.sub, fontSize: '0.72rem' }}>{l.label}</span>
@@ -2528,8 +2539,8 @@ function OverviewPanel({ policies, onTabSwitch, isDark }) {
             <AreaChart data={chartData}>
               <defs>
                 <linearGradient id="gradKap" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
+                  <stop offset="5%" stopColor={CHART.neutral} stopOpacity={0.15} />
+                  <stop offset="95%" stopColor={CHART.neutral} stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={t.grid} />
@@ -2539,9 +2550,9 @@ function OverviewPanel({ policies, onTabSwitch, isDark }) {
                 tickFormatter={v => fmtShort(v)} width={48} />
               <Tooltip content={<ChartTooltip isDark={isDark} />} />
               <Area type="monotone" dataKey="kapital" name="Kapital gesamt"
-                stroke="#0ea5e9" fill="url(#gradKap)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                stroke={CHART.neutral} fill="url(#gradKap)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
               <Line type="monotone" dataKey="einzahlungen" name="Einzahlungen ges."
-                stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="4 4" dot={false} activeDot={{ r: 4 }} />
+                stroke={CHART.warning} strokeWidth={1.5} strokeDasharray="4 4" dot={false} activeDot={{ r: 4 }} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -2618,7 +2629,7 @@ function OverviewPanel({ policies, onTabSwitch, isDark }) {
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ color: t.sub, fontSize: '0.62rem' }}>RENTE/M</div>
-                <div style={{ color: '#10b981', fontSize: '0.78rem', fontFamily: 'monospace' }}>
+                <div style={{ color: CHART.positive, fontSize: '0.78rem', fontFamily: 'monospace' }}>
                   {r ? euro(r.possibleRente) : '-'}
                 </div>
               </div>
@@ -3014,7 +3025,7 @@ export default function ETFRechnerPage({ isDark }) {
   const deleteTargetPol = localPolicies.find(p => p.id === deleteTarget);
 
   // ── Save status badge colors ────────────────────────────────────────────────
-  const statusColor = { saving: '#f59e0b', saved: '#10b981', error: '#ef4444', idle: 'transparent' }[saveStatus];
+  const statusColor = { saving: CHART.warning, saved: CHART.positive, error: CHART.negative, idle: 'transparent' }[saveStatus];
   const statusText  = { saving: '↑ Speichert...', saved: '✓ Gespeichert', error: '✕ Fehler', idle: '' }[saveStatus];
 
   return (
