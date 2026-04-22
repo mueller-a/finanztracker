@@ -246,7 +246,7 @@ function ModuleStatusGrid({ data, loading, navigate }) {
   return (
     <Box sx={{
       display: 'grid',
-      gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fill, minmax(188px, 1fr))' },
+      gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(220px, 1fr))' },
       gap: 2,
     }}>
       {/* Versicherungen */}
