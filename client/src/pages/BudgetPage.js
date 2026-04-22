@@ -4,6 +4,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, Checkbox,
   CircularProgress, Alert, Chip, LinearProgress, Paper,
   Collapse, InputAdornment, useMediaQuery, Divider,
+  Table, TableHead, TableBody,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -1024,8 +1025,8 @@ function IncomeSection({ items, onCommit, onDelete, onAdd, onReorder, onOpenShee
         <datalist id={COMBO_ID}>
           {LABEL_SUGGESTIONS.map((s) => <option key={s} value={s} />)}
         </datalist>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
+        <Table size="small" sx={{ borderCollapse: 'collapse' }}>
+          <TableHead>
             <tr>
               <TH align="left"> </TH>
               <TH align="left"> </TH>
@@ -1036,8 +1037,8 @@ function IncomeSection({ items, onCommit, onDelete, onAdd, onReorder, onOpenShee
               <TH align="left">Notiz</TH>
               <TH> </TH>
             </tr>
-          </thead>
-          <tbody>
+          </TableHead>
+          <TableBody>
             {items.length === 0 && (
               <tr>
                 <td colSpan={8} style={{ padding: 24, textAlign: 'center' }}>
@@ -1059,8 +1060,8 @@ function IncomeSection({ items, onCommit, onDelete, onAdd, onReorder, onOpenShee
               />
             ))}
             <AddItemRow type="income" onAdd={onAdd} isExpense={false} />
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </Box>
     </Paper>
   );
@@ -1291,8 +1292,8 @@ function ExpenseCategoryTable({ items, totalIncome, onCommit, onDelete, onAdd, o
         <datalist id={COMBO_ID}>
           {LABEL_SUGGESTIONS.map((s) => <option key={s} value={s} />)}
         </datalist>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
+        <Table size="small" sx={{ borderCollapse: 'collapse' }}>
+          <TableHead>
             <tr>
               <TH align="left"> </TH>
               <TH align="left"> </TH>
@@ -1303,8 +1304,8 @@ function ExpenseCategoryTable({ items, totalIncome, onCommit, onDelete, onAdd, o
               <TH align="left">Notiz</TH>
               <TH> </TH>
             </tr>
-          </thead>
-          <tbody>
+          </TableHead>
+          <TableBody>
             {grouped.map((cat, catIdx) => {
               const insight = insights[catIdx];
               return (
@@ -1368,8 +1369,8 @@ function ExpenseCategoryTable({ items, totalIncome, onCommit, onDelete, onAdd, o
               defaultCategory={lastCategory}
               isExpense
             />
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </Box>
     </Paper>
   );

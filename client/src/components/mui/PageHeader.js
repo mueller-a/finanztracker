@@ -26,7 +26,7 @@ export default function PageHeader({ title, subtitle, icon, actions, sx }) {
             width: 64,
             height: 64,
             borderRadius: '32px',
-            bgcolor: 'surface.highest',
+            bgcolor: 'accent.positiveSurface',
             color: 'text.primary',
             display: 'flex',
             alignItems: 'center',

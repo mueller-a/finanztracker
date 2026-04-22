@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { readingsForYear, buildForecast, buildCostForecast } from '../utils/electricityCalc';
+import { readingsForYear, buildForecast, buildCostForecast, installmentForMonth } from '../utils/electricityCalc';
 import { buildSchedule, getCurrentBalance, getPayoffDate } from '../utils/debtCalc';
 
 const YEAR  = new Date().getFullYear();
@@ -72,13 +72,31 @@ export function useDashboard() {
     const insMonat   = insJahr / 12;
 
     // ── Strom ──────────────────────────────────────────────────────────────
-    const tariff      = tariffRes.data ?? null;
+    // WICHTIG: `tariff_installments` ist eine separate Tabelle. Ohne sie würde
+    // buildCostForecast auf monthly_advance × 12 zurückfallen — und
+    // monthly_advance speichert aus Backward-Compat nur den FRÜHSTEN Abschlag
+    // (siehe useElectricity.saveTariff). Nachträgliche Abschlagsänderungen
+    // würden im Dashboard sonst ignoriert.
+    let tariff = tariffRes.data ?? null;
+    if (tariff?.id) {
+      const installmentsRes = await supabase
+        .from('tariff_installments')
+        .select('*')
+        .eq('tariff_id', tariff.id)
+        .order('valid_from', { ascending: true });
+      if (installmentsRes.error) { setError(installmentsRes.error.message); setLoading(false); return; }
+      tariff = { ...tariff, installments: installmentsRes.data ?? [] };
+    }
     const yearReads   = readingsForYear(readingsRes.data ?? [], YEAR);
     const firstRead   = yearReads[0]  ?? null;
     const latestRead  = yearReads[yearReads.length - 1] ?? null;
     const forecast    = buildForecast(firstRead, latestRead);
     const stromCost   = buildCostForecast(forecast.total, tariff);
-    const stromAbschlag = tariff?.monthly_advance ?? 0;
+    // Aktuell gültiger Abschlag: jüngster Installment mit valid_from ≤ heute.
+    // Fallback auf monthly_advance, wenn keine Installments existieren.
+    const stromAbschlag = Array.isArray(tariff?.installments) && tariff.installments.length > 0
+      ? installmentForMonth(tariff.installments, currYear, currMonth)
+      : (tariff?.monthly_advance ?? 0);
 
     // ── Guthaben ───────────────────────────────────────────────────────────
     const goals          = savingsGoalsRes.data  ?? [];

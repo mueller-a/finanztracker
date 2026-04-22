@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { buildRevolvingSchedule } from '../utils/debtCalc';
+import { installmentForMonth } from '../utils/electricityCalc';
 import { readSalaryNetto } from './useSalarySettings';
 
 // Insurance interval → annual occurrences (German labels)
@@ -208,11 +209,22 @@ export function useBudget(month, year) {
     const { candidates: insuranceCandidates } = buildInsuranceCandidates(allEntries, month, year, 0);
 
     // ── Strom ─────────────────────────────────────────────────────────────
+    // Aktuell gültiger Abschlag aus tariff_installments laden; sonst
+    // Fallback auf monthly_advance (speichert nur den frühsten Abschlag).
     const stromCandidates = [];
     if (tariffRes.data) {
+      let currentAdvance = Number(tariffRes.data.monthly_advance) || 0;
+      const insRes = await supabase
+        .from('tariff_installments')
+        .select('*')
+        .eq('tariff_id', tariffRes.data.id)
+        .order('valid_from', { ascending: true });
+      if (!insRes.error && Array.isArray(insRes.data) && insRes.data.length > 0) {
+        currentAdvance = installmentForMonth(insRes.data, year, month);
+      }
       stromCandidates.push({
         label:         `Strom – ${tariffRes.data.provider || 'Abschlag'}`,
-        amount:        Number(tariffRes.data.monthly_advance),
+        amount:        currentAdvance,
         share_percent: 50,
         type:          'expense',
         source:        'strom',

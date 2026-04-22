@@ -19,7 +19,10 @@ import {
   Slider, Tooltip as MuiTooltip, ToggleButton, ToggleButtonGroup,
   Alert, Link as MuiLink, Switch, InputAdornment, IconButton, Paper, Divider,
   Checkbox, FormControlLabel, RadioGroup, Radio, FormControl, FormLabel,
+  Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import CloseIcon from '@mui/icons-material/Close';
 import { useTheme } from '@mui/material/styles';
 import LaunchIcon from '@mui/icons-material/Launch';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -419,6 +422,7 @@ export default function PkvCalculatorPage({ isDark = false }) {
   const [nextTarifId, setNextTarifId] = useState(5);
   const [nextSenkungId, setNextSenkungId] = useState(2);
   const [expandedYear, setExpandedYear] = useState(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const lsDraftTimer = useRef(null);
 
@@ -662,298 +666,446 @@ export default function PkvCalculatorPage({ isDark = false }) {
     return { first, last, totalBrk, brkCount, renteD, anstieg };
   }, [pkvData, pkv.rzFromAge]);
 
-  // ── Sidebar ──
-  function PkvSidebar() {
+  // ── Settings-Dialog: alle Einstellungen (ausser Prognose) gesammelt ─────
+  function PkvSettingsDialog() {
     return (
-      <Stack sx={{ minWidth: 280, maxWidth: 300 }}>
-        {/* Persönliche Daten */}
-        <SectionLabel>Persönliche Daten</SectionLabel>
-        <SectionCard sx={{ mb: 1.5 }} contentSx={{ pt: 2 }}>
-          <Stack spacing={1.75}>
-            <TextField
-              label="Versicherer" size="small" fullWidth
-              value={pkv.insurer}
-              onChange={(e) => updatePkv({ insurer: e.target.value })}
-              placeholder="Name der PKV"
-            />
-
-            <DateField
-              label="Versicherungsbeginn"
-              value={pkv.startDate}
-              onChange={(v) => updatePkv({ startDate: v })}
-            />
-
+      <Dialog
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        scroll="paper"
+      >
+        <DialogTitle sx={{ pb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>PKV-Einstellungen</Typography>
+          <IconButton size="small" onClick={() => setSettingsOpen(false)} aria-label="Schließen">
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 2.5 }}>
+          <Stack spacing={3}>
+            {/* Persönliche Daten */}
             <Box>
-              <Typography variant="caption" sx={{
-                color: 'text.secondary', fontWeight: 600,
-                textTransform: 'uppercase', letterSpacing: '0.06em',
-                display: 'block', mb: 0.5,
-              }}>
-                Geburtsdatum
-              </Typography>
-              {pkv.birthdate ? (
-                <Stack
-                  direction="row"
-                  alignItems="center"
-                  justifyContent="space-between"
-                  sx={(theme) => ({
-                    backgroundColor: theme.palette.background.default,
-                    border: 1,
-                    borderColor: 'divider',
-                    borderRadius: 1.25,
-                    px: 1.5,
-                    py: 1,
-                  })}
-                >
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {dayjs(pkv.birthdate).format('DD.MM.YYYY')}
+              <SectionLabel>Persönliche Daten</SectionLabel>
+              <Stack spacing={1.75}>
+                <TextField
+                  label="Versicherer" size="small" fullWidth
+                  value={pkv.insurer}
+                  onChange={(e) => updatePkv({ insurer: e.target.value })}
+                  placeholder="Name der PKV"
+                />
+
+                <DateField
+                  label="Versicherungsbeginn"
+                  value={pkv.startDate}
+                  onChange={(v) => updatePkv({ startDate: v })}
+                />
+
+                <Box>
+                  <Typography variant="caption" sx={{
+                    color: 'text.secondary', fontWeight: 600,
+                    textTransform: 'uppercase', letterSpacing: '0.06em',
+                    display: 'block', mb: 0.5,
+                  }}>
+                    Geburtsdatum
                   </Typography>
-                  <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 700 }}>
-                    {pkv.currentAge} Jahre
-                  </Typography>
-                </Stack>
-              ) : (
-                <Alert severity="warning" variant="outlined" sx={{ py: 0.5, fontSize: '0.78rem' }}>
-                  Bitte in den{' '}
-                  <MuiLink href="/settings" sx={{ fontWeight: 700 }}>Einstellungen</MuiLink>
-                  {' '}ergänzen.
-                </Alert>
-              )}
+                  {pkv.birthdate ? (
+                    <Stack
+                      direction="row"
+                      alignItems="center"
+                      justifyContent="space-between"
+                      sx={(theme) => ({
+                        backgroundColor: theme.palette.background.default,
+                        border: 1,
+                        borderColor: 'divider',
+                        borderRadius: 1.25,
+                        px: 1.5,
+                        py: 1,
+                      })}
+                    >
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {dayjs(pkv.birthdate).format('DD.MM.YYYY')}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 700 }}>
+                        {pkv.currentAge} Jahre
+                      </Typography>
+                    </Stack>
+                  ) : (
+                    <Alert severity="warning" variant="outlined" sx={{ py: 0.5, fontSize: '0.78rem' }}>
+                      Bitte in den{' '}
+                      <MuiLink href="/settings" sx={{ fontWeight: 700 }}>Einstellungen</MuiLink>
+                      {' '}ergänzen.
+                    </Alert>
+                  )}
+                </Box>
+
+                <SliderField label="Erwartetes Lebensalter" min={60} max={110} step={1} value={pkv.maxAge} onChange={(v) => updatePkv({ maxAge: v })} />
+              </Stack>
             </Box>
 
-            <SliderField label="Erwartetes Lebensalter" min={60} max={110} step={1} value={pkv.maxAge} onChange={(v) => updatePkv({ maxAge: v })} />
-          </Stack>
-        </SectionCard>
-
-        {/* Tarife */}
-        <SectionLabel isDark={isDark}>Tarife · Startjahr</SectionLabel>
-        <Paper variant="outlined" sx={{ borderRadius: 1, p: 2, mb: 1.5 }}>
-          <Alert
-            severity="info"
-            variant="outlined"
-            sx={{ mb: 1.5, py: 0.5, fontSize: '0.7rem', '& .MuiAlert-message': { py: 0.5 } }}
-            icon={false}
-          >
-            <strong>GZ</strong> = Gesetzl. Zuschlag (10% auf GZ-pflichtige Tarife, bis Alter 60).<br/>
-            <strong>Basis</strong> = Steuerlich absetzbarer Anteil.
-          </Alert>
-
-          <Stack spacing={1.5}>
-            {pkv.tarife.map((t) => (
-              <Paper
-                key={t.id}
+            {/* Tarife */}
+            <Box>
+              <SectionLabel>Tarife · Startjahr</SectionLabel>
+              <Alert
+                severity="info"
                 variant="outlined"
+                sx={{ mb: 1.5, py: 0.5, fontSize: '0.7rem', '& .MuiAlert-message': { py: 0.5 } }}
+                icon={false}
+              >
+                <strong>GZ</strong> = Gesetzl. Zuschlag (10% auf GZ-pflichtige Tarife, bis Alter 60).<br/>
+                <strong>Basis</strong> = Steuerlich absetzbarer Anteil.
+              </Alert>
+
+              <Stack spacing={1.5}>
+                {pkv.tarife.map((t) => (
+                  <Paper
+                    key={t.id}
+                    variant="outlined"
+                    sx={{
+                      borderRadius: 1,
+                      p: 1.5,
+                      bgcolor: 'action.hover',
+                    }}
+                  >
+                    <Stack spacing={1} sx={{ mb: 1 }}>
+                      <TextField
+                        size="small"
+                        fullWidth
+                        label="Tarifname"
+                        value={t.name}
+                        onChange={(e) => updateTarif(t.id, 'name', e.target.value)}
+                        placeholder="z.B. Krankenvollversicherung"
+                      />
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <TextField
+                          size="small"
+                          fullWidth
+                          type="number"
+                          label="Beitrag"
+                          value={t.amount}
+                          onChange={(e) => updateTarif(t.id, 'amount', parseFloat(e.target.value) || 0)}
+                          inputProps={{ min: 0, step: 0.01, style: { textAlign: 'right' } }}
+                          InputProps={{
+                            endAdornment: <InputAdornment position="end">€</InputAdornment>,
+                          }}
+                        />
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => removeTarif(t.id)}
+                          title="Tarif entfernen"
+                        >
+                          <DeleteOutlineIcon fontSize="small" />
+                        </IconButton>
+                      </Stack>
+                    </Stack>
+
+                    <Divider sx={{ my: 1 }} />
+
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ py: 0.5 }}>
+                      <Stack>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>GZ-pflichtig</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          10 % Gesetzl. Zuschlag bis Alter 59
+                        </Typography>
+                      </Stack>
+                      <Switch
+                        checked={!!t.gz}
+                        onChange={(e) => updateTarif(t.id, 'gz', e.target.checked)}
+                        inputProps={{ 'aria-label': 'GZ-pflichtig' }}
+                      />
+                    </Stack>
+
+                    <Divider sx={{ my: 1 }} />
+
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ py: 0.5 }}>
+                      <Stack>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>Tarif entfällt ab</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Ab einem bestimmten Alter wird dieser Tarif nicht mehr berücksichtigt
+                        </Typography>
+                      </Stack>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        {t.dropAtAge !== null && (
+                          <TextField
+                            size="small"
+                            type="number"
+                            value={t.dropAtAge}
+                            onChange={(e) => updateTarif(t.id, 'dropAtAge', parseInt(e.target.value, 10) || 0)}
+                            inputProps={{ min: 18, max: 110, style: { textAlign: 'right' } }}
+                            InputProps={{
+                              endAdornment: <InputAdornment position="end">Jahre</InputAdornment>,
+                            }}
+                            sx={{ width: 120 }}
+                          />
+                        )}
+                        <Switch
+                          checked={t.dropAtAge !== null}
+                          onChange={(e) => updateTarif(t.id, 'dropAtAge', e.target.checked ? 62 : null)}
+                          inputProps={{ 'aria-label': 'Tarif entfällt ab' }}
+                        />
+                      </Stack>
+                    </Stack>
+                  </Paper>
+                ))}
+              </Stack>
+
+              <Button
+                onClick={addTarif}
+                variant="outlined"
+                startIcon={<AddIcon />}
+                fullWidth
                 sx={{
-                  borderRadius: 1,
-                  p: 1.5,
-                  bgcolor: 'action.hover',
+                  mt: 1.5,
+                  textTransform: 'none',
+                  borderStyle: 'dashed',
                 }}
               >
-                {/* Header: Tarifname (eigene Zeile) → Beitrag + Entfernen (eigene Zeile) */}
-                <Stack spacing={1} sx={{ mb: 1 }}>
-                  <TextField
-                    size="small"
-                    fullWidth
-                    label="Tarifname"
-                    value={t.name}
-                    onChange={(e) => updateTarif(t.id, 'name', e.target.value)}
-                    placeholder="z.B. Krankenvollversicherung"
-                  />
-                  <Stack direction="row" spacing={1} alignItems="center">
+                Tarif hinzufügen
+              </Button>
+            </Box>
+
+            {/* Berufsstatus */}
+            <Box>
+              <SectionLabel>Berufsstatus</SectionLabel>
+              <RadioGroup
+                row
+                value={pkv.employmentStatus}
+                onChange={(e) => updatePkv({ employmentStatus: e.target.value })}
+              >
+                <FormControlLabel value="angestellt"     control={<Radio size="small" />} label="Angestellt" />
+                <FormControlLabel value="selbststaendig" control={<Radio size="small" />} label="Selbstständig" />
+              </RadioGroup>
+              <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'text.secondary', lineHeight: 1.6 }}>
+                {pkv.employmentStatus === 'angestellt'
+                  ? 'AG übernimmt 50% des Beitrags, max. 613,22 €/Monat (§ 257 SGB V).'
+                  : 'Selbstständige tragen 100% selbst.'}
+              </Typography>
+            </Box>
+
+            {/* Beitragssenkungen */}
+            <Box>
+              <SectionLabel>Beitragssenkungen</SectionLabel>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.25, lineHeight: 1.6 }}>
+                Mtl. Beträge die ab einem Alter abgezogen werden (z.B. BEN-Rückerstattung).
+              </Typography>
+              <Stack spacing={1}>
+                {pkv.senkungen.map((s) => (
+                  <Stack key={s.id} direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
                     <TextField
-                      size="small"
-                      fullWidth
-                      type="number"
-                      label="Beitrag"
-                      value={t.amount}
-                      onChange={(e) => updateTarif(t.id, 'amount', parseFloat(e.target.value) || 0)}
-                      inputProps={{ min: 0, step: 0.01, style: { textAlign: 'right' } }}
-                      InputProps={{
-                        endAdornment: <InputAdornment position="end">€</InputAdornment>,
-                      }}
+                      size="small" value={s.name}
+                      onChange={(e) => updateSenkung(s.id, 'name', e.target.value)}
+                      sx={{ flex: 1, minWidth: 100 }}
                     />
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() => removeTarif(t.id)}
-                      title="Tarif entfernen"
-                    >
+                    <TextField
+                      size="small" type="number" value={s.fromAge}
+                      inputProps={{ inputMode: 'numeric', min: 18, max: 110, style: { textAlign: 'right' } }}
+                      onChange={(e) => updateSenkung(s.id, 'fromAge', parseInt(e.target.value) || 65)}
+                      InputProps={{ endAdornment: <InputAdornment position="end">J</InputAdornment> }}
+                      sx={{ width: 92 }}
+                    />
+                    <TextField
+                      size="small" type="number" value={s.amount}
+                      inputProps={{ inputMode: 'decimal', min: 0, step: 0.01, style: { textAlign: 'right' } }}
+                      onChange={(e) => updateSenkung(s.id, 'amount', parseFloat(e.target.value) || 0)}
+                      InputProps={{ endAdornment: <InputAdornment position="end">€</InputAdornment> }}
+                      sx={{ width: 110 }}
+                    />
+                    <IconButton size="small" color="error" onClick={() => removeSenkung(s.id)} aria-label="Senkung entfernen">
                       <DeleteOutlineIcon fontSize="small" />
                     </IconButton>
                   </Stack>
-                </Stack>
-
-                <Divider sx={{ my: 1 }} />
-
-                {/* Option: GZ-pflichtig */}
-                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ py: 0.5 }}>
-                  <Stack>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>GZ-pflichtig</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      10 % Gesetzl. Zuschlag bis Alter 59
-                    </Typography>
-                  </Stack>
-                  <Switch
-                    checked={!!t.gz}
-                    onChange={(e) => updateTarif(t.id, 'gz', e.target.checked)}
-                    inputProps={{ 'aria-label': 'GZ-pflichtig' }}
-                  />
-                </Stack>
-
-                <Divider sx={{ my: 1 }} />
-
-                {/* Option: Tarif entfällt ab — eigene Zeile mit Jahre-Feld */}
-                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ py: 0.5 }}>
-                  <Stack>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>Tarif entfällt ab</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Ab einem bestimmten Alter wird dieser Tarif nicht mehr berücksichtigt
-                    </Typography>
-                  </Stack>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    {t.dropAtAge !== null && (
-                      <TextField
-                        size="small"
-                        type="number"
-                        value={t.dropAtAge}
-                        onChange={(e) => updateTarif(t.id, 'dropAtAge', parseInt(e.target.value, 10) || 0)}
-                        inputProps={{ min: 18, max: 110, style: { textAlign: 'right' } }}
-                        InputProps={{
-                          endAdornment: <InputAdornment position="end">Jahre</InputAdornment>,
-                        }}
-                        sx={{ width: 120 }}
-                      />
-                    )}
-                    <Switch
-                      checked={t.dropAtAge !== null}
-                      onChange={(e) => updateTarif(t.id, 'dropAtAge', e.target.checked ? 62 : null)}
-                      inputProps={{ 'aria-label': 'Tarif entfällt ab' }}
-                    />
-                  </Stack>
-                </Stack>
-              </Paper>
-            ))}
-          </Stack>
-
-          <Button
-            onClick={addTarif}
-            variant="outlined"
-            startIcon={<AddIcon />}
-            fullWidth
-            sx={{
-              mt: 1.5,
-              textTransform: 'none',
-              borderStyle: 'dashed',
-            }}
-          >
-            Tarif hinzufügen
-          </Button>
-        </Paper>
-
-        {/* Prognose */}
-        <SectionLabel isDark={isDark}>Prognose</SectionLabel>
-        <div style={{ background: card, border: `1px solid ${bdr}`, borderRadius: 12, padding: 16, marginBottom: 12 }}>
-          <SliderField label="Jährl. Beitragssteigerung" min={0} max={20} step={0.5} value={pkv.growthRate} onChange={(v) => updatePkv({ growthRate: v })} suffix="%" isDark={isDark} />
-          <SliderField label="Inflation p.a." min={0} max={10} step={0.5} value={pkv.inflationRate} onChange={(v) => updatePkv({ inflationRate: v })} suffix="%" isDark={isDark} />
-        </div>
-
-        {/* Berufsstatus */}
-        <SectionLabel isDark={isDark}>Berufsstatus</SectionLabel>
-        <Paper sx={{ borderRadius: 3, p: 2, mb: 1.5 }}>
-          <RadioGroup
-            row
-            value={pkv.employmentStatus}
-            onChange={(e) => updatePkv({ employmentStatus: e.target.value })}
-          >
-            <FormControlLabel value="angestellt"     control={<Radio size="small" />} label="Angestellt" />
-            <FormControlLabel value="selbststaendig" control={<Radio size="small" />} label="Selbstständig" />
-          </RadioGroup>
-          <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'text.secondary', lineHeight: 1.6 }}>
-            {pkv.employmentStatus === 'angestellt'
-              ? 'AG übernimmt 50% des Beitrags, max. 613,22 €/Monat (§ 257 SGB V).'
-              : 'Selbstständige tragen 100% selbst.'}
-          </Typography>
-        </Paper>
-
-        {/* Beitragssenkungen */}
-        <SectionLabel isDark={isDark}>Beitragssenkungen</SectionLabel>
-        <Paper sx={{ borderRadius: 3, p: 2, mb: 1.5 }}>
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.25, lineHeight: 1.6 }}>
-            Mtl. Beträge die ab einem Alter abgezogen werden (z.B. BEN-Rückerstattung).
-          </Typography>
-          <Stack spacing={1}>
-            {pkv.senkungen.map((s) => (
-              <Stack key={s.id} direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                <TextField
-                  size="small" value={s.name}
-                  onChange={(e) => updateSenkung(s.id, 'name', e.target.value)}
-                  sx={{ flex: 1, minWidth: 100 }}
-                />
-                <TextField
-                  size="small" type="number" value={s.fromAge}
-                  inputProps={{ inputMode: 'numeric', min: 18, max: 110, style: { textAlign: 'right' } }}
-                  onChange={(e) => updateSenkung(s.id, 'fromAge', parseInt(e.target.value) || 65)}
-                  InputProps={{ endAdornment: <InputAdornment position="end">J</InputAdornment> }}
-                  sx={{ width: 92 }}
-                />
-                <TextField
-                  size="small" type="number" value={s.amount}
-                  inputProps={{ inputMode: 'decimal', min: 0, step: 0.01, style: { textAlign: 'right' } }}
-                  onChange={(e) => updateSenkung(s.id, 'amount', parseFloat(e.target.value) || 0)}
-                  InputProps={{ endAdornment: <InputAdornment position="end">€</InputAdornment> }}
-                  sx={{ width: 110 }}
-                />
-                <IconButton size="small" color="error" onClick={() => removeSenkung(s.id)} aria-label="Senkung entfernen">
-                  <DeleteOutlineIcon fontSize="small" />
-                </IconButton>
+                ))}
               </Stack>
-            ))}
+              <Button
+                fullWidth
+                onClick={addSenkung}
+                startIcon={<AddIcon />}
+                sx={{ mt: 1.5, borderStyle: 'dashed', borderWidth: 1, borderColor: 'divider', '&:hover': { borderStyle: 'dashed', borderWidth: 1 } }}
+                variant="outlined"
+                color="primary"
+              >
+                Senkung hinzufügen
+              </Button>
+            </Box>
+
+            {/* Rentenzuschuss */}
+            <Box>
+              <SectionLabel>Rentenzuschuss (§106 SGB VI)</SectionLabel>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.25, lineHeight: 1.6 }}>
+                8,75% × gesetzl. Bruttorente, max. 50% des PKV-Beitrags.
+              </Typography>
+              <SliderField label="Renteneintritt ab Alter" min={60} max={80} step={1} value={pkv.rzFromAge} onChange={(v) => updatePkv({ rzFromAge: v })} />
+              <TextField
+                fullWidth size="small" type="number"
+                label="Erwartete monatl. Bruttorente"
+                value={pkv.rzRente}
+                inputProps={{ inputMode: 'decimal', min: 0, step: 10 }}
+                onChange={(e) => updatePkv({ rzRente: parseFloat(e.target.value) || 0 })}
+                InputProps={{ endAdornment: <InputAdornment position="end">€</InputAdornment> }}
+                sx={{ mb: 1.5 }}
+              />
+              <FormControlLabel
+                control={<Checkbox size="small" checked={pkv.rzActive}
+                  onChange={(e) => updatePkv({ rzActive: e.target.checked })} />}
+                label={<Typography variant="body2">In Berechnung einbeziehen</Typography>}
+              />
+              {pkv.rzActive && (
+                <Box sx={{
+                  mt: 1, p: 1.25, borderRadius: 2,
+                  bgcolor: 'accent.positiveSurface',
+                  color: 'accent.positiveOn',
+                }}>
+                  <Typography variant="caption" sx={{ lineHeight: 1.7, color: 'inherit' }}>
+                    8,75% × {fmt(pkv.rzRente, 2)} = <strong>{fmt(pkv.rzRente * 0.0875, 2)}</strong><br />
+                    Max. 50% PKV-Beitrag ≈ {fmt((currentYearData?.monthly ?? 0) * 0.5, 2)}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
           </Stack>
-          <Button
-            fullWidth
-            onClick={addSenkung}
-            startIcon={<AddIcon />}
-            sx={{ mt: 1.5, borderStyle: 'dashed', borderWidth: 1, borderColor: 'divider', '&:hover': { borderStyle: 'dashed', borderWidth: 1 } }}
-            variant="outlined"
-            color="primary"
-          >
-            Senkung hinzufügen
+        </DialogContent>
+        <DialogActions sx={{ px: 2.5, py: 1.5 }}>
+          <Button onClick={() => setSettingsOpen(false)} variant="contained">
+            Fertig
           </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  }
+
+  // ── Sidebar: Prognose (editierbar) + Read-only-Zusammenfassung ──────────
+  function PkvSidebar() {
+    // Read-only Row Helper — zeigt Label + Value in zwei Zeilen/Flex kompakt an.
+    const SummaryRow = ({ label, value }) => (
+      <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ py: 0.5 }}>
+        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+          {label}
+        </Typography>
+        <Typography variant="body2" sx={{ fontWeight: 600, textAlign: 'right', ml: 1 }}>
+          {value}
+        </Typography>
+      </Stack>
+    );
+    const SummaryHeader = ({ children }) => (
+      <Typography variant="overline" sx={{
+        display: 'block', color: 'text.secondary', fontWeight: 700,
+        letterSpacing: '0.08em', fontSize: '0.65rem', mb: 0.5, mt: 1.5,
+        '&:first-of-type': { mt: 0 },
+      }}>
+        {children}
+      </Typography>
+    );
+
+    return (
+      <Stack sx={{ minWidth: 280, maxWidth: 320 }}>
+        {/* Prognose (weiterhin editierbar) */}
+        <SectionLabel>Prognose</SectionLabel>
+        <Paper variant="outlined" sx={{ borderRadius: 1, p: 2, mb: 2 }}>
+          <SliderField label="Jährl. Beitragssteigerung" min={0} max={20} step={0.5} value={pkv.growthRate} onChange={(v) => updatePkv({ growthRate: v })} suffix="%" />
+          <Box sx={{ mb: -1.75 }}>
+            <SliderField label="Inflation p.a." min={0} max={10} step={0.5} value={pkv.inflationRate} onChange={(v) => updatePkv({ inflationRate: v })} suffix="%" />
+          </Box>
         </Paper>
 
-        {/* Rentenzuschuss */}
-        <SectionLabel isDark={isDark}>Rentenzuschuss (§106 SGB VI)</SectionLabel>
-        <Paper sx={{ borderRadius: 3, p: 2, mb: 1.5 }}>
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.25, lineHeight: 1.6 }}>
-            8,75% × gesetzl. Bruttorente, max. 50% des PKV-Beitrags.
-          </Typography>
-          <SliderField label="Renteneintritt ab Alter" min={60} max={80} step={1} value={pkv.rzFromAge} onChange={(v) => updatePkv({ rzFromAge: v })} isDark={isDark} />
-          <TextField
-            fullWidth size="small" type="number"
-            label="Erwartete monatl. Bruttorente"
-            value={pkv.rzRente}
-            inputProps={{ inputMode: 'decimal', min: 0, step: 10 }}
-            onChange={(e) => updatePkv({ rzRente: parseFloat(e.target.value) || 0 })}
-            InputProps={{ endAdornment: <InputAdornment position="end">€</InputAdornment> }}
-            sx={{ mb: 1.5 }}
-          />
-          <FormControlLabel
-            control={<Checkbox size="small" checked={pkv.rzActive}
-              onChange={(e) => updatePkv({ rzActive: e.target.checked })} />}
-            label={<Typography variant="body2">In Berechnung einbeziehen</Typography>}
-          />
-          {pkv.rzActive && (
-            <Box sx={{
-              mt: 1, p: 1.25, borderRadius: 2,
-              bgcolor: 'accent.positiveSurface',
-              color: 'accent.positiveOn',
-            }}>
-              <Typography variant="caption" sx={{ lineHeight: 1.7, color: 'inherit' }}>
-                8,75% × {fmt(pkv.rzRente, 2)} = <strong>{fmt(pkv.rzRente * 0.0875, 2)}</strong><br />
-                Max. 50% PKV-Beitrag ≈ {fmt((currentYearData?.monthly ?? 0) * 0.5, 2)}
-              </Typography>
+        {/* Read-only Zusammenfassung aller anderen Einstellungen */}
+        <SectionLabel>Einstellungen</SectionLabel>
+        <Paper variant="outlined" sx={{ borderRadius: 1, p: 2 }}>
+          <Stack divider={<Divider flexItem />} spacing={1.25}>
+            {/* Persönliche Daten */}
+            <Box>
+              <SummaryHeader>Persönliche Daten</SummaryHeader>
+              <SummaryRow label="Versicherer" value={pkv.insurer || '—'} />
+              <SummaryRow
+                label="Versicherungsbeginn"
+                value={pkv.startDate ? dayjs(pkv.startDate).format('DD.MM.YYYY') : '—'}
+              />
+              <SummaryRow
+                label="Geburtsdatum"
+                value={pkv.birthdate
+                  ? `${dayjs(pkv.birthdate).format('DD.MM.YYYY')} · ${pkv.currentAge} J`
+                  : '—'}
+              />
+              <SummaryRow label="Lebensalter (Progn.)" value={`${pkv.maxAge} Jahre`} />
             </Box>
-          )}
+
+            {/* Tarife */}
+            <Box>
+              <SummaryHeader>Tarife ({pkv.tarife.length})</SummaryHeader>
+              {pkv.tarife.length === 0 ? (
+                <Typography variant="caption" color="text.secondary">Keine Tarife konfiguriert.</Typography>
+              ) : (
+                pkv.tarife.map((t) => (
+                  <SummaryRow
+                    key={t.id}
+                    label={
+                      <>
+                        {t.name}
+                        {t.gz && <Box component="span" sx={{ ml: 0.5, color: 'text.disabled', fontSize: '0.65rem' }}>· GZ</Box>}
+                        {t.dropAtAge !== null && t.dropAtAge !== undefined && (
+                          <Box component="span" sx={{ ml: 0.5, color: 'text.disabled', fontSize: '0.65rem' }}>· bis {t.dropAtAge}</Box>
+                        )}
+                      </>
+                    }
+                    value={fmt(t.amount, 2)}
+                  />
+                ))
+              )}
+            </Box>
+
+            {/* Berufsstatus */}
+            <Box>
+              <SummaryHeader>Berufsstatus</SummaryHeader>
+              <SummaryRow
+                label="Status"
+                value={pkv.employmentStatus === 'angestellt' ? 'Angestellt' : 'Selbstständig'}
+              />
+            </Box>
+
+            {/* Beitragssenkungen */}
+            <Box>
+              <SummaryHeader>Beitragssenkungen ({pkv.senkungen.length})</SummaryHeader>
+              {pkv.senkungen.length === 0 ? (
+                <Typography variant="caption" color="text.secondary">Keine Senkungen.</Typography>
+              ) : (
+                pkv.senkungen.map((s) => (
+                  <SummaryRow
+                    key={s.id}
+                    label={
+                      <>
+                        {s.name}
+                        <Box component="span" sx={{ ml: 0.5, color: 'text.disabled', fontSize: '0.65rem' }}>· ab {s.fromAge} J</Box>
+                      </>
+                    }
+                    value={`−${fmt(s.amount, 2)}`}
+                  />
+                ))
+              )}
+            </Box>
+
+            {/* Rentenzuschuss */}
+            <Box>
+              <SummaryHeader>Rentenzuschuss</SummaryHeader>
+              {pkv.rzActive ? (
+                <>
+                  <SummaryRow label="Ab Alter" value={`${pkv.rzFromAge} Jahre`} />
+                  <SummaryRow label="Erwartete Rente" value={fmt(pkv.rzRente, 0)} />
+                </>
+              ) : (
+                <SummaryRow label="Status" value="Deaktiviert" />
+              )}
+            </Box>
+          </Stack>
+
+          <Button
+            onClick={() => setSettingsOpen(true)}
+            variant="outlined"
+            fullWidth
+            startIcon={<EditOutlinedIcon />}
+            sx={{ mt: 2, textTransform: 'none' }}
+          >
+            Einstellungen bearbeiten
+          </Button>
         </Paper>
       </Stack>
     );
@@ -1139,6 +1291,7 @@ export default function PkvCalculatorPage({ isDark = false }) {
       {/* ══════════════════════ PKV TAB ══════════════════════════════════════ */}
       {globalTab === 'pkv' && (
         <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+          {PkvSettingsDialog()}
           {/* Sidebar */}
           <div style={{ flexShrink: 0 }}>
             {PkvSidebar()}

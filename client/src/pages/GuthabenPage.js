@@ -3,6 +3,7 @@ import {
   Box, Stack, Typography, Button, IconButton, TextField, MenuItem,
   Tabs, Tab, Dialog, DialogTitle, DialogContent, Alert, CircularProgress,
   Chip, Paper, LinearProgress, ToggleButton, ToggleButtonGroup, Avatar,
+  Table, TableHead, TableBody, TableFooter,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
@@ -869,8 +870,8 @@ function AnleihenLadder({ goals }) {
 
       <Paper variant="outlined" sx={{ borderRadius: 1, overflow: 'hidden' }}>
         <Box sx={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
+          <Table size="small" sx={{ borderCollapse: 'collapse' }}>
+            <TableHead>
               <tr>
                 <th style={{ ...headStyle, textAlign: 'left' }}>Name</th>
                 <th style={{ ...headStyle, textAlign: 'right' }}>Nominalwert</th>
@@ -880,8 +881,8 @@ function AnleihenLadder({ goals }) {
                 <th style={{ ...headStyle, textAlign: 'right' }}>Fälligkeit</th>
                 <th style={{ ...headStyle, textAlign: 'right' }}>Restlaufzeit</th>
               </tr>
-            </thead>
-            <tbody>
+            </TableHead>
+            <TableBody>
               {bonds.map((g, i) => {
                 const ml = monthsUntilMaturity(g);
                 const alert = ml !== null && ml <= 12 && ml >= 0;
@@ -943,8 +944,8 @@ function AnleihenLadder({ goals }) {
                   </tr>
                 );
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </Box>
       </Paper>
     </Stack>
@@ -995,8 +996,8 @@ function MonatsTracker({ goals, entries, onAddEntry }) {
         </SectionCard>
       ) : (
         <Paper variant="outlined" sx={{ borderRadius: 1, overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
+          <Table size="small" sx={{ borderCollapse: 'collapse' }}>
+            <TableHead>
               <tr>
                 <th style={{ ...headStyle, textAlign: 'left' }}>Asset</th>
                 <th style={{ ...headStyle, textAlign: 'right' }}>SOLL (€)</th>
@@ -1007,8 +1008,8 @@ function MonatsTracker({ goals, entries, onAddEntry }) {
                   <span style={{ position: 'absolute', left: -9999 }}>Aktionen</span>
                 </th>
               </tr>
-            </thead>
-            <tbody>
+            </TableHead>
+            <TableBody>
               {savingsGoals.map((g, i) => {
                 const ist   = monthlyIst(g.id, entries, year, month);
                 const offen = Math.max(0, Number(g.monthly_soll) - ist);
@@ -1063,8 +1064,8 @@ function MonatsTracker({ goals, entries, onAddEntry }) {
                   </tr>
                 );
               })}
-            </tbody>
-            <tfoot>
+            </TableBody>
+            <TableFooter>
               <tr style={{ borderTop: `2px solid ${theme.palette.divider}` }}>
                 <td style={{
                   padding: '10px 14px', color: theme.palette.text.secondary,
@@ -1094,8 +1095,8 @@ function MonatsTracker({ goals, entries, onAddEntry }) {
                 </td>
                 <td /><td />
               </tr>
-            </tfoot>
-          </table>
+            </TableFooter>
+          </Table>
         </Paper>
       )}
     </Stack>
