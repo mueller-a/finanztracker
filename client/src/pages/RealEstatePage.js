@@ -282,12 +282,13 @@ function PropertyDetail({ property, mortgages: propMortgages, onBack, onAddMortg
               <Stack direction="row" spacing={3} sx={{ mt: 1 }}>
                 <Typography variant="caption" color="text.secondary">
                   Schuldenfrei:{' '}
-                  <strong style={{ color: sum.payoffDate ? theme.palette.success.main : theme.palette.text.primary }}>
+                  <Box component="strong" sx={{ color: sum.payoffDate ? 'success.main' : 'text.primary' }}>
                     {sum.payoffDate || 'nach 40+ Jahren'}
-                  </strong>
+                  </Box>
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Zinskosten ges.: <strong style={{ color: theme.palette.error.main }}>{fmtEuro(sum.totalZinsen)}</strong>
+                  Zinskosten ges.:{' '}
+                  <Box component="strong" sx={{ color: 'error.main' }}>{fmtEuro(sum.totalZinsen)}</Box>
                 </Typography>
               </Stack>
             );
@@ -474,7 +475,7 @@ export default function RealEstatePage() {
       monthly_rent: Number(f.monthly_rent) || 0,
       monthly_hausgeld: Number(f.monthly_hausgeld) || 0,
       maintenance_reserve: Number(f.maintenance_reserve) || 0,
-      color_code: f.color_code || '#7c3aed',
+      color_code: f.color_code || '#131b2e',  // Fiscal Gallery primary_container as default
     };
     if (editProp) {
       await updateProperty(editProp.id, payload);

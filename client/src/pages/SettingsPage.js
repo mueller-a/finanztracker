@@ -4,6 +4,7 @@ import { useTheme } from '@mui/material/styles';
 import {
   Box, Stack, Typography, Switch, FormControlLabel, ToggleButton, ToggleButtonGroup,
   Tabs, Tab, CircularProgress, Chip, Paper, TextField,
+  Table, TableHead, TableBody, TableRow, TableCell, TableContainer,
 } from '@mui/material';
 import CodeIcon from '@mui/icons-material/Code';
 import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
@@ -204,79 +205,70 @@ function DeveloperTab() {
             <Typography variant="body2">Lade Nutzer…</Typography>
           </Stack>
         ) : (
-          <Paper variant="outlined" sx={{ borderRadius: 1, overflow: 'hidden' }}>
-            <Box sx={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid currentColor', borderColor: 'inherit' }}>
-                    {['Nutzer', 'Rolle', 'Aktive Module', 'Dark Mode', 'Letztes Update'].map((h) => (
-                      <th key={h} style={{
-                        padding: '10px 14px', textAlign: 'left',
-                        fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.08em',
-                        fontWeight: 700,
-                      }}>
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((u) => {
-                    const activeModules = MODULE_CARDS.filter((c) => u[c.key] !== false).map((c) => c.label);
-                    const disabledModules = MODULE_CARDS.filter((c) => u[c.key] === false).map((c) => c.label);
-                    return (
-                      <tr key={u.user_id}>
-                        <td style={{ padding: '10px 14px' }}>
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            {u.name ?? u.user_id.substring(0, 8) + '…'}
-                            {u.isMe && (
-                              <Typography component="span" variant="caption" sx={{ ml: 0.75, color: 'primary.main', fontWeight: 700 }}>
-                                (Du)
-                              </Typography>
-                            )}
-                          </Typography>
-                          {u.email && (
-                            <Typography variant="caption" color="text.secondary">{u.email}</Typography>
-                          )}
-                        </td>
-                        <td style={{ padding: '10px 14px' }}>
-                          <Chip
-                            label={u.role ?? 'user'}
-                            size="small"
-                            color={u.role === 'admin' ? 'primary' : 'default'}
-                            sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700 }}
-                          />
-                        </td>
-                        <td style={{ padding: '10px 14px' }}>
-                          <Typography variant="body2" title={`Aktiv: ${activeModules.join(', ')}\nDeaktiviert: ${disabledModules.join(', ') || '–'}`}>
-                            {activeModules.length}/{MODULE_CARDS.length} Module
-                          </Typography>
-                          {disabledModules.length > 0 && (
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                              Aus: {disabledModules.join(', ')}
+          <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  {['Nutzer', 'Rolle', 'Aktive Module', 'Dark Mode', 'Letztes Update'].map((h) => (
+                    <TableCell key={h}>{h}</TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {users.map((u) => {
+                  const activeModules = MODULE_CARDS.filter((c) => u[c.key] !== false).map((c) => c.label);
+                  const disabledModules = MODULE_CARDS.filter((c) => u[c.key] === false).map((c) => c.label);
+                  return (
+                    <TableRow key={u.user_id}>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {u.name ?? u.user_id.substring(0, 8) + '…'}
+                          {u.isMe && (
+                            <Typography component="span" variant="caption" sx={{ ml: 0.75, color: 'primary.main', fontWeight: 700 }}>
+                              (Du)
                             </Typography>
                           )}
-                        </td>
-                        <td style={{ padding: '10px 14px' }}>
-                          <Typography variant="body2" color="text.secondary">
-                            {u.dark_mode === true ? 'Dark' : u.dark_mode === false ? 'Light' : '–'}
+                        </Typography>
+                        {u.email && (
+                          <Typography variant="caption" color="text.secondary">{u.email}</Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={u.role ?? 'user'}
+                          size="small"
+                          color={u.role === 'admin' ? 'success' : 'default'}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" title={`Aktiv: ${activeModules.join(', ')}\nDeaktiviert: ${disabledModules.join(', ') || '–'}`}>
+                          {activeModules.length}/{MODULE_CARDS.length} Module
+                        </Typography>
+                        {disabledModules.length > 0 && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                            Aus: {disabledModules.join(', ')}
                           </Typography>
-                        </td>
-                        <td style={{ padding: '10px 14px' }}>
-                          <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'monospace' }}>
-                            {u.updated_at ? new Date(u.updated_at).toLocaleDateString('de-DE', {
-                              day: '2-digit', month: '2-digit', year: 'numeric',
-                              hour: '2-digit', minute: '2-digit',
-                            }) : '–'}
-                          </Typography>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </Box>
-          </Paper>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {u.dark_mode === true ? 'Dark' : u.dark_mode === false ? 'Light' : '–'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'monospace' }}>
+                          {u.updated_at ? new Date(u.updated_at).toLocaleDateString('de-DE', {
+                            day: '2-digit', month: '2-digit', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit',
+                          }) : '–'}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
       </Box>
     </Stack>
