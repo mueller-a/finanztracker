@@ -502,47 +502,62 @@ function CompactGoalCard({ goal, entries, etfPolicies, onEdit, onDelete }) {
 
   return (
     <Paper
-      variant="outlined"
+      elevation={0}
       sx={{
+        position: 'relative',
         borderRadius: '12px',
         p: 1.75,
-        bgcolor: 'background.default',
-        display: 'flex', flexDirection: 'column', gap: 1.25,
+        bgcolor: 'background.paper',
+        display: 'flex', flexDirection: 'column', gap: 1,
+        boxShadow: '0 4px 12px rgba(11, 28, 48, 0.04)',
+        transition: 'box-shadow 0.15s',
+        '&:hover': {
+          boxShadow: '0 6px 20px rgba(11, 28, 48, 0.08)',
+          '& .compact-actions': { opacity: 1 },
+        },
       }}
     >
-      {/* Header: Icon + (optional) Abgeschlossen-Badge */}
-      <Stack direction="row" alignItems="center" justifyContent="space-between">
-        <Box sx={{
-          width: 36, height: 36, borderRadius: '10px',
-          bgcolor: 'accent.positiveSurface',
-          color: 'primary.dark',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 20 }}>
-            business_center
-          </Box>
-        </Box>
+      {/* Top-right corner: Abgeschlossen-Badge + Actions */}
+      <Stack direction="row" spacing={0.5} alignItems="center"
+        sx={{ position: 'absolute', top: 12, right: 12 }}>
         {done && (
           <Box sx={{
             px: 1, py: 0.25, borderRadius: 99,
             bgcolor: 'accent.positiveSurface', color: 'primary.dark',
-            fontWeight: 700, fontSize: '0.68rem', letterSpacing: '0.02em',
+            fontWeight: 700, fontSize: '0.65rem', letterSpacing: '0.02em',
             lineHeight: 1.4,
           }}>
             Abgeschlossen
           </Box>
         )}
-        <Stack direction="row" spacing={0.25} sx={{ ml: done ? 0 : 'auto' }}>
+        <Box className="compact-actions" sx={{
+          display: 'flex',
+          opacity: { xs: 1, md: 0 },
+          transition: 'opacity 0.15s',
+        }}>
           <IconButton size="small" onClick={() => onEdit(goal)} title="Bearbeiten"
-            sx={{ color: 'text.disabled', '&:hover': { color: 'text.primary' } }}>
-            <EditOutlinedIcon sx={{ fontSize: 16 }} />
+            sx={{ color: 'text.disabled', p: 0.5, '&:hover': { color: 'text.primary' } }}>
+            <EditOutlinedIcon sx={{ fontSize: 14 }} />
           </IconButton>
           <IconButton size="small" onClick={() => onDelete(goal.id)} title="Löschen"
-            sx={{ color: 'text.disabled', '&:hover': { color: 'error.main' } }}>
-            <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+            sx={{ color: 'text.disabled', p: 0.5, '&:hover': { color: 'error.main' } }}>
+            <DeleteOutlineIcon sx={{ fontSize: 14 }} />
           </IconButton>
-        </Stack>
+        </Box>
       </Stack>
+
+      {/* Icon */}
+      <Box sx={{
+        width: 36, height: 36, borderRadius: '10px',
+        bgcolor: 'accent.positiveSurface',
+        color: 'primary.dark',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        mb: 0.5,
+      }}>
+        <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 20 }}>
+          business_center
+        </Box>
+      </Box>
 
       {/* Name + Betrag */}
       <Box>
@@ -1462,24 +1477,48 @@ export default function GuthabenPage() {
                     )}
                   </Stack>
 
-                  {/* RIGHT — Private Investments Sidebar */}
+                  {/* RIGHT — Private Investments Sidebar (eigenständiger Panel) */}
                   {hasInvest && (
-                    <Stack spacing={1.5}>
-                      <Stack direction="row" alignItems="baseline" justifyContent="space-between">
-                        <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: '-0.01em' }}>
-                          Private Investments
-                        </Typography>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        borderRadius: '16px',
+                        bgcolor: 'surface.low',
+                        p: 2.25,
+                      }}
+                    >
+                      <Stack direction="row" alignItems="baseline" justifyContent="space-between" sx={{ mb: 1.75 }}>
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          <Box sx={{
+                            width: 28, height: 28, borderRadius: '8px',
+                            bgcolor: 'accent.positiveSurface',
+                            color: 'primary.dark',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 16 }}>
+                              business_center
+                            </Box>
+                          </Box>
+                          <Typography variant="subtitle1" sx={{
+                            fontFamily: '"Manrope", sans-serif',
+                            fontWeight: 700, letterSpacing: '-0.01em', lineHeight: 1.2,
+                          }}>
+                            Private Investments
+                          </Typography>
+                        </Stack>
                         <Typography variant="caption" color="text.secondary">
                           {investGoals.length} {investGoals.length === 1 ? 'Asset' : 'Assets'}
                         </Typography>
                       </Stack>
-                      {investGoals.map((g) => (
-                        <CompactGoalCard
-                          key={g.id} goal={g} entries={entries} etfPolicies={etfPolicies ?? []}
-                          onEdit={onEdit} onDelete={onDelete}
-                        />
-                      ))}
-                    </Stack>
+                      <Stack spacing={1.5}>
+                        {investGoals.map((g) => (
+                          <CompactGoalCard
+                            key={g.id} goal={g} entries={entries} etfPolicies={etfPolicies ?? []}
+                            onEdit={onEdit} onDelete={onDelete}
+                          />
+                        ))}
+                      </Stack>
+                    </Paper>
                   )}
                 </Box>
               );
