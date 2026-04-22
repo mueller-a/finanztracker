@@ -2536,13 +2536,13 @@ function OverviewPanel({ policies, onTabSwitch, isDark }) {
           value={euro(schichten.privat) + '/Mo'}
           sub="Ertragsanteil / Abgeltung"
         />
-        <StatCard
+        <StatCardSecondary
           icon="monitoring"
           label="Gesamtkapital bei Rente"
           value={euro(totals.kap)}
           sub={'Einzahlungen: ' + euro(totals.einz)}
         />
-        <StatCard
+        <StatCardSecondary
           icon="trending_up"
           label="Netto-Gewinn gesamt"
           value={euro(totals.gewinn)}
