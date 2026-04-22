@@ -18,6 +18,7 @@ import {
   Box, Stack, Typography, Tabs, Tab, Button, TextField,
   Slider, Tooltip as MuiTooltip, ToggleButton, ToggleButtonGroup,
   Alert, Link as MuiLink, Switch, InputAdornment, IconButton, Paper, Divider,
+  Checkbox, FormControlLabel, RadioGroup, Radio, FormControl, FormLabel,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import LaunchIcon from '@mui/icons-material/Launch';
@@ -858,72 +859,102 @@ export default function PkvCalculatorPage({ isDark = false }) {
 
         {/* Berufsstatus */}
         <SectionLabel isDark={isDark}>Berufsstatus</SectionLabel>
-        <div style={{ background: card, border: `1px solid ${bdr}`, borderRadius: 12, padding: 16, marginBottom: 12 }}>
-          <div style={{ display: 'flex', gap: 16 }}>
-            {['angestellt', 'selbststaendig'].map((v) => (
-              <label key={v} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', color: text, cursor: 'pointer' }}>
-                <input type="radio" name="empStatus" value={v} checked={pkv.employmentStatus === v} onChange={() => updatePkv({ employmentStatus: v })} />
-                {v === 'angestellt' ? 'Angestellt' : 'Selbstständig'}
-              </label>
-            ))}
-          </div>
-          <div style={{ marginTop: 8, fontSize: '0.68rem', color: muted, lineHeight: 1.6 }}>
-            {pkv.employmentStatus === 'angestellt' ? 'AG übernimmt 50% des Beitrags, max. 613,22 €/Monat (§ 257 SGB V).' : 'Selbstständige tragen 100% selbst.'}
-          </div>
-        </div>
+        <Paper sx={{ borderRadius: 3, p: 2, mb: 1.5 }}>
+          <RadioGroup
+            row
+            value={pkv.employmentStatus}
+            onChange={(e) => updatePkv({ employmentStatus: e.target.value })}
+          >
+            <FormControlLabel value="angestellt"     control={<Radio size="small" />} label="Angestellt" />
+            <FormControlLabel value="selbststaendig" control={<Radio size="small" />} label="Selbstständig" />
+          </RadioGroup>
+          <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'text.secondary', lineHeight: 1.6 }}>
+            {pkv.employmentStatus === 'angestellt'
+              ? 'AG übernimmt 50% des Beitrags, max. 613,22 €/Monat (§ 257 SGB V).'
+              : 'Selbstständige tragen 100% selbst.'}
+          </Typography>
+        </Paper>
 
         {/* Beitragssenkungen */}
         <SectionLabel isDark={isDark}>Beitragssenkungen</SectionLabel>
-        <div style={{ background: card, border: `1px solid ${bdr}`, borderRadius: 12, padding: 16, marginBottom: 12 }}>
-          <div style={{ fontSize: '0.68rem', color: muted, marginBottom: 10, lineHeight: 1.6 }}>
+        <Paper sx={{ borderRadius: 3, p: 2, mb: 1.5 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.25, lineHeight: 1.6 }}>
             Mtl. Beträge die ab einem Alter abgezogen werden (z.B. BEN-Rückerstattung).
-          </div>
-          {pkv.senkungen.map((s) => (
-            <div key={s.id} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
-              <input value={s.name} onChange={(e) => updateSenkung(s.id, 'name', e.target.value)}
-                style={{ flex: 1, minWidth: 80, padding: '4px 8px', borderRadius: 6, border: `1px solid ${bdr}`, background: '#ffffff', color: text, fontSize: '0.78rem' }}
-              />
-              <span style={{ color: muted, fontSize: '0.72rem' }}>ab</span>
-              <input type="number" value={s.fromAge} min={18} max={110} onChange={(e) => updateSenkung(s.id, 'fromAge', parseInt(e.target.value) || 65)}
-                style={{ width: 44, padding: '4px 6px', borderRadius: 6, border: `1px solid ${bdr}`, background: '#ffffff', color: text, fontSize: '0.78rem', textAlign: 'right' }}
-              />
-              <span style={{ color: muted, fontSize: '0.72rem' }}>J →</span>
-              <input type="number" value={s.amount} min={0} step={0.01} onChange={(e) => updateSenkung(s.id, 'amount', parseFloat(e.target.value) || 0)}
-                style={{ width: 60, padding: '4px 6px', borderRadius: 6, border: `1px solid ${bdr}`, background: '#ffffff', color: text, fontSize: '0.78rem', textAlign: 'right' }}
-              />
-              <span style={{ color: muted, fontSize: '0.72rem' }}>€</span>
-              <button onClick={() => removeSenkung(s.id)} style={{ background: 'transparent', border: 'none', color: CHART.negative, cursor: 'pointer', fontSize: '0.8rem' }}>✕</button>
-            </div>
-          ))}
-          <button onClick={addSenkung}
-            style={{ width: '100%', padding: '7px', borderRadius: 8, border: `1px dashed ${bdr}`, background: 'transparent', color: accent, cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600 }}>
-            + Senkung hinzufügen
-          </button>
-        </div>
+          </Typography>
+          <Stack spacing={1}>
+            {pkv.senkungen.map((s) => (
+              <Stack key={s.id} direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                <TextField
+                  size="small" value={s.name}
+                  onChange={(e) => updateSenkung(s.id, 'name', e.target.value)}
+                  sx={{ flex: 1, minWidth: 100 }}
+                />
+                <TextField
+                  size="small" type="number" value={s.fromAge}
+                  inputProps={{ inputMode: 'numeric', min: 18, max: 110, style: { textAlign: 'right' } }}
+                  onChange={(e) => updateSenkung(s.id, 'fromAge', parseInt(e.target.value) || 65)}
+                  InputProps={{ endAdornment: <InputAdornment position="end">J</InputAdornment> }}
+                  sx={{ width: 92 }}
+                />
+                <TextField
+                  size="small" type="number" value={s.amount}
+                  inputProps={{ inputMode: 'decimal', min: 0, step: 0.01, style: { textAlign: 'right' } }}
+                  onChange={(e) => updateSenkung(s.id, 'amount', parseFloat(e.target.value) || 0)}
+                  InputProps={{ endAdornment: <InputAdornment position="end">€</InputAdornment> }}
+                  sx={{ width: 110 }}
+                />
+                <IconButton size="small" color="error" onClick={() => removeSenkung(s.id)} aria-label="Senkung entfernen">
+                  <DeleteOutlineIcon fontSize="small" />
+                </IconButton>
+              </Stack>
+            ))}
+          </Stack>
+          <Button
+            fullWidth
+            onClick={addSenkung}
+            startIcon={<AddIcon />}
+            sx={{ mt: 1.5, borderStyle: 'dashed', borderWidth: 1, borderColor: 'divider', '&:hover': { borderStyle: 'dashed', borderWidth: 1 } }}
+            variant="outlined"
+            color="primary"
+          >
+            Senkung hinzufügen
+          </Button>
+        </Paper>
 
         {/* Rentenzuschuss */}
         <SectionLabel isDark={isDark}>Rentenzuschuss (§106 SGB VI)</SectionLabel>
-        <div style={{ background: card, border: `1px solid ${bdr}`, borderRadius: 12, padding: 16, marginBottom: 12 }}>
-          <div style={{ fontSize: '0.68rem', color: muted, marginBottom: 10, lineHeight: 1.6 }}>
+        <Paper sx={{ borderRadius: 3, p: 2, mb: 1.5 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.25, lineHeight: 1.6 }}>
             8,75% × gesetzl. Bruttorente, max. 50% des PKV-Beitrags.
-          </div>
+          </Typography>
           <SliderField label="Renteneintritt ab Alter" min={60} max={80} step={1} value={pkv.rzFromAge} onChange={(v) => updatePkv({ rzFromAge: v })} isDark={isDark} />
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ color: muted, fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Erwartete monatl. Bruttorente (€)</label>
-            <input type="number" value={pkv.rzRente} min={0} step={10} onChange={(e) => updatePkv({ rzRente: parseFloat(e.target.value) || 0 })}
-              style={{ width: '100%', padding: '6px 10px', borderRadius: 8, border: `1px solid ${bdr}`, background: '#f8f9ff', color: text, fontSize: '0.82rem', boxSizing: 'border-box' }} />
-          </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', color: text, cursor: 'pointer' }}>
-            <input type="checkbox" checked={pkv.rzActive} onChange={(e) => updatePkv({ rzActive: e.target.checked })} />
-            In Berechnung einbeziehen
-          </label>
+          <TextField
+            fullWidth size="small" type="number"
+            label="Erwartete monatl. Bruttorente"
+            value={pkv.rzRente}
+            inputProps={{ inputMode: 'decimal', min: 0, step: 10 }}
+            onChange={(e) => updatePkv({ rzRente: parseFloat(e.target.value) || 0 })}
+            InputProps={{ endAdornment: <InputAdornment position="end">€</InputAdornment> }}
+            sx={{ mb: 1.5 }}
+          />
+          <FormControlLabel
+            control={<Checkbox size="small" checked={pkv.rzActive}
+              onChange={(e) => updatePkv({ rzActive: e.target.checked })} />}
+            label={<Typography variant="body2">In Berechnung einbeziehen</Typography>}
+          />
           {pkv.rzActive && (
-            <div style={{ marginTop: 10, fontSize: '0.72rem', color: sub, background: isDark ? 'rgba(10,202,142,0.07)' : 'rgba(16,185,129,0.07)', borderRadius: 8, padding: '8px 10px', lineHeight: 1.7 }}>
-              8,75% × {fmt(pkv.rzRente, 2)} = <strong>{fmt(pkv.rzRente * 0.0875, 2)}</strong><br />
-              Max. 50% PKV-Beitrag ≈ {fmt((currentYearData?.monthly ?? 0) * 0.5, 2)}
-            </div>
+            <Box sx={{
+              mt: 1, p: 1.25, borderRadius: 2,
+              bgcolor: 'accent.positiveSurface',
+              color: 'accent.positiveOn',
+            }}>
+              <Typography variant="caption" sx={{ lineHeight: 1.7, color: 'inherit' }}>
+                8,75% × {fmt(pkv.rzRente, 2)} = <strong>{fmt(pkv.rzRente * 0.0875, 2)}</strong><br />
+                Max. 50% PKV-Beitrag ≈ {fmt((currentYearData?.monthly ?? 0) * 0.5, 2)}
+              </Typography>
+            </Box>
           )}
-        </div>
+        </Paper>
       </Stack>
     );
   }
@@ -993,70 +1024,91 @@ export default function PkvCalculatorPage({ isDark = false }) {
                   </span>
                 )}
               </div>
-              <div style={{ display: 'flex', gap: 6 }}>
+              <Stack direction="row" spacing={1}>
                 {hasOverride && (
-                  <button onClick={() => resetYearOverride(d.year)} style={{ padding: '3px 8px', borderRadius: 6, border: `1px solid ${bdr}`, background: 'transparent', color: muted, cursor: 'pointer', fontSize: '0.68rem' }}>
+                  <Button size="small" variant="text" color="primary" onClick={() => resetYearOverride(d.year)}>
                     Zurücksetzen
-                  </button>
+                  </Button>
                 )}
-                <button onClick={addTarif} style={{ padding: '3px 8px', borderRadius: 6, border: `1px solid ${accent}`, background: accent + '15', color: accent, cursor: 'pointer', fontSize: '0.68rem', fontWeight: 700 }}>
-                  + Tarif
-                </button>
-              </div>
+                <Button size="small" variant="outlined" color="primary" startIcon={<AddIcon />} onClick={addTarif}>
+                  Tarif
+                </Button>
+              </Stack>
             </div>
 
             {/* Tarif rows */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+            <Stack spacing={0.75} sx={{ mb: 1.75 }}>
               {/* Column headers */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 50px 28px', gap: 6, alignItems: 'center', padding: '0 2px' }}>
-                <span style={lblSt}>Tarif</span>
-                <span style={lblSt}>Betrag €</span>
-                <span style={lblSt}>GZ</span>
+              <Box sx={{
+                display: 'grid', gridTemplateColumns: '1fr 110px 50px 36px',
+                gap: 0.75, alignItems: 'center', px: 0.5,
+              }}>
+                <Typography variant="caption" sx={{ color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.62rem' }}>Tarif</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.62rem', textAlign: 'right' }}>Betrag €</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.62rem', textAlign: 'center' }}>GZ</Typography>
                 <span />
-              </div>
+              </Box>
               {visibleTarife.map(({ t, origIdx }) => (
-                <div key={t.id || origIdx} style={{ display: 'grid', gridTemplateColumns: '1fr 90px 50px 28px', gap: 6, alignItems: 'center', padding: '3px 2px', borderRadius: 6, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
-                  <input type="text" value={t.name} onChange={(e) => updateTarif(origIdx, 'name', e.target.value)}
-                    style={{ ...inpSt, width: '100%' }} />
-                  <input type="number" step="0.01" value={t.amount} onChange={(e) => updateTarif(origIdx, 'amount', parseFloat(e.target.value) || 0)}
-                    style={{ ...inpSt, width: '100%', textAlign: 'right' }} />
-                  <div style={{ display: 'flex', justifyContent: 'center' }}>
-                    <input type="checkbox" checked={!!t.gz} onChange={(e) => updateTarif(origIdx, 'gz', e.target.checked)} style={chkSt} title="Gesetzlicher Zuschlag 10%" />
-                  </div>
-                  <button onClick={() => removeTarif(origIdx)} title="Tarif entfernen"
-                    style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'rgba(239,68,68,0.1)', color: CHART.negative, cursor: visibleTarife.length > 1 ? 'pointer' : 'not-allowed', fontSize: '0.82rem', opacity: visibleTarife.length > 1 ? 1 : 0.3 }}>
-                    ×
-                  </button>
-                </div>
+                <Box key={t.id || origIdx} sx={{
+                  display: 'grid', gridTemplateColumns: '1fr 110px 50px 36px',
+                  gap: 0.75, alignItems: 'center', px: 0.5, py: 0.5, borderRadius: 1,
+                  bgcolor: 'surface.low',
+                }}>
+                  <TextField
+                    size="small" value={t.name}
+                    onChange={(e) => updateTarif(origIdx, 'name', e.target.value)}
+                  />
+                  <TextField
+                    size="small" type="number" value={t.amount}
+                    inputProps={{ inputMode: 'decimal', step: 0.01, style: { textAlign: 'right' } }}
+                    onChange={(e) => updateTarif(origIdx, 'amount', parseFloat(e.target.value) || 0)}
+                  />
+                  <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                    <Checkbox
+                      size="small"
+                      checked={!!t.gz}
+                      onChange={(e) => updateTarif(origIdx, 'gz', e.target.checked)}
+                      title="Gesetzlicher Zuschlag 10%"
+                      sx={{ p: 0.5 }}
+                    />
+                  </Box>
+                  <IconButton
+                    size="small" color="error"
+                    onClick={() => removeTarif(origIdx)}
+                    disabled={visibleTarife.length <= 1}
+                    title="Tarif entfernen"
+                  >
+                    <DeleteOutlineIcon fontSize="small" />
+                  </IconButton>
+                </Box>
               ))}
               {droppedCount > 0 && (
-                <div style={{
-                  padding: '6px 10px',
-                  borderRadius: 6,
-                  background: isDark ? 'rgba(107,114,128,0.12)' : 'rgba(107,114,128,0.08)',
-                  color: muted,
-                  fontSize: '0.7rem',
-                  fontStyle: 'italic',
-                  marginTop: 4,
+                <Typography variant="caption" sx={{
+                  fontStyle: 'italic', color: 'text.secondary',
+                  bgcolor: 'surface.low', borderRadius: 1, px: 1.25, py: 0.75, mt: 0.5,
                 }}>
                   {droppedCount} Tarif{droppedCount !== 1 ? 'e' : ''} in diesem Jahr entfallen (Alter ≥ „Tarif entfällt ab").
-                </div>
+                </Typography>
               )}
-            </div>
+            </Stack>
 
             {/* BRK + Free months */}
-            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-              <div>
-                <label style={{ ...lblSt, display: 'block', marginBottom: 4 }}>BRK (€/Jahr)</label>
-                <input type="number" value={brkVal} min={0} step={1} onChange={(e) => setBrkAmount(d.year, parseFloat(e.target.value) || 0)}
-                  style={{ ...inpSt, width: 100 }} />
-              </div>
-              <div>
-                <label style={{ ...lblSt, display: 'block', marginBottom: 4 }}>Beitragsfreie Monate</label>
-                <input type="number" value={freeVal} min={0} max={6} step={1} onChange={(e) => setFreeMonths(d.year, parseInt(e.target.value) || 0)}
-                  style={{ ...inpSt, width: 60 }} />
-              </div>
-            </div>
+            <Stack direction="row" spacing={3} flexWrap="wrap" useFlexGap>
+              <TextField
+                size="small" type="number" label="BRK (€/Jahr)"
+                value={brkVal}
+                inputProps={{ inputMode: 'decimal', min: 0, step: 1 }}
+                onChange={(e) => setBrkAmount(d.year, parseFloat(e.target.value) || 0)}
+                sx={{ width: 130 }}
+              />
+              <TextField
+                size="small" type="number" label="Freie Monate"
+                value={freeVal}
+                inputProps={{ inputMode: 'numeric', min: 0, max: 6, step: 1 }}
+                onChange={(e) => setFreeMonths(d.year, parseInt(e.target.value) || 0)}
+                sx={{ width: 110 }}
+              />
+            </Stack>
           </div>
         </td>
       </tr>
@@ -1128,10 +1180,11 @@ export default function PkvCalculatorPage({ isDark = false }) {
               }
             >
               <Box sx={{ mb: 1 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: '0.72rem', color: muted, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={showInflation} onChange={(e) => setShowInflation(e.target.checked)} style={{ accentColor: accent }} />
-                  Kaufkraftbereinigt (Barwert)
-                </label>
+                <FormControlLabel
+                  control={<Checkbox size="small" checked={showInflation}
+                    onChange={(e) => setShowInflation(e.target.checked)} />}
+                  label={<Typography variant="caption" color="text.secondary">Kaufkraftbereinigt (Barwert)</Typography>}
+                />
               </Box>
               <PkvLineChart data={pkvData} mode={chartMode} showInflation={showInflation} inflationRate={pkv.inflationRate} isDark={isDark} />
             </SectionCard>
