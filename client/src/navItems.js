@@ -12,7 +12,9 @@
  */
 
 // Reihenfolge: "Overview" bleibt pinned als Start-/Dashboard-Eintrag,
-// alle anderen Top-Level-Einträge sowie children sind alphabetisch sortiert.
+// alle anderen Top-Level-Einträge sind alphabetisch sortiert.
+// Bei Children kommt der Landing-Eintrag (Pfad = Parent-Pfad) zuerst,
+// danach die restlichen Einträge alphabetisch.
 export const navItems = [
   {
     label: 'Overview',
@@ -79,8 +81,8 @@ export const navItems = [
     moduleKey:    'show_insurance',
     appModuleKey: 'insurance',
     children: [
-      { label: 'PKV-Rechner',  path: '/versicherungen/pkv', icon: 'calculator', moduleKey: 'show_pkv_calc', appModuleKey: 'pkv' },
       { label: 'Übersicht',    path: '/versicherungen',     icon: 'shield',     appModuleKey: 'insurance' },
+      { label: 'PKV-Rechner',  path: '/versicherungen/pkv', icon: 'calculator', moduleKey: 'show_pkv_calc', appModuleKey: 'pkv' },
     ],
   },
 ];
