@@ -142,14 +142,15 @@ function KpiCardPrimary({ label, value, sub, icon, badge, tone = 'positive' }) {
 // Secondary KPI Card — Surface Style (siehe design-KPIs.md)
 // ─────────────────────────────────────────────────────────────────────────────
 // Für die 4 Modul-Kacheln (Versicherungen/Strom/Verbindlichkeiten/Ruhestand).
-// Kinder-Content bleibt flexibel (Progress Bars, Chips etc.).
+// Kinder-Content bleibt flexibel (Progress Bars, Chips etc.). KEIN
+// Decorative-Icon gemäß design-KPIs.md — Secondary bleibt flach.
+// eslint-disable-next-line no-unused-vars
 function ModuleKpiSecondary({ icon, title, onClick, loading, hiddenFromUsers, children }) {
   return (
     <Paper
       onClick={onClick}
       sx={(t) => ({
         position: 'relative',
-        overflow: 'hidden',
         bgcolor: 'background.paper',
         color: 'text.primary',
         borderRadius: '12px',
@@ -168,16 +169,7 @@ function ModuleKpiSecondary({ icon, title, onClick, loading, hiddenFromUsers, ch
         } : {},
       })}
     >
-      {icon && (
-        <Box component="span" className="material-symbols-outlined" sx={{
-          position: 'absolute', right: -12, bottom: -18,
-          fontSize: 120, color: 'accent.positiveSurface', opacity: 0.18,
-          pointerEvents: 'none', userSelect: 'none', lineHeight: 1, zIndex: 0,
-        }}>
-          {icon}
-        </Box>
-      )}
-      <Box sx={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
         <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
           <Typography variant="overline" sx={{
             color: 'text.secondary', fontWeight: 700,

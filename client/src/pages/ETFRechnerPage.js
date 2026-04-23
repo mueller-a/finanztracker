@@ -305,13 +305,13 @@ function StatCard({ label, value, sub, icon, badge, accent }) {
 }
 
 // Secondary KPI-Style gemäß .claude/skills/design-system/design-KPIs.md
-// (helle Surface mit 3px Emerald-Linkstreifen + Tinted Shadow + Emerald-Icon
-// 18% Opacity). Für unterstützende Kennzahlen, die neben Primary-Karten stehen.
+// (helle Surface mit 3px Emerald-Linkstreifen + Tinted Shadow, KEIN
+// Decorative-Icon — Secondary bleibt flach).
+// eslint-disable-next-line no-unused-vars
 function StatCardSecondary({ label, value, sub, icon, badge }) {
   return (
     <Paper sx={{
       position: 'relative',
-      overflow: 'hidden',
       bgcolor: 'background.paper',
       color: 'text.primary',
       borderRadius: '12px',
@@ -322,27 +322,7 @@ function StatCardSecondary({ label, value, sub, icon, badge }) {
       minWidth: 0,
       height: '100%',
     }}>
-      {icon && (
-        <Box
-          component="span"
-          className="material-symbols-outlined"
-          sx={{
-            position: 'absolute',
-            right: -12, bottom: -18,
-            fontSize: 120,
-            color: 'accent.positiveSurface',
-            opacity: 0.18,
-            pointerEvents: 'none',
-            userSelect: 'none',
-            lineHeight: 1,
-            zIndex: 0,
-          }}
-        >
-          {icon}
-        </Box>
-      )}
-
-      <Box sx={{ position: 'relative', zIndex: 1 }}>
+      <Box>
         <Typography variant="overline" sx={{
           color: 'text.secondary', display: 'block',
           fontSize: '0.625rem', letterSpacing: '0.08em',
