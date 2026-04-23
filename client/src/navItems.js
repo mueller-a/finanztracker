@@ -11,6 +11,8 @@
  *   adminOnly     → nur Nutzer mit role='admin' sehen den Eintrag
  */
 
+// Reihenfolge: "Overview" bleibt pinned als Start-/Dashboard-Eintrag,
+// alle anderen Top-Level-Einträge sowie children sind alphabetisch sortiert.
 export const navItems = [
   {
     label: 'Overview',
@@ -26,9 +28,9 @@ export const navItems = [
     moduleKey:    'show_budget',
     appModuleKey: 'budget',
     children: [
-      { label: 'Budget',         path: '/budget',            icon: 'budget', appModuleKey: 'budget' },
+      { label: 'Budget',         path: '/budget',            icon: 'budget',    appModuleKey: 'budget' },
+      { label: 'Spar-Radar',     path: '/budget/optimizer',  icon: 'radar',     appModuleKey: 'optimizer' },
       { label: 'Wochenbudget',   path: '/budget/household',  icon: 'household', appModuleKey: 'household_budget' },
-      { label: 'Spar-Radar',     path: '/budget/optimizer',  icon: 'radar',  appModuleKey: 'optimizer' },
     ],
   },
   {
@@ -39,15 +41,22 @@ export const navItems = [
     appModuleKey: 'salary',
   },
   {
-    label: 'Versicherungen',
-    path:  '/versicherungen',
-    icon:  'shield',
-    moduleKey:    'show_insurance',
-    appModuleKey: 'insurance',
+    label: 'Guthaben',
+    path:  '/guthaben',
+    icon:  'piggy',
+    moduleKey:    'show_savings',
+    appModuleKey: 'savings',
     children: [
-      { label: 'Übersicht',    path: '/versicherungen',     icon: 'shield', appModuleKey: 'insurance' },
-      { label: 'PKV-Rechner',  path: '/versicherungen/pkv', icon: 'calculator', moduleKey: 'show_pkv_calc', appModuleKey: 'pkv' },
+      { label: 'Asset-Manager',     path: '/guthaben',       icon: 'piggy', appModuleKey: 'savings' },
+      { label: 'Ruhestandsplanung', path: '/guthaben/rente', icon: 'chart', moduleKey: 'show_retirement_plan', appModuleKey: 'retirement' },
     ],
+  },
+  {
+    label: 'Immobilien',
+    path:  '/immobilien',
+    icon:  'house',
+    moduleKey:    'show_real_estate',
+    appModuleKey: 'real_estate',
   },
   {
     label: 'Stromübersicht',
@@ -64,21 +73,14 @@ export const navItems = [
     appModuleKey: 'debts',
   },
   {
-    label: 'Immobilien',
-    path:  '/immobilien',
-    icon:  'house',
-    moduleKey:    'show_real_estate',
-    appModuleKey: 'real_estate',
-  },
-  {
-    label: 'Guthaben',
-    path:  '/guthaben',
-    icon:  'piggy',
-    moduleKey:    'show_savings',
-    appModuleKey: 'savings',
+    label: 'Versicherungen',
+    path:  '/versicherungen',
+    icon:  'shield',
+    moduleKey:    'show_insurance',
+    appModuleKey: 'insurance',
     children: [
-      { label: 'Asset-Manager',     path: '/guthaben',      icon: 'piggy', appModuleKey: 'savings' },
-      { label: 'Ruhestandsplanung', path: '/guthaben/rente', icon: 'chart', moduleKey: 'show_retirement_plan', appModuleKey: 'retirement' },
+      { label: 'PKV-Rechner',  path: '/versicherungen/pkv', icon: 'calculator', moduleKey: 'show_pkv_calc', appModuleKey: 'pkv' },
+      { label: 'Übersicht',    path: '/versicherungen',     icon: 'shield',     appModuleKey: 'insurance' },
     ],
   },
 ];
