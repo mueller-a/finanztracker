@@ -4,13 +4,14 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, Checkbox,
   CircularProgress, Alert, Chip, LinearProgress, Paper,
   Collapse, InputAdornment, useMediaQuery, Divider,
-  Table, TableHead, TableBody,
+  Table, TableHead, TableBody, Tooltip as MuiTooltip,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
+import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import BoltIcon from '@mui/icons-material/Bolt';
@@ -399,7 +400,7 @@ function DragHandle() {
 }
 
 // ─── Budget Row ───────────────────────────────────────────────────────────────
-function BudgetRow({ item, onCommit, onDelete, dragHandlers, isDragging, isOver, isIncome }) {
+function BudgetRow({ item, onCommit, onDelete, onTogglePaid, dragHandlers, isDragging, isOver, isIncome }) {
   const theme = useTheme();
 
   const amtNum   = parseFloat(item.amount);
@@ -419,12 +420,17 @@ function BudgetRow({ item, onCommit, onDelete, dragHandlers, isDragging, isOver,
 
   const hoverBg = theme.palette.mode === 'dark' ? 'rgba(124,58,237,0.08)' : 'rgba(124,58,237,0.04)';
 
+  // Paid-Status nur für Ausgaben
+  const isPaid  = !isIncome && !!item.paid_at;
+  const rowOpacity = isDragging ? 0.35 : isPaid ? 0.5 : 1;
+  const strike = isPaid ? { textDecoration: 'line-through' } : {};
+
   return (
     <tr
       style={{
         borderBottom: `1px solid ${theme.palette.divider}`,
         borderTop: isOver ? `2px solid ${theme.palette.primary.main}` : undefined,
-        opacity: isDragging ? 0.35 : 1,
+        opacity: rowOpacity,
         background: isOver ? hoverBg : 'transparent',
         transition: 'opacity 0.15s, background 0.1s',
       }}
@@ -433,14 +439,36 @@ function BudgetRow({ item, onCommit, onDelete, dragHandlers, isDragging, isOver,
       <td style={{ padding: '7px 6px', width: 20, cursor: 'grab', userSelect: 'none' }}>
         <DragHandle />
       </td>
-      <td style={{ padding: '7px 6px', width: 8 }}>
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor, display: 'inline-block' }} title={dotTitle} />
+      <td style={{ padding: '4px 4px', width: 28, textAlign: 'center' }}>
+        {isIncome ? (
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor, display: 'inline-block' }} title={dotTitle} />
+        ) : (
+          <MuiTooltip title={isPaid ? `Bezahlt am ${new Date(item.paid_at).toLocaleDateString('de-DE')}` : 'Als bezahlt markieren'} arrow>
+            <IconButton
+              size="small"
+              onClick={() => onTogglePaid?.(item.id, !isPaid)}
+              sx={{
+                p: 0.25,
+                color: isPaid ? 'primary.dark' : 'text.disabled',
+                bgcolor: isPaid ? 'accent.positiveSurface' : 'transparent',
+                border: isPaid ? 'none' : `1.5px solid ${dotColor}`,
+                width: 18, height: 18,
+                '&:hover': {
+                  bgcolor: isPaid ? 'accent.positiveSurface' : `${dotColor}20`,
+                },
+                transition: 'background 0.15s, color 0.15s',
+              }}
+            >
+              {isPaid && <CheckIcon sx={{ fontSize: 12 }} />}
+            </IconButton>
+          </MuiTooltip>
+        )}
       </td>
-      <td style={{ padding: '4px 6px', minWidth: 220 }}>
+      <td style={{ padding: '4px 6px', minWidth: 220, ...strike }}>
         <EditCell value={item.label} field="label" itemId={item.id} onCommit={onCommit} />
       </td>
       <td style={{ padding: '4px 6px', width: 130 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, ...strike }}>
           <EditCell value={item.amount} field="amount" itemId={item.id} onCommit={onCommit}
             type="number" invalid={!amtValid} style={{ textAlign: 'right', minWidth: 0 }} />
           <Typography component="span" variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>€</Typography>
@@ -453,7 +481,7 @@ function BudgetRow({ item, onCommit, onDelete, dragHandlers, isDragging, isOver,
           <Typography component="span" variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>%</Typography>
         </div>
       </td>
-      <td style={{ padding: '7px 10px', textAlign: 'right', width: 110 }}>
+      <td style={{ padding: '7px 10px', textAlign: 'right', width: 110, ...strike }}>
         {effective !== null ? (
           <Typography component="span" variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
             {fmt2(effective)} €
@@ -810,23 +838,48 @@ function ItemEditSheet({ open, initial, isIncome, onClose, onSave, onDelete }) {
 }
 
 // ─── Mobile: kompakte Item-Zeile (1-Zeiler in Card) ─────────────────────────
-function MobileItemLine({ item, isIncome, onClick }) {
+function MobileItemLine({ item, isIncome, onClick, onTogglePaid }) {
   const amt      = parseFloat(item.amount);
   const share    = parseFloat(item.share_percent);
   const effective = !isNaN(amt) && !isNaN(share) ? amt * share / 100 : null;
   const dotColor = isIncome
     ? (SOURCE_META[item.source]?.color ?? '#9090b0')
     : (CAT_MAP[item.category ?? 'sonstiges']?.color ?? '#8b5cf6');
+  const isPaid   = !isIncome && !!item.paid_at;
+  const strike   = isPaid ? { textDecoration: 'line-through' } : {};
 
   return (
-    <Stack direction="row" alignItems="center" spacing={1} onClick={onClick}
+    <Stack direction="row" alignItems="center" spacing={1}
       sx={{
-        py: 1, px: 1.5, borderRadius: 0.75, cursor: 'pointer',
+        py: 1, px: 1.5, borderRadius: 0.75,
+        opacity: isPaid ? 0.55 : 1,
         '&:hover': { bgcolor: 'action.hover' },
       }}>
-      <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: dotColor, flexShrink: 0 }} />
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography variant="body2" sx={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      {isIncome ? (
+        <Box sx={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: dotColor }} />
+        </Box>
+      ) : (
+        <IconButton
+          size="small"
+          onClick={(e) => { e.stopPropagation(); onTogglePaid?.(item.id, !isPaid); }}
+          sx={{
+            p: 0.25,
+            color: isPaid ? 'primary.dark' : 'text.disabled',
+            bgcolor: isPaid ? 'accent.positiveSurface' : 'transparent',
+            border: isPaid ? 'none' : `1.5px solid ${dotColor}`,
+            width: 18, height: 18,
+            '&:hover': { bgcolor: isPaid ? 'accent.positiveSurface' : `${dotColor}20` },
+          }}
+        >
+          {isPaid && <CheckIcon sx={{ fontSize: 12 }} />}
+        </IconButton>
+      )}
+      <Box sx={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={onClick}>
+        <Typography variant="body2" sx={{
+          fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          ...strike,
+        }}>
           {item.label || <em style={{ color: '#999' }}>(ohne Bezeichnung)</em>}
         </Typography>
         <Typography variant="caption" color="text.secondary">
@@ -838,7 +891,8 @@ function MobileItemLine({ item, isIncome, onClick }) {
       <Typography variant="body2" sx={{
         fontFamily: 'monospace', fontWeight: 700,
         color: effective !== null ? (isIncome ? 'success.main' : 'text.primary') : 'error.main',
-      }}>
+        ...strike,
+      }} onClick={onClick}>
         {effective !== null ? `${fmt2(effective)} €` : 'Ungültig'}
       </Typography>
     </Stack>
@@ -846,7 +900,7 @@ function MobileItemLine({ item, isIncome, onClick }) {
 }
 
 // ─── Mobile: aufklappbare Kategorie-Karte ───────────────────────────────────
-function MobileCategoryCard({ cat, items, subtotal, remaining, totalIncome, onItemClick, onAddClick, defaultOpen }) {
+function MobileCategoryCard({ cat, items, subtotal, remaining, totalIncome, onItemClick, onAddClick, onTogglePaid, defaultOpen }) {
   const [open, setOpen] = useState(defaultOpen ?? true);
   const insightColor = remaining < 0 ? 'error.main' : remaining === 0 ? 'warning.main' : 'success.main';
   const sharePct = totalIncome > 0 ? (subtotal / totalIncome) * 100 : 0;
@@ -884,7 +938,11 @@ function MobileCategoryCard({ cat, items, subtotal, remaining, totalIncome, onIt
               Noch keine Einträge
             </Typography>
           ) : items.map((item) => (
-            <MobileItemLine key={item.id} item={item} isIncome={false} onClick={() => onItemClick(item)} />
+            <MobileItemLine
+              key={item.id} item={item} isIncome={false}
+              onClick={() => onItemClick(item)}
+              onTogglePaid={onTogglePaid}
+            />
           ))}
         </Stack>
         <Stack direction="row" justifyContent="space-between" alignItems="center"
@@ -1068,7 +1126,7 @@ function IncomeSection({ items, onCommit, onDelete, onAdd, onReorder, onOpenShee
 }
 
 // ─── Expense Table with category grouping and cross-category D&D ──────────────
-function ExpenseCategoryTable({ items, totalIncome, onCommit, onDelete, onAdd, onReorder, updateItem, onOpenSheet }) {
+function ExpenseCategoryTable({ items, totalIncome, onCommit, onDelete, onAdd, onReorder, updateItem, onTogglePaid, onOpenSheet }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -1111,6 +1169,11 @@ function ExpenseCategoryTable({ items, totalIncome, onCommit, onDelete, onAdd, o
   }, [items, totalIncome]);
 
   const totalExpenses = items.reduce((s, i) => s + (effectiveAmount(i) ?? 0), 0);
+
+  // Paid-Progress: wie viele Ausgaben sind bezahlt, wie viel € noch offen?
+  const paidCount  = items.filter((i) => !!i.paid_at).length;
+  const openAmount = items.reduce((s, i) => s + (i.paid_at ? 0 : (effectiveAmount(i) ?? 0)), 0);
+  const paidPct    = items.length > 0 ? Math.round((paidCount / items.length) * 100) : 0;
 
   // ── D&D handlers ────────────────────────────────────────────────────────────
   function handleDragStart(id) { dragId.current = id; }
@@ -1239,6 +1302,7 @@ function ExpenseCategoryTable({ items, totalIncome, onCommit, onDelete, onAdd, o
             totalIncome={totalIncome}
             onItemClick={(item) => onOpenSheet({ type: 'expense', initial: item })}
             onAddClick={() => onOpenSheet({ type: 'expense', initial: { category: cat.id } })}
+            onTogglePaid={onTogglePaid}
             defaultOpen={cat.items.length > 0}
           />
         ))}
@@ -1263,29 +1327,52 @@ function ExpenseCategoryTable({ items, totalIncome, onCommit, onDelete, onAdd, o
   return (
     <Paper variant="outlined" sx={{ borderRadius: 1, overflow: 'hidden' }}>
       {/* Header */}
-      <Stack
-        direction="row"
-        alignItems="center"
-        justifyContent="space-between"
-        sx={{
-          px: 2, py: 1.5,
-          borderBottom: 1, borderColor: 'divider',
-          background: 'rgba(239,68,68,0.05)',
-        }}
-      >
-        <Stack direction="row" alignItems="center" spacing={1}>
-          <Typography sx={{ fontSize: '1.1rem' }}>🔴</Typography>
-          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Ausgaben</Typography>
-          <Chip
-            label={`${items.length} Einträge`}
-            size="small"
-            sx={{ bgcolor: 'rgba(239,68,68,0.2)', color: 'error.main', height: 20, fontSize: '0.62rem', fontWeight: 700 }}
-          />
+      <Box sx={{
+        px: 2, py: 1.5,
+        borderBottom: 1, borderColor: 'divider',
+        background: 'rgba(239,68,68,0.05)',
+      }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between">
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Typography sx={{ fontSize: '1.1rem' }}>🔴</Typography>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Ausgaben</Typography>
+            <Chip
+              label={`${items.length} Einträge`}
+              size="small"
+              sx={{ bgcolor: 'rgba(239,68,68,0.2)', color: 'error.main', height: 20, fontSize: '0.62rem', fontWeight: 700 }}
+            />
+          </Stack>
+          <Typography variant="subtitle1" sx={{ color: 'error.main', fontWeight: 800, fontFamily: 'monospace' }}>
+            {fmt2(totalExpenses)} €
+          </Typography>
         </Stack>
-        <Typography variant="subtitle1" sx={{ color: 'error.main', fontWeight: 800, fontFamily: 'monospace' }}>
-          {fmt2(totalExpenses)} €
-        </Typography>
-      </Stack>
+
+        {/* Paid-Progress: bezahlt X/Y · offen Z € */}
+        {items.length > 0 && (
+          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mt: 1 }}>
+            <Box sx={{
+              flex: 1, height: 6, borderRadius: 99,
+              bgcolor: 'action.hover', overflow: 'hidden',
+            }}>
+              <Box sx={{
+                width: `${paidPct}%`, height: '100%',
+                bgcolor: 'accent.positiveSurface',
+                transition: 'width 0.25s ease',
+              }} />
+            </Box>
+            <Typography variant="caption" sx={{
+              color: 'text.secondary', whiteSpace: 'nowrap', fontWeight: 600,
+            }}>
+              {paidCount} / {items.length} bezahlt
+              {openAmount > 0 && (
+                <Box component="span" sx={{ color: 'error.main', ml: 1 }}>
+                  · {fmt2(openAmount)} € offen
+                </Box>
+              )}
+            </Typography>
+          </Stack>
+        )}
+      </Box>
 
       {/* Table */}
       <Box sx={{ width: '100%', overflowX: 'auto' }}>
@@ -1326,6 +1413,7 @@ function ExpenseCategoryTable({ items, totalIncome, onCommit, onDelete, onAdd, o
                         item={item}
                         onCommit={onCommit}
                         onDelete={onDelete}
+                        onTogglePaid={onTogglePaid}
                         isIncome={false}
                         isDragging={dragId.current === item.id}
                         isOver={overId === item.id}
@@ -1511,6 +1599,13 @@ export default function BudgetPage() {
     }, DEBOUNCE_MS);
   }, [updateItem]);
 
+  // Paid-Status toggeln: NULL = offen, new Date() = bezahlt.
+  const togglePaid = useCallback(async (id, markPaid) => {
+    try {
+      await updateItem(id, { paid_at: markPaid ? new Date().toISOString() : null });
+    } catch (_) {}
+  }, [updateItem]);
+
   const incomeItems  = useMemo(() => items.filter((i) => i.type === 'income'),  [items]);
   const expenseItems = useMemo(() => items.filter((i) => i.type === 'expense'), [items]);
   const totalIncome  = useMemo(() => incomeItems.reduce((s, i) => s + (effectiveAmount(i) ?? 0), 0), [incomeItems]);
@@ -1623,6 +1718,7 @@ export default function BudgetPage() {
               onAdd={addItem}
               onReorder={reorderItems}
               updateItem={updateItem}
+              onTogglePaid={togglePaid}
               onOpenSheet={openSheet}
             />
             <NettoFooter incomeItems={incomeItems} expenseItems={expenseItems} />
