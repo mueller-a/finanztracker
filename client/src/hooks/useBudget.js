@@ -393,16 +393,18 @@ export function useBudget(month, year) {
     if (sbError) throw new Error(sbError.message);
     if (!prev || prev.length === 0) throw new Error('Vormonat enthält keine Einträge.');
 
-    // Deduplicate: skip items whose source_id already exists in the current month
+    // Deduplicate: skip items whose source_id already exists in the current month.
+    // paid_at wird beim Kopieren verworfen — der neue Monat startet mit allen
+    // Zahlungen als "offen", unabhängig davon ob sie im Vormonat schon bezahlt waren.
     const existing = items;
     const toInsert = prev
-      .filter(({ id: _id, created_at: _c, ...rest }) => {
+      .filter(({ id: _id, created_at: _c, paid_at: _p, ...rest }) => {
         if (!rest.source_id) return true; // custom items always copy
         return !existing.some(
           (e) => e.source === rest.source && e.source_id === rest.source_id && e.label === rest.label
         );
       })
-      .map(({ id: _id, created_at: _c, ...rest }) => ({
+      .map(({ id: _id, created_at: _c, paid_at: _p, ...rest }) => ({
         ...rest,
         month,
         year,
