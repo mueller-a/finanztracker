@@ -64,13 +64,20 @@ function effectiveAmount(item) {
 }
 
 // ─── Month Navigation ─────────────────────────────────────────────────────────
+// Vorwärts-Limit: 6 Monate in die Zukunft planbar (ab aktuellem Monat).
+// Der Index-Vergleich behandelt Jahres-Rollover (z.B. Okt → April nächstes Jahr)
+// sauber ohne Sonderfälle.
+const FUTURE_MONTHS = 6;
+
 function MonthNav({ month, year, onChange }) {
   function prev() { onChange(month === 1 ? 12 : month - 1, month === 1 ? year - 1 : year); }
   function next() {
     const nm = month === 12 ? 1 : month + 1;
     const ny = month === 12 ? year + 1 : year;
     const now = new Date();
-    if (ny > now.getFullYear() || (ny === now.getFullYear() && nm > now.getMonth() + 2)) return;
+    const currentIdx = now.getFullYear() * 12 + now.getMonth();  // 0-based
+    const targetIdx  = ny * 12 + (nm - 1);
+    if (targetIdx > currentIdx + FUTURE_MONTHS) return;
     onChange(nm, ny);
   }
 
