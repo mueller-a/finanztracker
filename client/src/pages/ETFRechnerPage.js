@@ -18,6 +18,7 @@ import {
 } from 'recharts';
 import { useETFPolicen } from '../hooks/useETFPolicen';
 import { usePolicySnapshots } from '../hooks/usePolicySnapshots';
+import { useQuotes } from '../hooks/useQuotes';
 import {
   calcPolicy, calcAVD, calcDepot, calcBAV, calcDRV,
   euro, num, fmtShort
@@ -687,10 +688,40 @@ function DepotSidebar({ params, onChange, color, isDark }) {
 function HoldingsEditor({ holdings, onChange }) {
   const [editing, setEditing] = useState(null); // null | { idx?, ...holding }
 
+  // Live-Quotes via Yahoo (Edge Function get-quote, 15-min-Cache)
+  const quoteItems = useMemo(
+    () => holdings
+      .filter((h) => h.isin || h.symbol)
+      .map((h) => ({ isin: h.isin || undefined, symbol: h.symbol || undefined })),
+    [holdings],
+  );
+  const { quotes, errors, loading, refresh, lastFetch } = useQuotes(quoteItems);
+
+  // Pro Holding den Live-Quote zuordnen — Key bevorzugt symbol, sonst isin.
+  function quoteFor(h) {
+    if (h.symbol && quotes[h.symbol]) return quotes[h.symbol];
+    if (h.isin   && quotes[h.isin])   return quotes[h.isin];
+    return null;
+  }
+
   const totalBuyValue = holdings.reduce(
     (s, h) => s + (Number(h.shares) || 0) * (Number(h.avg_buy_price) || 0),
     0,
   );
+  const { totalLiveValue, hasAllQuotes } = holdings.reduce(
+    (acc, h) => {
+      const q = quoteFor(h);
+      if (q?.price) {
+        acc.totalLiveValue += (Number(h.shares) || 0) * Number(q.price);
+      } else if (h.isin || h.symbol) {
+        acc.hasAllQuotes = false;
+      }
+      return acc;
+    },
+    { totalLiveValue: 0, hasAllQuotes: holdings.some((h) => h.isin || h.symbol) },
+  );
+  const totalDelta = totalLiveValue - totalBuyValue;
+  const totalDeltaPct = totalBuyValue > 0 ? (totalDelta / totalBuyValue) * 100 : 0;
 
   function handleSave(form) {
     const sanitized = {
@@ -715,36 +746,63 @@ function HoldingsEditor({ holdings, onChange }) {
     onChange(holdings.filter((_, i) => i !== idx));
   }
 
+  const errorCount = Object.keys(errors).length;
+
   return (
     <Box sx={{ mb: 2 }}>
-      {/* Summary-Zeile */}
+      {/* Summary-Zeile mit Live-Wert, Δ, Refresh */}
       <Box sx={{
         bgcolor: 'background.default', borderRadius: '8px',
-        p: '8px 12px', mb: 1.25,
+        p: '10px 12px', mb: 1.25,
       }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="baseline">
+        <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mb: 0.5 }}>
           <Typography variant="caption" sx={{
             color: 'text.secondary', fontWeight: 700,
             textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.62rem',
           }}>
-            Bestand (zu Kaufpreisen)
+            {hasAllQuotes ? 'Aktueller Bestand (Live)' : 'Bestand (zu Kaufpreisen)'}
           </Typography>
+          <IconButton size="small" onClick={refresh} disabled={loading || quoteItems.length === 0}
+            title="Preise aktualisieren"
+            sx={{ p: 0.25, color: 'text.disabled', '&:hover': { color: 'primary.main' } }}>
+            <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 16 }}>
+              {loading ? 'progress_activity' : 'refresh'}
+            </Box>
+          </IconButton>
+        </Stack>
+        <Stack direction="row" justifyContent="space-between" alignItems="baseline">
           <Typography sx={{
             fontFamily: '"Manrope", sans-serif',
-            fontWeight: 800, fontSize: '0.95rem', letterSpacing: '-0.01em',
+            fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.01em',
           }}>
-            {euro(totalBuyValue)}
+            {hasAllQuotes ? euro(totalLiveValue) : euro(totalBuyValue)}
           </Typography>
+          {hasAllQuotes && totalBuyValue > 0 && (
+            <Typography sx={{
+              fontWeight: 700, fontSize: '0.78rem',
+              color: totalDelta >= 0 ? 'success.main' : 'error.main',
+            }}>
+              {totalDelta >= 0 ? '+' : '−'} {euro(Math.abs(totalDelta))}
+              {' · '}
+              {totalDeltaPct >= 0 ? '+' : ''}{num(totalDeltaPct, 1)} %
+            </Typography>
+          )}
         </Stack>
         <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.62rem' }}>
-          {holdings.length} Position{holdings.length !== 1 ? 'en' : ''} · Live-API folgt
+          {holdings.length} Position{holdings.length !== 1 ? 'en' : ''}
+          {lastFetch && hasAllQuotes && ` · aktualisiert ${new Date(lastFetch).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`}
+          {errorCount > 0 && ` · ${errorCount} Fehler`}
         </Typography>
       </Box>
 
       {/* Holdings-Liste */}
       <Stack spacing={0.75} sx={{ mb: 1 }}>
         {holdings.map((h, idx) => {
-          const value = (Number(h.shares) || 0) * (Number(h.avg_buy_price) || 0);
+          const buyValue = (Number(h.shares) || 0) * (Number(h.avg_buy_price) || 0);
+          const q        = quoteFor(h);
+          const liveValue = q?.price ? (Number(h.shares) || 0) * Number(q.price) : null;
+          const delta     = liveValue != null ? liveValue - buyValue : null;
+          const hasIdent  = !!(h.isin || h.symbol);
           return (
             <Paper key={h.id || idx} variant="outlined" sx={{
               borderRadius: '10px', p: '8px 10px',
@@ -759,16 +817,29 @@ function HoldingsEditor({ holdings, onChange }) {
                 </Typography>
                 <Typography variant="caption" sx={{
                   color: 'text.secondary', fontSize: '0.65rem', display: 'block',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>
-                  {num(h.shares, 4)} × {euro(h.avg_buy_price)}
+                  {num(h.shares, 4)}
+                  {q?.price ? ` × ${euro(q.price)}` : ` × ${euro(h.avg_buy_price)}`}
                   {h.isin && ` · ${h.isin}`}
+                  {!hasIdent && ' · keine ISIN'}
                 </Typography>
               </Box>
-              <Typography sx={{
-                fontFamily: 'monospace', fontWeight: 700, fontSize: '0.8rem',
-              }}>
-                {euro(value)}
-              </Typography>
+              <Stack alignItems="flex-end" spacing={0}>
+                <Typography sx={{
+                  fontFamily: 'monospace', fontWeight: 700, fontSize: '0.82rem', lineHeight: 1.2,
+                }}>
+                  {liveValue != null ? euro(liveValue) : euro(buyValue)}
+                </Typography>
+                {delta != null && buyValue > 0 && (
+                  <Typography sx={{
+                    fontSize: '0.62rem', fontWeight: 700, lineHeight: 1.1,
+                    color: delta >= 0 ? 'success.main' : 'error.main',
+                  }}>
+                    {delta >= 0 ? '+' : '−'}{num((delta / buyValue) * 100, 1)} %
+                  </Typography>
+                )}
+              </Stack>
               <IconButton size="small" onClick={() => setEditing({ idx, ...h })}
                 sx={{ p: 0.25, color: 'text.disabled', '&:hover': { color: 'text.primary' } }}>
                 <EditOutlinedIcon sx={{ fontSize: 14 }} />
