@@ -63,7 +63,7 @@ function TotalWidget({ debts, schedulesMap }) {
         bgcolor: 'primary.dark',
         color: 'primary.contrastText',
         p: { xs: 3, sm: 3.5 },
-        borderRadius: 3,
+        borderRadius: '16px',
         '&::before': {
           content: '""',
           position: 'absolute',
@@ -126,7 +126,7 @@ function TotalWidget({ debts, schedulesMap }) {
       <Paper sx={{
         bgcolor: 'background.paper',
         p: { xs: 3, sm: 3.5 },
-        borderRadius: 3,
+        borderRadius: '16px',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
@@ -232,46 +232,61 @@ function DebtCard({ debt, schedule, onEdit, onDelete, onAddPayment, onSimulate, 
       <Paper
         onClick={onOpenDetails ? () => onOpenDetails(debt) : undefined}
         sx={{
-          bgcolor: 'background.paper', borderRadius: 3, p: { xs: 2, sm: 2.5 },
+          bgcolor: 'background.paper', borderRadius: '16px', p: { xs: 2, sm: 2.5 },
           cursor: onOpenDetails ? 'pointer' : 'default',
           transition: (t) => `box-shadow ${t.transitions.duration.standard}ms`,
           '&:hover': { boxShadow: '0 20px 40px -15px rgba(11, 28, 48, 0.08)' },
         }}>
         <Box sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: '1.5fr 1.5fr 1fr auto' },
+          // Spalte 4 hat fixe Breite (220px), damit der Saldo immer rechtsbündig
+          // an gleicher Position steht — ohne dynamisches Verschieben.
+          gridTemplateColumns: { xs: '1fr', md: '1.6fr 1.5fr 1fr 220px' },
           gap: { xs: 2, md: 3 },
-          alignItems: 'center',
+          alignItems: 'start',
         }}>
-          {/* Spalte 1: Icon + Name + Type */}
-          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
-            <Box sx={{
-              width: 48, height: 48, bgcolor: 'surface.highest',
-              borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
-            }}>
-              <Box component="span" className="material-symbols-outlined"
-                sx={{ fontSize: 24, color: 'text.primary' }}>
-                {rev ? 'credit_card' : 'account_balance'}
+          {/* Spalte 1: Icon + Name + Chip + Subtitle + Aktionen darunter */}
+          <Stack spacing={1.75} sx={{ minWidth: 0 }}>
+            <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
+              <Box sx={{
+                width: 48, height: 48, bgcolor: 'surface.highest',
+                borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <Box component="span" className="material-symbols-outlined"
+                  sx={{ fontSize: 24, color: 'text.primary' }}>
+                  {rev ? 'credit_card' : 'account_balance'}
+                </Box>
               </Box>
-            </Box>
-            <Box sx={{ minWidth: 0 }}>
-              <Stack direction="row" alignItems="center" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 0.5 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.25 }}>
-                  {debt.name}
+              <Box sx={{ minWidth: 0 }}>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 0.5 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.25 }}>
+                    {debt.name}
+                  </Typography>
+                  <Chip label={`${fmt2(debt.interest_rate)} % p.a.`} size="small" color="success"
+                    sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700 }} />
+                </Stack>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                  {rev ? 'Rahmenkredit' : 'Ratenkredit'} · seit {fmtDate(debt.start_date)}
                 </Typography>
-                <Chip label={`${fmt2(debt.interest_rate)} % p.a.`} size="small" color="success"
-                  sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700 }} />
-              </Stack>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                {rev ? 'Rahmenkredit' : 'Ratenkredit'} · seit {fmtDate(debt.start_date)}
-              </Typography>
-            </Box>
+              </Box>
+            </Stack>
+
+            {/* Aktionen unter dem Header — Klicks stoppen Propagation */}
+            <Stack direction="row" spacing={1} alignItems="center"
+              onClick={(e) => e.stopPropagation()}>
+              <Button variant="contained" color="primary"
+                onClick={() => onAddPayment(debt)} startIcon={<AddIcon />}
+                size="small"
+                sx={{ whiteSpace: 'nowrap' }}>
+                {rev ? 'Zahlung' : 'Sondertilgung'}
+              </Button>
+            </Stack>
           </Stack>
 
           {/* Spalte 2: Progress + Sub-Caption */}
           <Box>
-            <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mb: 0.5 }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mb: 0.75 }}>
               <Typography variant="caption" color="text.secondary">
                 {rev ? 'Ausnutzung' : `Fortschritt (${paidCount} / ${totalCount})`}
               </Typography>
@@ -281,7 +296,7 @@ function DebtCard({ debt, schedule, onEdit, onDelete, onAddPayment, onSimulate, 
             </Stack>
             <LinearProgress variant="determinate" value={Math.min(100, pct)}
               color="secondary"
-              sx={{ height: 6, borderRadius: 99, bgcolor: 'action.hover', mb: 0.75 }} />
+              sx={{ height: 6, borderRadius: 99, bgcolor: 'action.hover', mb: 1 }} />
             <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
               {rev
                 ? `Limit ${fmt0(Number(debt.credit_limit) || 0)} €`
@@ -290,59 +305,39 @@ function DebtCard({ debt, schedule, onEdit, onDelete, onAddPayment, onSimulate, 
             </Typography>
           </Box>
 
-          {/* Spalte 3: KPIs (2 inline) + Offener Betrag groß */}
-          <Stack direction="row" spacing={2} alignItems="center" justifyContent={{ xs: 'flex-start', md: 'flex-end' }}>
-            <Stack spacing={1.25} sx={{ minWidth: 0 }}>
-              {kpis.map(({ label, val, accent }) => (
-                <Box key={label}>
-                  <Typography variant="overline" sx={{
-                    display: 'block', fontSize: '0.6rem', lineHeight: 1.2,
-                    color: 'text.secondary', fontWeight: 700, letterSpacing: '0.06em',
-                  }}>
-                    {label}
-                  </Typography>
-                  <Typography sx={{
-                    fontWeight: 700, fontSize: '0.95rem', lineHeight: 1.2,
-                    color: accent ? 'accent.negative' : 'text.primary',
-                  }}>
-                    {val}
-                  </Typography>
-                </Box>
-              ))}
-            </Stack>
-            <Box sx={{ textAlign: 'right', minWidth: 0 }}>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
-                Offener Betrag
-              </Typography>
-              <Typography sx={{
-                fontFamily: '"Manrope", sans-serif',
-                fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.05,
-                fontSize: { xs: '1.5rem', md: '1.75rem' },
-              }}>
-                {fmt2(currentBalance)} €
-              </Typography>
-            </Box>
+          {/* Spalte 3: KPIs (2 inline) */}
+          <Stack spacing={1.25} sx={{ minWidth: 0 }}>
+            {kpis.map(({ label, val, accent }) => (
+              <Box key={label}>
+                <Typography variant="overline" sx={{
+                  display: 'block', fontSize: '0.6rem', lineHeight: 1.2,
+                  color: 'text.secondary', fontWeight: 700, letterSpacing: '0.06em',
+                }}>
+                  {label}
+                </Typography>
+                <Typography sx={{
+                  fontWeight: 700, fontSize: '0.95rem', lineHeight: 1.2,
+                  color: accent ? 'accent.negative' : 'text.primary',
+                }}>
+                  {val}
+                </Typography>
+              </Box>
+            ))}
           </Stack>
 
-          {/* Spalte 4: Primary Action + Pfeil zur Detail-Page */}
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Button variant="contained" color="primary"
-              onClick={() => onAddPayment(debt)} startIcon={<AddIcon />}
-              size="small"
-              sx={{ whiteSpace: 'nowrap' }}>
-              {rev ? 'Zahlung' : 'Sondertilgung'}
-            </Button>
-            {onOpenDetails && (
-              <IconButton size="small" onClick={() => onOpenDetails(debt)} title="Details öffnen"
-                sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}>
-                <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 22 }}>
-                  arrow_forward
-                </Box>
-              </IconButton>
-            )}
-          </Stack>
+          {/* Spalte 4: Offener Betrag — fixe Breite, rechtsbündig */}
+          <Box sx={{ textAlign: 'right', minWidth: 0 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
+              Offener Betrag
+            </Typography>
+            <Typography sx={{
+              fontFamily: '"Manrope", sans-serif',
+              fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.05,
+              fontSize: { xs: '1.5rem', md: '1.75rem' },
+            }}>
+              {fmt2(currentBalance)} €
+            </Typography>
+          </Box>
         </Box>
 
         {debt.note && (
@@ -361,7 +356,7 @@ function DebtCard({ debt, schedule, onEdit, onDelete, onAddPayment, onSimulate, 
   return (
     <Paper sx={{
       bgcolor: 'background.paper',
-      borderRadius: 3,
+      borderRadius: '16px',
       p: { xs: 3, sm: 4 },
       transition: (t) => `box-shadow ${t.transitions.duration.standard}ms`,
       '&:hover': { boxShadow: '0 20px 40px -15px rgba(11, 28, 48, 0.06)' },
@@ -1431,7 +1426,7 @@ function ZinsAnalyseTab({ debts, schedulesMap }) {
           { label: 'Zinsen noch offen',      val: `${fmt0(totalRemaining)} €`,             color: 'warning.main' },
           { label: 'Gesamtzinslast',         val: `${fmt0(totalPaid + totalRemaining)} €`, color: 'error.main' },
         ].map(({ label, val, color }) => (
-          <Paper key={label} sx={{ borderRadius: 3, p: 3, textAlign: 'center', bgcolor: 'surface.low' }}>
+          <Paper key={label} sx={{ borderRadius: '16px', p: 3, textAlign: 'center', bgcolor: 'surface.low' }}>
             <Typography variant="overline" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>
               {label}
             </Typography>
@@ -1588,6 +1583,13 @@ export default function VerbindlichkeitenPage() {
       <PageHeader
         title="Verbindlichkeiten" icon="account_balance"
         subtitle="Kredite & Darlehen tracken, Tilgungsplan einsehen, Zinslast analysieren."
+        actions={
+          !(showDebtForm || editDebt) && activeTab === 'uebersicht' ? (
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setShowDebtForm(true)}>
+              Kredit hinzufügen
+            </Button>
+          ) : null
+        }
       />
 
       <Stack spacing={2.5}>
@@ -1606,7 +1608,7 @@ export default function VerbindlichkeitenPage() {
         {/* Übersicht */}
         {activeTab === 'uebersicht' && (
           <Stack spacing={2.5}>
-            {(showDebtForm || editDebt) ? (
+            {(showDebtForm || editDebt) && (
               <DebtForm
                 initial={editDebt ? {
                   name: editDebt.name, total_amount: editDebt.total_amount,
@@ -1618,33 +1620,30 @@ export default function VerbindlichkeitenPage() {
                 onSave={handleSaveDebt}
                 onCancel={() => { setShowDebtForm(false); setEditDebt(null); }}
               />
-            ) : (
-              <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.5} flexWrap="wrap" useFlexGap>
-                {debts.length > 0 ? (
-                  <ToggleButtonGroup
-                    size="small"
-                    value={cardView}
-                    exclusive
-                    onChange={(_, v) => changeCardView(v)}
-                    aria-label="Kachel-Layout"
-                  >
-                    <ToggleButton value="grid" aria-label="Raster">
-                      <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 18, mr: 0.5 }}>
-                        view_module
-                      </Box>
-                      Raster
-                    </ToggleButton>
-                    <ToggleButton value="list" aria-label="Liste">
-                      <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 18, mr: 0.5 }}>
-                        view_list
-                      </Box>
-                      Liste
-                    </ToggleButton>
-                  </ToggleButtonGroup>
-                ) : <Box />}
-                <Button variant="contained" startIcon={<AddIcon />} onClick={() => setShowDebtForm(true)}>
-                  Kredit hinzufügen
-                </Button>
+            )}
+
+            {!(showDebtForm || editDebt) && debts.length > 0 && (
+              <Stack direction="row" justifyContent="flex-end" alignItems="center">
+                <ToggleButtonGroup
+                  size="small"
+                  value={cardView}
+                  exclusive
+                  onChange={(_, v) => changeCardView(v)}
+                  aria-label="Kachel-Layout"
+                >
+                  <ToggleButton value="grid" aria-label="Raster">
+                    <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 18, mr: 0.5 }}>
+                      view_module
+                    </Box>
+                    Raster
+                  </ToggleButton>
+                  <ToggleButton value="list" aria-label="Liste">
+                    <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 18, mr: 0.5 }}>
+                      view_list
+                    </Box>
+                    Liste
+                  </ToggleButton>
+                </ToggleButtonGroup>
               </Stack>
             )}
 
