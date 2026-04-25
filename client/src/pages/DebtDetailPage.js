@@ -3,7 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Stack, Typography, Button, IconButton, Paper, ToggleButton, ToggleButtonGroup,
   CircularProgress, Alert, Chip, Table, TableHead, TableBody, MenuItem, Menu,
+  Dialog, DialogTitle, DialogContent,
 } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 import { useTheme } from '@mui/material/styles';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddIcon from '@mui/icons-material/Add';
@@ -21,7 +23,7 @@ import {
   getCurrentBalance, isRevolving,
 } from '../utils/debtCalc';
 import { ConfirmDialog } from '../components/mui';
-import { ExtraPaymentModal } from './VerbindlichkeitenPage';
+import { ExtraPaymentModal, DebtForm } from './VerbindlichkeitenPage';
 
 const TODAY = new Date();
 const fmt0  = (n) => Number(n).toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -218,7 +220,7 @@ export default function DebtDetailPage() {
   const theme = useTheme();
   const {
     debts, payments, loading, error,
-    deleteDebt, deletePayment,
+    updateDebt, deleteDebt, deletePayment,
     addPayment, updatePayment,
   } = useDebts();
 
@@ -228,6 +230,7 @@ export default function DebtDetailPage() {
   const [moreMenuAnchor, setMoreMenuAnchor] = useState(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [editPayment,      setEditPayment]      = useState(null);
+  const [editDebtOpen,     setEditDebtOpen]     = useState(false);
 
   const debt = useMemo(() => debts.find((d) => d.id === debtId), [debts, debtId]);
   const debtPayments = useMemo(
@@ -336,7 +339,7 @@ export default function DebtDetailPage() {
           >
             <MenuItem onClick={() => {
               setMoreMenuAnchor(null);
-              navigate(`/verbindlichkeiten?editDebt=${debt.id}`);
+              setEditDebtOpen(true);
             }}>
               <EditOutlinedIcon sx={{ fontSize: 18, mr: 1 }} /> Kredit bearbeiten
             </MenuItem>
@@ -420,6 +423,42 @@ export default function DebtDetailPage() {
           onClose={() => { setPaymentModalOpen(false); setEditPayment(null); }}
         />
       )}
+
+      {/* Edit-Kredit Dialog */}
+      <Dialog
+        open={editDebtOpen}
+        onClose={() => setEditDebtOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        scroll="paper"
+      >
+        <DialogTitle sx={{ pr: 6 }}>
+          Kredit bearbeiten
+          <IconButton
+            onClick={() => setEditDebtOpen(false)}
+            aria-label="Schließen"
+            sx={{ position: 'absolute', right: 12, top: 12 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 2.5 }}>
+          <DebtForm
+            initial={{
+              name: debt.name, total_amount: debt.total_amount,
+              interest_rate: debt.interest_rate, monthly_rate: debt.monthly_rate ?? '',
+              start_date: debt.start_date, color_code: debt.color_code,
+              note: debt.note, debt_type: debt.debt_type ?? 'annuity',
+              credit_limit: debt.credit_limit ?? '',
+            }}
+            onSave={async (form) => {
+              await updateDebt(debt.id, form);
+              setEditDebtOpen(false);
+            }}
+            onCancel={() => setEditDebtOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Confirm dialogs */}
       <ConfirmDialog

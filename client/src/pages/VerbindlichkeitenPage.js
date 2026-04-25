@@ -623,7 +623,7 @@ const EMPTY_DEBT = {
   debt_type: 'annuity', credit_limit: '',
 };
 
-function DebtForm({ initial, onSave, onCancel }) {
+export function DebtForm({ initial, onSave, onCancel }) {
   const [form, setForm] = useState(initial ?? EMPTY_DEBT);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
