@@ -643,6 +643,12 @@ function DepotSidebar({ params, onChange, color, isDark }) {
 
   return (
     <div>
+      <SectionLabel isDark={isDark}>Holdings</SectionLabel>
+      <HoldingsEditor
+        holdings={Array.isArray(p.holdings) ? p.holdings : []}
+        onChange={(holdings) => onChange({ ...p, holdings })}
+      />
+
       <SectionLabel isDark={isDark}>Sparphase</SectionLabel>
       <SliderCtrl label="Monatliche Sparrate" value={p.sparrate} min={25} max={2000} step={25}
         onChange={v => onChange({ ...p, sparrate: v })} format={v => euro(v) + '/Monat'}
@@ -674,6 +680,215 @@ function DepotSidebar({ params, onChange, color, isDark }) {
         onChange={v => onChange({ ...p, steuer: v })} format={v => num(v, 3) + ' %'}
         color={color} isDark={isDark} />
     </div>
+  );
+}
+
+// ─── Holdings-Editor (Liste von ETF/Aktien-Positionen) ───────────────────────
+function HoldingsEditor({ holdings, onChange }) {
+  const [editing, setEditing] = useState(null); // null | { idx?, ...holding }
+
+  const totalBuyValue = holdings.reduce(
+    (s, h) => s + (Number(h.shares) || 0) * (Number(h.avg_buy_price) || 0),
+    0,
+  );
+
+  function handleSave(form) {
+    const sanitized = {
+      id:            form.id || crypto.randomUUID(),
+      name:          (form.name || '').trim(),
+      isin:          (form.isin || '').trim().toUpperCase() || null,
+      symbol:        (form.symbol || '').trim().toUpperCase() || null,
+      shares:        Number(form.shares) || 0,
+      avg_buy_price: Number(form.avg_buy_price) || 0,
+    };
+    if (form.idx != null) {
+      const next = [...holdings];
+      next[form.idx] = sanitized;
+      onChange(next);
+    } else {
+      onChange([...holdings, sanitized]);
+    }
+    setEditing(null);
+  }
+
+  function handleDelete(idx) {
+    onChange(holdings.filter((_, i) => i !== idx));
+  }
+
+  return (
+    <Box sx={{ mb: 2 }}>
+      {/* Summary-Zeile */}
+      <Box sx={{
+        bgcolor: 'background.default', borderRadius: '8px',
+        p: '8px 12px', mb: 1.25,
+      }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="baseline">
+          <Typography variant="caption" sx={{
+            color: 'text.secondary', fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.62rem',
+          }}>
+            Bestand (zu Kaufpreisen)
+          </Typography>
+          <Typography sx={{
+            fontFamily: '"Manrope", sans-serif',
+            fontWeight: 800, fontSize: '0.95rem', letterSpacing: '-0.01em',
+          }}>
+            {euro(totalBuyValue)}
+          </Typography>
+        </Stack>
+        <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.62rem' }}>
+          {holdings.length} Position{holdings.length !== 1 ? 'en' : ''} · Live-API folgt
+        </Typography>
+      </Box>
+
+      {/* Holdings-Liste */}
+      <Stack spacing={0.75} sx={{ mb: 1 }}>
+        {holdings.map((h, idx) => {
+          const value = (Number(h.shares) || 0) * (Number(h.avg_buy_price) || 0);
+          return (
+            <Paper key={h.id || idx} variant="outlined" sx={{
+              borderRadius: '10px', p: '8px 10px',
+              display: 'flex', alignItems: 'center', gap: 1,
+            }}>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="body2" sx={{
+                  fontWeight: 700, lineHeight: 1.25,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {h.name || '(ohne Name)'}
+                </Typography>
+                <Typography variant="caption" sx={{
+                  color: 'text.secondary', fontSize: '0.65rem', display: 'block',
+                }}>
+                  {num(h.shares, 4)} × {euro(h.avg_buy_price)}
+                  {h.isin && ` · ${h.isin}`}
+                </Typography>
+              </Box>
+              <Typography sx={{
+                fontFamily: 'monospace', fontWeight: 700, fontSize: '0.8rem',
+              }}>
+                {euro(value)}
+              </Typography>
+              <IconButton size="small" onClick={() => setEditing({ idx, ...h })}
+                sx={{ p: 0.25, color: 'text.disabled', '&:hover': { color: 'text.primary' } }}>
+                <EditOutlinedIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+              <IconButton size="small" onClick={() => handleDelete(idx)}
+                sx={{ p: 0.25, color: 'text.disabled', '&:hover': { color: 'error.main' } }}>
+                <DeleteOutlineIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+            </Paper>
+          );
+        })}
+        {holdings.length === 0 && (
+          <Typography variant="caption" sx={{
+            color: 'text.disabled', fontStyle: 'italic',
+            textAlign: 'center', display: 'block', py: 1,
+          }}>
+            Noch keine Positionen erfasst.
+          </Typography>
+        )}
+      </Stack>
+
+      <Button
+        size="small"
+        variant="outlined"
+        fullWidth
+        startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+        onClick={() => setEditing({
+          name: '', isin: '', symbol: '',
+          shares: '', avg_buy_price: '',
+        })}
+        sx={{ borderStyle: 'dashed', textTransform: 'none' }}
+      >
+        Position hinzufügen
+      </Button>
+
+      {editing && (
+        <HoldingDialog initial={editing}
+          onSave={handleSave}
+          onClose={() => setEditing(null)} />
+      )}
+    </Box>
+  );
+}
+
+// ─── Holding-Dialog (Add/Edit eine ETF/Aktien-Position) ──────────────────────
+function HoldingDialog({ initial, onSave, onClose }) {
+  const [form, setForm] = useState(initial);
+  const [err,  setErr]  = useState('');
+
+  function set(field, value) { setForm((f) => ({ ...f, [field]: value })); }
+
+  function submit(e) {
+    e.preventDefault();
+    if (!form.name?.trim())          { setErr('Name fehlt.'); return; }
+    if (!(Number(form.shares) > 0))  { setErr('Anteile müssen > 0 sein.'); return; }
+    if (Number(form.avg_buy_price) < 0) { setErr('Kaufpreis ungültig.'); return; }
+    setErr('');
+    onSave(form);
+  }
+
+  return (
+    <Dialog open onClose={onClose} maxWidth="xs" fullWidth component="form" onSubmit={submit}>
+      <DialogTitle sx={{ pr: 6 }}>
+        {form.idx != null ? 'Position bearbeiten' : 'Position hinzufügen'}
+        <IconButton onClick={onClose} aria-label="Schließen"
+          sx={{ position: 'absolute', right: 12, top: 12 }}>
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent dividers sx={{ pt: 2 }}>
+        <Stack spacing={2}>
+          <TextField
+            label="Name" size="small" autoFocus required fullWidth
+            value={form.name} onChange={(e) => set('name', e.target.value)}
+            placeholder="z.B. iShares Core MSCI World"
+          />
+          <Stack direction="row" spacing={1.5}>
+            <TextField
+              label="ISIN" size="small" fullWidth
+              value={form.isin}
+              onChange={(e) => set('isin', e.target.value)}
+              placeholder="IE00B4L5Y983"
+              helperText="für Live-Preis-API"
+            />
+            <TextField
+              label="Symbol" size="small" fullWidth
+              value={form.symbol}
+              onChange={(e) => set('symbol', e.target.value)}
+              placeholder="IWDA.AS"
+              helperText="optional"
+            />
+          </Stack>
+          <Stack direction="row" spacing={1.5}>
+            <TextField
+              label="Anteile" size="small" required fullWidth
+              type="number"
+              value={form.shares}
+              onChange={(e) => set('shares', e.target.value)}
+              inputProps={{ min: 0, step: 0.0001 }}
+            />
+            <CurrencyField
+              label="Ø Kaufpreis"
+              value={form.avg_buy_price}
+              onChange={(v) => set('avg_buy_price', v === '' ? '' : v)}
+              fullWidth
+              decimals={2}
+              size="small"
+              helperText="pro Anteil"
+            />
+          </Stack>
+          {err && <Alert severity="error">{err}</Alert>}
+        </Stack>
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button onClick={onClose}>Abbrechen</Button>
+        <Button type="submit" variant="contained">
+          {form.idx != null ? 'Speichern' : 'Hinzufügen'}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 

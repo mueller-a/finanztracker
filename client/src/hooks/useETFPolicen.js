@@ -45,6 +45,10 @@ function buildDefaultParams(type) {
       vbMonat:      mo,
       rentenJahr:   yr + 30,
       rentenMonat:  mo,
+      // Holdings: Liste von ETF/Aktien-Positionen für Live-Bewertung.
+      // Schema pro Eintrag: { id, isin?, symbol?, name, shares, avg_buy_price }
+      // Felder isin/symbol bleiben Vorbereitung für die spätere Live-API.
+      holdings:     [],
     };
   }
   if (type === 'drv') {
