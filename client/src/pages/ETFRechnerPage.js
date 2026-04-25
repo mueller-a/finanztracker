@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
-  Slider, Box, Button, IconButton, Tabs, Tab, Stack, Typography, Chip,
+  Slider, Box, Button, IconButton, Stack, Typography, Chip,
   Dialog, DialogTitle, DialogContent, DialogActions, Card, CardContent,
   Alert, TextField, ToggleButton, ToggleButtonGroup, Switch, Paper,
-  Table, TableBody,
+  Table, TableBody, LinearProgress,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
@@ -11,6 +11,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Area, AreaChart
@@ -87,6 +88,27 @@ function runCalc(type, params, snapshot, snapshotHistory, policyMeta) {
 }
 
 const TYPE_LABEL = { insurance: 'RV', avd: 'AVD', depot: 'Depot', bav: 'bAV', drv: 'DRV' };
+const TYPE_LONG = {
+  insurance: 'Private Rentenversicherung',
+  avd:       'Altersvorsorge-Depot (AVD)',
+  depot:     'ETF / Depot',
+  bav:       'Betriebliche Altersvorsorge',
+  drv:       'Gesetzliche Rente (DRV)',
+};
+const TYPE_ICONS = {
+  insurance: 'health_and_safety',
+  avd:       'trending_up',
+  depot:     'savings',
+  bav:       'work',
+  drv:       'account_balance',
+};
+const TYPE_FILTERS = [
+  { value: 'drv',       label: 'Gesetzlich' },
+  { value: 'bav',       label: 'bAV' },
+  { value: 'avd',       label: 'AVD' },
+  { value: 'depot',     label: 'Depot' },
+  { value: 'insurance', label: 'Privat' },
+];
 const TYPE_NAME  = {
   insurance: 'Rentenversicherung',
   avd:       'AVD Depot',
@@ -2409,7 +2431,231 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
 
 // ── Overview panel ────────────────────────────────────────────────────────────
 
-function OverviewPanel({ policies, onTabSwitch, isDark }) {
+// ─── Policy-Card (Listen-/Raster-Item für Policen-Übersicht) ─────────────────
+function PolicyCard({ pol, view, onOpen, onDelete }) {
+  const r = pol.result;
+  const icon = TYPE_ICONS[pol.type] ?? 'savings';
+  const longLabel = TYPE_LONG[pol.type] ?? TYPE_LABEL[pol.type];
+
+  // Hauptkennzahl: Netto-Rente bevorzugt, fallback Kapital bei Rente
+  const renteVal = r?.possibleRente ?? r?.bruttoRente ?? r?.bruttorente ?? null;
+  const kapVal   = r?.kapBeiRente ?? null;
+
+  if (view === 'list') {
+    return (
+      <Paper
+        variant="outlined"
+        onClick={() => onOpen(pol.id)}
+        sx={{
+          borderRadius: '16px', p: { xs: 2, sm: 2.5 },
+          cursor: 'pointer',
+          transition: 'box-shadow 0.15s',
+          '&:hover': {
+            boxShadow: '0 6px 20px rgba(11,28,48,0.06)',
+            '& .policy-list-actions': { opacity: 1 },
+          },
+        }}
+      >
+        <Box sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', md: '1.6fr 1.5fr 1fr 220px' },
+          gap: { xs: 2, md: 3 }, alignItems: 'start',
+        }}>
+          {/* Spalte 1: Icon + Name + Type-Chip + Subtitle, darunter Aktionen */}
+          <Stack spacing={1.75} sx={{ minWidth: 0 }}>
+            <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
+              <Box sx={{
+                width: 48, height: 48, borderRadius: '12px',
+                bgcolor: 'accent.positiveSurface', color: 'primary.dark',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 24 }}>
+                  {icon}
+                </Box>
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 0.5 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.25 }}>
+                    {pol.name}
+                  </Typography>
+                  <Chip label={TYPE_LABEL[pol.type]} size="small" color="success"
+                    sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700 }} />
+                  {pol.is_passive && (
+                    <Chip label="Passiv" size="small" variant="outlined"
+                      sx={{ height: 20, fontSize: '0.62rem', fontWeight: 700 }} />
+                  )}
+                </Stack>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                  {longLabel}
+                </Typography>
+              </Box>
+            </Stack>
+
+            {/* Aktionen unter dem Header */}
+            <Stack direction="row" spacing={0.5} alignItems="center"
+              onClick={(e) => e.stopPropagation()}>
+              <Button variant="contained" size="small"
+                onClick={() => onOpen(pol.id)}>
+                Details öffnen
+              </Button>
+              <Box className="policy-list-actions"
+                sx={{ display: 'flex', opacity: { xs: 1, md: 0 }, transition: 'opacity 0.15s' }}>
+                <IconButton size="small" onClick={() => onDelete(pol.id)} title="Löschen"
+                  sx={{ color: 'text.disabled', '&:hover': { color: 'error.main' } }}>
+                  <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Box>
+            </Stack>
+          </Stack>
+
+          {/* Spalte 2: Einzahlungen / Sparphase */}
+          <Box>
+            <Typography variant="overline" sx={{
+              display: 'block', fontSize: '0.6rem', lineHeight: 1.2,
+              color: 'text.secondary', fontWeight: 700, letterSpacing: '0.06em', mb: 0.25,
+            }}>
+              Einzahlungen ges.
+            </Typography>
+            <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', lineHeight: 1.2 }}>
+              {r?.totalEingezahlt != null ? euro(r.totalEingezahlt) : '–'}
+            </Typography>
+            {r?.sparjahre != null && (
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                {r.sparjahre} J. Sparphase
+                {r?.rentenjahre != null && ` · ${r.rentenjahre} J. Rente`}
+              </Typography>
+            )}
+          </Box>
+
+          {/* Spalte 3: Mtl. Rente */}
+          <Box>
+            <Typography variant="overline" sx={{
+              display: 'block', fontSize: '0.6rem', lineHeight: 1.2,
+              color: 'text.secondary', fontWeight: 700, letterSpacing: '0.06em', mb: 0.25,
+            }}>
+              Mtl. Rente
+            </Typography>
+            <Typography sx={{
+              fontWeight: 700, fontSize: '0.95rem', lineHeight: 1.2,
+              color: 'success.main',
+            }}>
+              {renteVal != null ? `${euro(renteVal)}/Mo` : '–'}
+            </Typography>
+            {r?.faktor != null && (
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                Faktor {num(r.faktor)}x
+              </Typography>
+            )}
+          </Box>
+
+          {/* Spalte 4: Kapital bei Rente — fixe Breite, rechtsbündig */}
+          <Box sx={{ textAlign: 'right', minWidth: 0 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
+              Kapital bei Rente
+            </Typography>
+            <Typography sx={{
+              fontFamily: '"Manrope", sans-serif',
+              fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.05,
+              fontSize: { xs: '1.5rem', md: '1.75rem' },
+            }}>
+              {kapVal != null ? euro(kapVal) : '–'}
+            </Typography>
+          </Box>
+        </Box>
+      </Paper>
+    );
+  }
+
+  // ── Rasteransicht (kompakter, vertikaler Stack) ──
+  return (
+    <Paper
+      variant="outlined"
+      onClick={() => onOpen(pol.id)}
+      sx={{
+        borderRadius: '16px', p: 2.25,
+        cursor: 'pointer', height: '100%',
+        display: 'flex', flexDirection: 'column', gap: 1.5,
+        transition: 'box-shadow 0.15s',
+        '&:hover': {
+          boxShadow: '0 6px 20px rgba(11,28,48,0.06)',
+          '& .policy-grid-actions': { opacity: 1 },
+        },
+      }}
+    >
+      <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={1}>
+        <Stack direction="row" alignItems="center" spacing={1.25} sx={{ minWidth: 0 }}>
+          <Box sx={{
+            width: 40, height: 40, borderRadius: '12px',
+            bgcolor: 'accent.positiveSurface', color: 'primary.dark',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 22 }}>
+              {icon}
+            </Box>
+          </Box>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {pol.name}
+            </Typography>
+            <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mt: 0.25 }}>
+              <Chip label={TYPE_LABEL[pol.type]} size="small" color="success"
+                sx={{ height: 18, fontSize: '0.6rem', fontWeight: 700 }} />
+              {pol.is_passive && (
+                <Chip label="Passiv" size="small" variant="outlined"
+                  sx={{ height: 18, fontSize: '0.6rem', fontWeight: 700 }} />
+              )}
+            </Stack>
+          </Box>
+        </Stack>
+        <Box className="policy-grid-actions"
+          sx={{ opacity: { xs: 1, md: 0 }, transition: 'opacity 0.15s' }}
+          onClick={(e) => e.stopPropagation()}>
+          <IconButton size="small" onClick={() => onDelete(pol.id)} title="Löschen"
+            sx={{ color: 'text.disabled', '&:hover': { color: 'error.main' } }}>
+            <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Box>
+      </Stack>
+
+      <Box>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
+          Kapital bei Rente
+        </Typography>
+        <Typography sx={{
+          fontFamily: '"Manrope", sans-serif',
+          fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.05,
+          fontSize: '1.5rem',
+        }}>
+          {kapVal != null ? euro(kapVal) : '–'}
+        </Typography>
+      </Box>
+
+      <Stack direction="row" spacing={2} sx={{ mt: 'auto' }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.65rem' }}>
+            Mtl. Rente
+          </Typography>
+          <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', color: 'success.main' }}>
+            {renteVal != null ? euro(renteVal) : '–'}
+          </Typography>
+        </Box>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.65rem' }}>
+            Einzahlungen
+          </Typography>
+          <Typography sx={{ fontWeight: 700, fontSize: '0.9rem' }}>
+            {r?.totalEingezahlt != null ? euro(r.totalEingezahlt) : '–'}
+          </Typography>
+        </Box>
+      </Stack>
+    </Paper>
+  );
+}
+
+function OverviewPanel({ policies, onTabSwitch, onDelete, isDark }) {
   const t = useTokens(isDark);
   const { isPkv, steuerSatzAlter, birthday } = useModules();
 
@@ -2705,60 +2951,116 @@ function OverviewPanel({ policies, onTabSwitch, isDark }) {
         </div>
       </div>
 
-      {/* Policy list */}
-      <div style={{ background: t.card, border: `1px solid ${t.bdr}`, borderRadius: 16, padding: 16 }}>
-        <div style={{ color: t.sub, fontSize: '0.65rem', fontWeight: 700,
-          textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14 }}>
-          Alle Policen
-        </div>
-        {policies.map(pol => {
-          const r = pol.result;
-          return (
-            <div
-              key={pol.id}
-              onClick={() => onTabSwitch(pol.id)}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '12px auto 1fr 1fr 1fr',
-                alignItems: 'center', gap: 12,
-                padding: '8px 4px', cursor: 'pointer',
-                borderBottom: `1px solid ${t.bdr}22`,
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = t.bdr + '33'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: pol.color, display: 'block' }} />
-              <span style={{ color: t.text, fontSize: '0.82rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                {pol.name}
-                {pol.is_passive && (
-                  <Chip size="small" label="Passiv" variant="outlined"
-                    sx={{ height: 18, fontSize: '0.6rem', fontWeight: 700 }}
-                    title="Vertrag beitragsfrei gestellt" />
-                )}
-              </span>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ color: t.sub, fontSize: '0.62rem' }}>KAPITAL</div>
-                <div style={{ color: t.text, fontSize: '0.78rem', fontFamily: 'monospace' }}>
-                  {r ? euro(r.kapBeiRente) : '-'}
-                </div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ color: t.sub, fontSize: '0.62rem' }}>RENTE/M</div>
-                <div style={{ color: CHART.positive, fontSize: '0.78rem', fontFamily: 'monospace' }}>
-                  {r ? euro(r.possibleRente) : '-'}
-                </div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ color: t.sub, fontSize: '0.62rem' }}>FAKTOR</div>
-                <div style={{ color: t.text, fontSize: '0.78rem', fontFamily: 'monospace' }}>
-                  {r ? num(r.faktor) + 'x' : '-'}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {/* Policy list — Filter + Raster/Liste-Toggle + Karten */}
+      <PolicyListSection
+        policies={policies}
+        onOpen={onTabSwitch}
+        onDelete={onDelete}
+      />
     </div>
+  );
+}
+
+// ─── Policy-Liste mit Filter-Chips + Raster/Liste-Toggle ─────────────────────
+function PolicyListSection({ policies, onOpen, onDelete }) {
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [cardView,   setCardView]   = useState(() => {
+    try { return localStorage.getItem('policyCardView') ?? 'list'; }
+    catch { return 'list'; }
+  });
+  function changeCardView(v) {
+    if (!v) return;
+    setCardView(v);
+    try { localStorage.setItem('policyCardView', v); } catch {}
+  }
+
+  const counts = useMemo(() => {
+    const acc = { all: policies.length };
+    TYPE_FILTERS.forEach(({ value }) => {
+      acc[value] = policies.filter(p => p.type === value).length;
+    });
+    return acc;
+  }, [policies]);
+
+  const filtered = typeFilter === 'all'
+    ? policies
+    : policies.filter(p => p.type === typeFilter);
+
+  return (
+    <Box>
+      {/* Filter-Chips + Toggle */}
+      <Stack direction="row" alignItems="center" justifyContent="space-between"
+        spacing={1.5} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Chip
+            label={`Alle (${counts.all})`}
+            onClick={() => setTypeFilter('all')}
+            color={typeFilter === 'all' ? 'primary' : 'default'}
+            variant={typeFilter === 'all' ? 'filled' : 'outlined'}
+            sx={{ fontWeight: 600 }}
+          />
+          {TYPE_FILTERS.map(({ value, label }) => (
+            counts[value] > 0 && (
+              <Chip
+                key={value}
+                icon={
+                  <Box component="span" className="material-symbols-outlined"
+                    sx={{ fontSize: 16, ml: 0.5 }}>
+                    {TYPE_ICONS[value]}
+                  </Box>
+                }
+                label={`${label} (${counts[value]})`}
+                onClick={() => setTypeFilter(value)}
+                color={typeFilter === value ? 'primary' : 'default'}
+                variant={typeFilter === value ? 'filled' : 'outlined'}
+                sx={{ fontWeight: 600 }}
+              />
+            )
+          ))}
+        </Stack>
+        <ToggleButtonGroup
+          size="small"
+          value={cardView}
+          exclusive
+          onChange={(_, v) => changeCardView(v)}
+          aria-label="Kachel-Layout"
+        >
+          <ToggleButton value="grid" aria-label="Raster">
+            <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 18, mr: 0.5 }}>
+              view_module
+            </Box>
+            Raster
+          </ToggleButton>
+          <ToggleButton value="list" aria-label="Liste">
+            <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 18, mr: 0.5 }}>
+              view_list
+            </Box>
+            Liste
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Stack>
+
+      {filtered.length === 0 ? (
+        <Paper variant="outlined" sx={{ borderRadius: '16px', p: 4, textAlign: 'center' }}>
+          <Typography variant="body2" color="text.secondary">
+            Keine Policen in dieser Kategorie.
+          </Typography>
+        </Paper>
+      ) : (
+        <Box sx={cardView === 'list' ? {
+          display: 'flex', flexDirection: 'column', gap: 1.5,
+        } : {
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+          gap: 1.5,
+        }}>
+          {filtered.map((pol) => (
+            <PolicyCard key={pol.id} pol={pol} view={cardView}
+              onOpen={onOpen} onDelete={onDelete} />
+          ))}
+        </Box>
+      )}
+    </Box>
   );
 }
 
@@ -3143,130 +3445,83 @@ export default function ETFRechnerPage({ isDark }) {
   const statusColor = { saving: CHART.warning, saved: CHART.positive, error: CHART.negative, idle: 'transparent' }[saveStatus];
   const statusText  = { saving: '↑ Speichert...', saved: '✓ Gespeichert', error: '✕ Fehler', idle: '' }[saveStatus];
 
+  const activePolicy = localPolicies.find(p => p.id === activeTab);
+  const isDetailView = activeTab !== 'overview' && activePolicy;
+
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
       {/* Header */}
       <PageHeader
-        title="Ruhestandsplanung" icon="trending_up"
-        subtitle="Rentenversicherung · AVD Depot · ETF-Depot · Betriebliche Altersvorsorge"
-        actions={saveStatus !== 'idle' ? (
-          <Typography sx={{ color: statusColor, fontSize: '0.78rem', fontWeight: 600 }}>
-            {statusText}
-          </Typography>
-        ) : null}
+        title={isDetailView ? activePolicy.name : 'Ruhestandsplanung'}
+        icon="trending_up"
+        subtitle={isDetailView
+          ? `${TYPE_LABEL[activePolicy.type]} · ${activePolicy.is_passive ? 'beitragsfrei' : 'aktiv'}`
+          : 'Rentenversicherung · AVD Depot · ETF-Depot · Betriebliche Altersvorsorge'}
+        actions={
+          <Stack direction="row" spacing={1} alignItems="center">
+            {saveStatus !== 'idle' && (
+              <Typography sx={{ color: statusColor, fontSize: '0.78rem', fontWeight: 600 }}>
+                {statusText}
+              </Typography>
+            )}
+            {isDetailView ? (
+              <Button
+                variant="outlined" size="small"
+                color="error"
+                startIcon={<DeleteOutlineIcon />}
+                onClick={() => setDeleteTarget(activePolicy.id)}
+              >
+                Löschen
+              </Button>
+            ) : (
+              <Button
+                variant="contained" startIcon={<AddIcon />}
+                onClick={() => setTypeModalOpen(true)}
+              >
+                Vorsorge hinzufügen
+              </Button>
+            )}
+          </Stack>
+        }
       />
 
-      {/* Tab bar */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2.5 }}>
-        <Stack direction="row" alignItems="center" spacing={1}>
-          <Tabs
-            value={activeTab}
-            onChange={(_, v) => setActiveTab(v)}
-            variant="scrollable"
-            scrollButtons="auto"
-            sx={{ flex: 1, minHeight: 40 }}
-          >
-            <Tab
-              value="overview"
-              label="▪▪▪ Gesamtübersicht"
-              sx={{ minHeight: 40, textTransform: 'none', fontWeight: 700 }}
-            />
-            {localPolicies.map(pol => (
-              <Tab
-                key={pol.id}
-                value={pol.id}
-                sx={{ minHeight: 40, textTransform: 'none', pr: 0.5 }}
-                label={
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: pol.color }} />
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
-                      {TYPE_LABEL[pol.type]}
-                    </Typography>
-                    <Typography variant="body2" sx={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {pol.name}
-                    </Typography>
-                    {pol.is_passive && (
-                      <Chip
-                        size="small"
-                        label="Passiv"
-                        color="default"
-                        variant="outlined"
-                        sx={{ height: 18, fontSize: '0.62rem', fontWeight: 700 }}
-                        title="Vertrag beitragsfrei gestellt — keine weiteren Einzahlungen in der Projektion."
-                      />
-                    )}
-                    {/* Close icon — must NOT be a real <button>, Tab itself is a button.
-                        Span with role=button keeps the DOM valid and still handles clicks. */}
-                    <Box
-                      component="span"
-                      role="button"
-                      tabIndex={0}
-                      aria-label="Police löschen"
-                      onClick={(e) => { e.stopPropagation(); setDeleteTarget(pol.id); }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.stopPropagation();
-                          setDeleteTarget(pol.id);
-                        }
-                      }}
-                      sx={{
-                        ml: 0.5,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: 20,
-                        height: 20,
-                        borderRadius: '50%',
-                        cursor: 'pointer',
-                        color: 'text.secondary',
-                        '&:hover': { bgcolor: 'action.hover', color: 'error.main' },
-                      }}
-                    >
-                      <CloseIcon sx={{ fontSize: 14 }} />
-                    </Box>
-                  </Stack>
-                }
-              />
-            ))}
-          </Tabs>
+      {/* Back-Button im Detail-Modus */}
+      {isDetailView && (
+        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
           <Button
-            onClick={() => setTypeModalOpen(true)}
-            startIcon={<AddIcon />}
-            variant="outlined"
-            size="small"
-            sx={{ borderStyle: 'dashed', flexShrink: 0 }}
+            variant="text" size="small"
+            startIcon={<ArrowBackIcon />}
+            onClick={() => setActiveTab('overview')}
+            sx={{ textTransform: 'none' }}
           >
-            Hinzufügen
+            Zurück zur Übersicht
           </Button>
         </Stack>
-      </Box>
+      )}
 
       {/* Panel content */}
       {loading ? (
         <Box sx={{ color: 'text.secondary', p: 5, textAlign: 'center' }}>Lade Policen...</Box>
-      ) : activeTab === 'overview' ? (
+      ) : !isDetailView ? (
         <OverviewPanel
           policies={localPolicies}
           onTabSwitch={setActiveTab}
+          onDelete={setDeleteTarget}
           isDark={isDark}
         />
-      ) : (() => {
-        const pol = localPolicies.find(p => p.id === activeTab);
-        if (!pol) return null;
-        return (
-          <PolicyPanel
-            pol={pol}
-            onParamChange={handleParamChange}
-            onRename={handleRename}
-            onUpdatePolicy={handleUpdatePolicyMeta}
-            isDark={isDark}
-            snapshots={getAllForPolicy(pol.id)}
-            onAddSnapshot={addSnapshot}
-            onUpdateSnapshot={updateSnapshot}
-            onDeleteSnapshot={deleteSnapshot}
-          />
-        );
-      })()}
+      ) : (
+        <PolicyPanel
+          pol={activePolicy}
+          onParamChange={handleParamChange}
+          onRename={handleRename}
+          onUpdatePolicy={handleUpdatePolicyMeta}
+          isDark={isDark}
+          snapshots={getAllForPolicy(activePolicy.id)}
+          onAddSnapshot={addSnapshot}
+          onUpdateSnapshot={updateSnapshot}
+          onDeleteSnapshot={deleteSnapshot}
+        />
+      )}
 
       {/* Modals */}
       <TypeSelectorModal
