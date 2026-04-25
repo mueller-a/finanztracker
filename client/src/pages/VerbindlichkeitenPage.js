@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box, Stack, Typography, Button, IconButton, TextField, MenuItem,
   Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions,
@@ -191,7 +192,7 @@ function UtilizationBar({ used, limit }) {
 // ─── Debt Card ────────────────────────────────────────────────────────────────
 // The Fiscal Gallery — white card, editorial layout
 // (reference-screens/verbindlichkeiten.html §"Multi-Column Grid for Liability Cards")
-function DebtCard({ debt, schedule, onEdit, onDelete, onAddPayment, onSimulate, view = 'grid' }) {
+function DebtCard({ debt, schedule, onEdit, onDelete, onAddPayment, onSimulate, onOpenDetails, view = 'grid' }) {
   const rev = isRevolving(debt);
 
   const currentBalance = (() => {
@@ -228,14 +229,17 @@ function DebtCard({ debt, schedule, onEdit, onDelete, onAddPayment, onSimulate, 
     ];
 
     return (
-      <Paper sx={{
-        bgcolor: 'background.paper', borderRadius: 3, p: { xs: 2, sm: 2.5 },
-        transition: (t) => `box-shadow ${t.transitions.duration.standard}ms`,
-        '&:hover': { boxShadow: '0 20px 40px -15px rgba(11, 28, 48, 0.06)' },
-      }}>
+      <Paper
+        onClick={onOpenDetails ? () => onOpenDetails(debt) : undefined}
+        sx={{
+          bgcolor: 'background.paper', borderRadius: 3, p: { xs: 2, sm: 2.5 },
+          cursor: onOpenDetails ? 'pointer' : 'default',
+          transition: (t) => `box-shadow ${t.transitions.duration.standard}ms`,
+          '&:hover': { boxShadow: '0 20px 40px -15px rgba(11, 28, 48, 0.08)' },
+        }}>
         <Box sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: '1.4fr 1.6fr 1.4fr auto' },
+          gridTemplateColumns: { xs: '1fr', md: '1.5fr 1.5fr 1fr auto' },
           gap: { xs: 2, md: 3 },
           alignItems: 'center',
         }}>
@@ -320,30 +324,24 @@ function DebtCard({ debt, schedule, onEdit, onDelete, onAddPayment, onSimulate, 
             </Box>
           </Stack>
 
-          {/* Spalte 4: Aktionen — vertikal gestapelt rechts */}
-          <Stack direction={{ xs: 'row', md: 'column' }} spacing={1} alignItems="stretch"
-            sx={{ flexShrink: 0, minWidth: { md: 160 } }}>
+          {/* Spalte 4: Primary Action + Pfeil zur Detail-Page */}
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <Button variant="contained" color="primary"
               onClick={() => onAddPayment(debt)} startIcon={<AddIcon />}
               size="small"
               sx={{ whiteSpace: 'nowrap' }}>
-              {rev ? 'Zahlung erfassen' : 'Sondertilgung'}
+              {rev ? 'Zahlung' : 'Sondertilgung'}
             </Button>
-            {rev && (
-              <Button variant="outlined" color="primary"
-                onClick={() => onSimulate(debt)} size="small"
-                sx={{ whiteSpace: 'nowrap' }}>
-                Simulieren
-              </Button>
+            {onOpenDetails && (
+              <IconButton size="small" onClick={() => onOpenDetails(debt)} title="Details öffnen"
+                sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}>
+                <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 22 }}>
+                  arrow_forward
+                </Box>
+              </IconButton>
             )}
-            <Stack direction="row" spacing={0.5} justifyContent={{ xs: 'flex-start', md: 'center' }}>
-              <IconButton size="small" onClick={() => onEdit(debt)} title="Bearbeiten">
-                <EditOutlinedIcon fontSize="small" />
-              </IconButton>
-              <IconButton size="small" color="error" onClick={() => onDelete(debt.id)} title="Löschen">
-                <DeleteOutlineIcon fontSize="small" />
-              </IconButton>
-            </Stack>
           </Stack>
         </Box>
 
@@ -761,7 +759,7 @@ function DebtForm({ initial, onSave, onCancel }) {
 //   - repayment  (Tilgung)  → senkt Saldo (Default)
 //   - withdrawal (Entnahme) → erhöht Saldo, max. bis credit_limit
 // Für Annuitätskredite ist der Typ immer 'repayment' (ToggleGroup wird ausgeblendet).
-function ExtraPaymentModal({ debts, schedulesMap, preselected, editPayment, onSave, onUpdate, onClose }) {
+export function ExtraPaymentModal({ debts, schedulesMap, preselected, editPayment, onSave, onUpdate, onClose }) {
   const isEdit = !!editPayment;
   const [debtId, setDebtId] = useState(editPayment?.debt_id ?? preselected?.id ?? debts[0]?.id ?? '');
   const [type,   setType]   = useState(editPayment?.type    ?? 'repayment');
@@ -1509,6 +1507,7 @@ function ZinsAnalyseTab({ debts, schedulesMap }) {
 
 // ─── VerbindlichkeitenPage ────────────────────────────────────────────────────
 export default function VerbindlichkeitenPage() {
+  const navigate = useNavigate();
   const {
     debts, payments, loading, error,
     addDebt, updateDebt, deleteDebt,
@@ -1695,6 +1694,7 @@ export default function VerbindlichkeitenPage() {
                   }}
                   onAddPayment={(debt) => setPaymentModal(debt)}
                   onSimulate={(debt) => setSimModal(debt)}
+                  onOpenDetails={(debt) => navigate(`/verbindlichkeiten/${debt.id}`)}
                 />
               ))}
             </Box>

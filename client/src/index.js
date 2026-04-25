@@ -19,6 +19,7 @@ import InsurancesPage        from './pages/InsurancesPage';
 import StromPage             from './pages/StromPage';
 import GuthabenPage          from './pages/GuthabenPage';
 import VerbindlichkeitenPage from './pages/VerbindlichkeitenPage';
+import DebtDetailPage from './pages/DebtDetailPage';
 import BudgetPage            from './pages/BudgetPage';
 import PlaceholderPage       from './pages/PlaceholderPage';
 import ETFRechnerPage        from './pages/ETFRechnerPage';
@@ -84,7 +85,8 @@ function AppRoutes({ isDark, onToggleDark }) {
           <Route path="/gehaltsrechner"     element={<ProtectedRoute moduleKey="salary"><SalaryPage /></ProtectedRoute>} />
           <Route path="/guthaben/rente"     element={<ProtectedRoute moduleKey="retirement"><ETFRechnerPage isDark={isDark} /></ProtectedRoute>} />
           <Route path="/strom"              element={<ProtectedRoute moduleKey="electricity"><StromPage /></ProtectedRoute>} />
-          <Route path="/verbindlichkeiten"  element={<ProtectedRoute moduleKey="debts"><VerbindlichkeitenPage /></ProtectedRoute>} />
+          <Route path="/verbindlichkeiten"            element={<ProtectedRoute moduleKey="debts"><VerbindlichkeitenPage /></ProtectedRoute>} />
+          <Route path="/verbindlichkeiten/:debtId"    element={<ProtectedRoute moduleKey="debts"><DebtDetailPage /></ProtectedRoute>} />
           <Route path="/immobilien"         element={<ProtectedRoute moduleKey="real_estate"><RealEstatePage /></ProtectedRoute>} />
           <Route path="/guthaben"           element={<ProtectedRoute moduleKey="savings"><GuthabenPage /></ProtectedRoute>} />
           <Route path="/settings"           element={<SettingsPage />} />
