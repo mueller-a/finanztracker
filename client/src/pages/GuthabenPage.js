@@ -238,7 +238,7 @@ function TotalWidget({ goals, entries, etfPolicies }) {
       overflow: 'hidden',
       bgcolor: 'primary.dark',
       color: 'primary.contrastText',
-      borderRadius: '12px',
+      borderRadius: '16px',
       p: { xs: 2.5, sm: 3, md: 3.5 },
       display: 'flex',
       flexDirection: { xs: 'column', md: 'row' },
@@ -280,7 +280,7 @@ function TotalWidget({ goals, entries, etfPolicies }) {
           <Paper key={value} elevation={0} sx={{
             bgcolor: 'rgba(255,255,255,0.06)',
             color: 'primary.contrastText',
-            borderRadius: '12px',
+            borderRadius: '16px',
             px: 1.75, py: 1,
             minWidth: 140,
           }}>
@@ -331,7 +331,7 @@ function GoalCard({ goal, entries, etfPolicies, onAddEntry, onEdit, onDelete, vi
       <Paper
         variant="outlined"
         sx={{
-          borderRadius: '12px', p: { xs: 2, sm: 2.25 },
+          borderRadius: '16px', p: { xs: 2, sm: 2.5 },
           borderColor: isAnleihe && maturityAlert ? `${maturityColor}55` : 'divider',
           transition: 'box-shadow 0.15s',
           '&:hover': {
@@ -342,39 +342,67 @@ function GoalCard({ goal, entries, etfPolicies, onAddEntry, onEdit, onDelete, vi
       >
         <Box sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: '1.6fr 1.6fr 1fr auto' },
-          gap: { xs: 1.5, md: 2.5 }, alignItems: 'center',
+          // Spalte 4 hat fixe Breite (220px), damit Saldo immer rechtsbündig
+          // an gleicher Position steht — kein dynamisches Verschieben.
+          gridTemplateColumns: { xs: '1fr', md: '1.6fr 1.5fr 1fr 220px' },
+          gap: { xs: 2, md: 3 }, alignItems: 'start',
         }}>
-          {/* Spalte 1: Icon + Name + Kategorie-Badge */}
-          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
-            <Box sx={{
-              width: 40, height: 40, borderRadius: '12px',
-              bgcolor: 'accent.positiveSurface', color: 'primary.dark',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
-            }}>
-              <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 22 }}>
-                {katIcon}
+          {/* Spalte 1: Icon + Name + Kategorie-Subtitle, darunter Aktionen */}
+          <Stack spacing={1.75} sx={{ minWidth: 0 }}>
+            <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
+              <Box sx={{
+                width: 48, height: 48, borderRadius: '16px',
+                bgcolor: 'accent.positiveSurface', color: 'primary.dark',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 24 }}>
+                  {katIcon}
+                </Box>
               </Box>
-            </Box>
-            <Box sx={{ minWidth: 0 }}>
-              <Typography variant="body1" sx={{ fontWeight: 700, lineHeight: 1.25,
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {goal.name}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {katLabel}
-                {isEtfLinked && etfPolicy && ` · ${etfPolicy.name}`}
-                {isAnleihe && goal.faelligkeitsdatum && ` · fällig ${fmtDate(goal.faelligkeitsdatum)}`}
-              </Typography>
-            </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.25,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {goal.name}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                  {katLabel}
+                  {isEtfLinked && etfPolicy && ` · ${etfPolicy.name}`}
+                  {isAnleihe && goal.faelligkeitsdatum && ` · fällig ${fmtDate(goal.faelligkeitsdatum)}`}
+                </Typography>
+              </Box>
+            </Stack>
+
+            {/* Aktionen unter dem Header */}
+            <Stack direction="row" spacing={0.5} alignItems="center">
+              <Button
+                size="small"
+                variant="contained"
+                startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+                onClick={() => onAddEntry(goal)}
+                sx={{ whiteSpace: 'nowrap' }}
+              >
+                Zahlung
+              </Button>
+              <Box className="goal-list-actions"
+                sx={{ display: 'flex', opacity: { xs: 1, md: 0 }, transition: 'opacity 0.15s' }}>
+                <IconButton size="small" onClick={() => onEdit(goal)} title="Bearbeiten"
+                  sx={{ color: 'text.disabled', '&:hover': { color: 'text.primary' } }}>
+                  <EditOutlinedIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+                <IconButton size="small" onClick={() => onDelete(goal.id)} title="Löschen"
+                  sx={{ color: 'text.disabled', '&:hover': { color: 'error.main' } }}>
+                  <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Box>
+            </Stack>
           </Stack>
 
           {/* Spalte 2: Progress + Sub-Caption (oder Inline-Meta) */}
           <Box>
             {hasTarget ? (
               <>
-                <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mb: 0.5 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mb: 0.75 }}>
                   <Typography variant="caption" color="text.secondary">
                     Fortschritt
                   </Typography>
@@ -389,7 +417,7 @@ function GoalCard({ goal, entries, etfPolicies, onAddEntry, onEdit, onDelete, vi
                       bgcolor: pct >= 100 ? 'accent.positiveSurface' : goal.color_code,
                       borderRadius: 99,
                     },
-                    mb: 0.75,
+                    mb: 1,
                   }} />
                 <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
                   Ziel: {fmt2(goal.target_amount)} €
@@ -402,17 +430,17 @@ function GoalCard({ goal, entries, etfPolicies, onAddEntry, onEdit, onDelete, vi
             )}
           </Box>
 
-          {/* Spalte 3: KPIs + Saldo (rechtsbündig) */}
-          <Stack direction="row" spacing={2} alignItems="center" justifyContent={{ xs: 'flex-start', md: 'flex-end' }}>
+          {/* Spalte 3: KPIs (Sparrate, Zins) */}
+          <Stack spacing={1.25} sx={{ minWidth: 0 }}>
             {Number(goal.monthly_soll) > 0 && (
-              <Box sx={{ minWidth: 0 }}>
+              <Box>
                 <Typography variant="overline" sx={{
                   display: 'block', fontSize: '0.6rem', lineHeight: 1.2,
                   color: 'text.secondary', fontWeight: 700, letterSpacing: '0.06em',
                 }}>
                   Sparrate
                 </Typography>
-                <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', lineHeight: 1.2 }}>
+                <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', lineHeight: 1.2 }}>
                   {fmt2(goal.monthly_soll)} €
                 </Typography>
                 {offen > 0 && (
@@ -431,50 +459,28 @@ function GoalCard({ goal, entries, etfPolicies, onAddEntry, onEdit, onDelete, vi
                   Zins p.a.
                 </Typography>
                 <Typography sx={{
-                  fontWeight: 700, fontSize: '0.9rem', lineHeight: 1.2,
+                  fontWeight: 700, fontSize: '0.95rem', lineHeight: 1.2,
                   color: 'success.main',
                 }}>
                   {fmt4(goal.zinssatz)} %
                 </Typography>
               </Box>
             )}
-            <Box sx={{ textAlign: 'right', minWidth: 0 }}>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
-                Saldo
-              </Typography>
-              <Typography sx={{
-                fontFamily: '"Manrope", sans-serif',
-                fontWeight: 800, letterSpacing: '-0.01em', lineHeight: 1.05,
-                fontSize: { xs: '1.4rem', md: '1.6rem' },
-              }}>
-                {fmt2(balance)} €
-              </Typography>
-            </Box>
           </Stack>
 
-          {/* Spalte 4: Primary Action + Edit/Delete */}
-          <Stack direction="row" spacing={0.5} alignItems="center" sx={{ flexShrink: 0 }}>
-            <Button
-              size="small"
-              variant="contained"
-              startIcon={<AddIcon sx={{ fontSize: 16 }} />}
-              onClick={() => onAddEntry(goal)}
-              sx={{ whiteSpace: 'nowrap' }}
-            >
-              Zahlung
-            </Button>
-            <Box className="goal-list-actions"
-              sx={{ display: 'flex', opacity: { xs: 1, md: 0 }, transition: 'opacity 0.15s' }}>
-              <IconButton size="small" onClick={() => onEdit(goal)} title="Bearbeiten"
-                sx={{ color: 'text.disabled', '&:hover': { color: 'text.primary' } }}>
-                <EditOutlinedIcon sx={{ fontSize: 16 }} />
-              </IconButton>
-              <IconButton size="small" onClick={() => onDelete(goal.id)} title="Löschen"
-                sx={{ color: 'text.disabled', '&:hover': { color: 'error.main' } }}>
-                <DeleteOutlineIcon sx={{ fontSize: 16 }} />
-              </IconButton>
-            </Box>
-          </Stack>
+          {/* Spalte 4: Saldo — fixe Breite, rechtsbündig */}
+          <Box sx={{ textAlign: 'right', minWidth: 0 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
+              Saldo
+            </Typography>
+            <Typography sx={{
+              fontFamily: '"Manrope", sans-serif',
+              fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.05,
+              fontSize: { xs: '1.5rem', md: '1.75rem' },
+            }}>
+              {fmt2(balance)} €
+            </Typography>
+          </Box>
         </Box>
       </Paper>
     );
@@ -484,7 +490,7 @@ function GoalCard({ goal, entries, etfPolicies, onAddEntry, onEdit, onDelete, vi
     <Paper
       variant="outlined"
       sx={{
-        borderRadius: '12px',
+        borderRadius: '16px',
         p: 2.25,
         display: 'flex',
         flexDirection: 'column',
@@ -497,7 +503,7 @@ function GoalCard({ goal, entries, etfPolicies, onAddEntry, onEdit, onDelete, vi
       {/* Header: Icon + Name/Ziel + Betrag (rechtsbündig) + Aktionen (hover) */}
       <Stack direction="row" alignItems="flex-start" spacing={1.5}>
         <Box sx={{
-          width: 40, height: 40, borderRadius: '12px',
+          width: 40, height: 40, borderRadius: '16px',
           bgcolor: 'accent.positiveSurface',
           color: 'primary.dark',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -662,7 +668,7 @@ function CompactGoalCard({ goal, entries, etfPolicies, onEdit, onDelete }) {
       elevation={0}
       sx={{
         position: 'relative',
-        borderRadius: '12px',
+        borderRadius: '16px',
         p: 1.75,
         bgcolor: 'background.paper',
         display: 'flex', flexDirection: 'column', gap: 1,
