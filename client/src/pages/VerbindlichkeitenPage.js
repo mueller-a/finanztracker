@@ -1383,6 +1383,18 @@ export default function VerbindlichkeitenPage() {
   const [snackbar, setSnackbar]                 = useState({ open: false, message: '' });
   const notifyError = (message) => setSnackbar({ open: true, message });
 
+  // Kachel-Layout: 'grid' (3 nebeneinander, Default) oder 'list' (volle Breite,
+  // vertikal gestapelt). Nutzer-Präferenz wird im localStorage persistiert.
+  const [cardView, setCardView] = useState(() => {
+    try { return localStorage.getItem('debtCardView') ?? 'grid'; }
+    catch { return 'grid'; }
+  });
+  function changeCardView(v) {
+    if (!v) return;
+    setCardView(v);
+    try { localStorage.setItem('debtCardView', v); } catch {}
+  }
+
   const schedulesMap = useMemo(() => {
     return Object.fromEntries(
       debts.map((d) => {
@@ -1465,7 +1477,29 @@ export default function VerbindlichkeitenPage() {
                 onCancel={() => { setShowDebtForm(false); setEditDebt(null); }}
               />
             ) : (
-              <Stack direction="row" justifyContent="flex-end">
+              <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.5} flexWrap="wrap" useFlexGap>
+                {debts.length > 0 ? (
+                  <ToggleButtonGroup
+                    size="small"
+                    value={cardView}
+                    exclusive
+                    onChange={(_, v) => changeCardView(v)}
+                    aria-label="Kachel-Layout"
+                  >
+                    <ToggleButton value="grid" aria-label="Raster">
+                      <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 18, mr: 0.5 }}>
+                        view_module
+                      </Box>
+                      Raster
+                    </ToggleButton>
+                    <ToggleButton value="list" aria-label="Liste">
+                      <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 18, mr: 0.5 }}>
+                        view_list
+                      </Box>
+                      Liste
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                ) : <Box />}
                 <Button variant="contained" startIcon={<AddIcon />} onClick={() => setShowDebtForm(true)}>
                   Kredit hinzufügen
                 </Button>
@@ -1486,13 +1520,17 @@ export default function VerbindlichkeitenPage() {
               </SectionCard>
             )}
 
-            <Box sx={{
+            <Box sx={cardView === 'list' ? {
+              // List-View: jede Karte volle Breite, vertikal gestapelt
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+              '& > *': { width: '100%', maxWidth: 'none' },
+            } : {
+              // Grid-View (Default): max 3 Karten pro Zeile, jede max 400px
               display: 'flex',
               flexWrap: 'wrap',
               gap: 2,
-              // Max 3 Karten pro Zeile, jede Karte max 400px breit.
-              // flex-basis = 33.33% − gap sorgt dafür, dass eine 4. Karte
-              // immer umbricht. Bei 1-2 Karten stretchen sie bis maxWidth.
               '& > *': {
                 flex: '1 1 calc(33.333% - 16px)',
                 minWidth: { xs: '100%', sm: 280 },
