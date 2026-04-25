@@ -47,23 +47,42 @@ const CHART = {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function runCalc(type, params, snapshot, snapshotHistory, policyMeta) {
+// Holdings → synthetischer Snapshot für calcDepot.
+// `quotes`-Map kommt aus useQuotes(), Key = symbol oder isin.
+// Live-Preis bevorzugt; Fallback Ø-Kaufpreis wenn keine Quote verfügbar.
+// Liefert null, wenn Holdings leer sind oder Σ shares × price = 0.
+function buildHoldingsSnapshot(params, quotes) {
+  const holdings = Array.isArray(params?.holdings) ? params.holdings : [];
+  if (holdings.length === 0) return null;
+  let value     = 0;
+  let invested  = 0;
+  let hasAnyVal = false;
+  for (const h of holdings) {
+    const shares = Number(h.shares) || 0;
+    const buy    = Number(h.avg_buy_price) || 0;
+    const q      = (h.symbol && quotes?.[h.symbol]) || (h.isin && quotes?.[h.isin]) || null;
+    const price  = q?.price ? Number(q.price) : buy;
+    if (shares > 0 && price > 0) hasAnyVal = true;
+    value    += shares * price;
+    invested += shares * buy;
+  }
+  if (!hasAnyVal) return null;
+  return {
+    contract_value:           value,
+    total_contributions_paid: invested,
+    snapshot_date:            new Date().toISOString().split('T')[0],
+  };
+}
+
+function runCalc(type, params, snapshot, snapshotHistory, policyMeta, quotes) {
   if (!params) return null;
   try {
-    // Inject snapshot for hybrid tracking (only relevant for insurance type)
-    // snapshot       = neuester Snapshot (Startpunkt für Prognose)
-    // snapshotHistory = alle Snapshots (für historische Datapoints im Chart)
-    // policyMeta     = zusätzliche Policy-Felder außerhalb von params (z.B. is_passive)
     const baseParams = policyMeta?.is_passive != null
       ? { ...params, is_passive: policyMeta.is_passive }
       : params;
-    const enriched = snapshot
-      ? { ...baseParams, snapshotStart: snapshot, snapshotHistory: snapshotHistory || [] }
-      : baseParams;
     if (type === 'drv')   return calcDRV(baseParams);
     if (type === 'bav') {
       const r = calcBAV(baseParams);
-      // Depot equivalent: same monthly net cost from today → retirement (for comparison chart)
       const nowDate  = new Date();
       const nowYear  = nowDate.getFullYear();
       const nowMonth = nowDate.getMonth() + 1;
@@ -82,8 +101,25 @@ function runCalc(type, params, snapshot, snapshotHistory, policyMeta) {
       });
       return { ...r, depotComparison: depotComp };
     }
-    if (type === 'avd')   return calcAVD(baseParams);
-    if (type === 'depot') return calcDepot(enriched);  // Snapshot als Startwert übernehmen
+    if (type === 'avd') {
+      const enrichedAvd = snapshot
+        ? { ...baseParams, snapshotStart: snapshot, snapshotHistory: snapshotHistory || [] }
+        : baseParams;
+      return calcAVD(enrichedAvd);
+    }
+    if (type === 'depot') {
+      // Beim Depot ist der Snapshot ab sofort aus den Holdings abgeleitet.
+      // Live-Preise (oder Fallback Ø-Kaufpreis) liefern den aktuellen Marktwert
+      // → Projektion startet mit diesem Wert statt bei 0.
+      const holdingsSnap = buildHoldingsSnapshot(baseParams, quotes);
+      const depotParams  = holdingsSnap
+        ? { ...baseParams, snapshotStart: holdingsSnap }
+        : baseParams;
+      return calcDepot(depotParams);
+    }
+    const enriched = snapshot
+      ? { ...baseParams, snapshotStart: snapshot, snapshotHistory: snapshotHistory || [] }
+      : baseParams;
     return calcPolicy(enriched);
   } catch { return null; }
 }
@@ -2428,8 +2464,9 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
 
       {/* Content */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {/* Sub-tabs (for insurance, bAV, DRV, depot — alle mit Snapshot-Tracking) */}
-        {(pol.type === 'insurance' || pol.type === 'bav' || pol.type === 'drv' || pol.type === 'depot') && (
+        {/* Sub-tabs nur für Versicherungen/bAV/DRV — beim Depot übernehmen
+            die Holdings (linke Sidebar) die Rolle des Snapshot-Trackings. */}
+        {(pol.type === 'insurance' || pol.type === 'bav' || pol.type === 'drv') && (
           <div style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${t.bdr}` }}>
             {[
               { id: 'detail',    label: 'Prognose & Details' },
@@ -2448,9 +2485,8 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
           </div>
         )}
 
-        {/* Snapshots tab — zwei verschiedene Panels je nach Typ:
-            - Versicherung/bAV/DRV: komplexer SnapshotPanel mit Fondsverteilung + Kostenblöcken
-            - Depot:                schlankes DepotSnapshotPanel (Performance-Card + Liste) */}
+        {/* Snapshots tab — Versicherung/bAV/DRV: komplexer SnapshotPanel
+            mit Fondsverteilung + Kostenblöcken */}
         {(pol.type === 'insurance' || pol.type === 'bav' || pol.type === 'drv') && activeSubTab === 'snapshots' && (
           <SnapshotPanel
             policyId={pol.id}
@@ -2459,16 +2495,6 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
             onUpdate={onUpdateSnapshot}
             onDelete={onDeleteSnapshot}
             isDark={isDark}
-          />
-        )}
-
-        {pol.type === 'depot' && activeSubTab === 'snapshots' && (
-          <DepotSnapshotPanel
-            policyId={pol.id}
-            snapshots={snapshots || []}
-            onAdd={onAddSnapshot}
-            onUpdate={onUpdateSnapshot}
-            onDelete={onDeleteSnapshot}
           />
         )}
 
@@ -3638,8 +3664,27 @@ export default function ETFRechnerPage({ isDark }) {
 
   const debounceTimers = useRef({});
 
+  // ── Live-Quotes für ALLE Depot-Holdings (Page-weit, ein einziger Hook) ────
+  // Holdings aus ALL Depot-Policen werden zusammengefasst und einmal global
+  // gefetcht. Das Resultat fließt in runCalc, sodass die Projektion bei jedem
+  // Quote-Update neu berechnet wird.
+  const allHoldingsForQuote = useMemo(() => {
+    const out = [];
+    for (const p of policies) {
+      if (p.type !== 'depot') continue;
+      const hs = Array.isArray(p.params?.holdings) ? p.params.holdings : [];
+      for (const h of hs) {
+        if (h.isin || h.symbol) {
+          out.push({ isin: h.isin || undefined, symbol: h.symbol || undefined });
+        }
+      }
+    }
+    return out;
+  }, [policies]);
+  const { quotes: pageQuotes } = useQuotes(allHoldingsForQuote);
+
   // ── Sync DB → local state ──────────────────────────────────────────────────
-  // Recompute when snapshots change too — Hybrid Tracking
+  // Recompute when snapshots oder pageQuotes ändern — Hybrid Tracking + Live-Preise
   useEffect(() => {
     if (loading) return;
     setLocalPolicies(prev => {
@@ -3648,13 +3693,26 @@ export default function ETFRechnerPage({ isDark }) {
         const snap    = getLatestForPolicy(p.id);
         const history = getAllForPolicy(p.id);
         const existing = prevMap[p.id];
-        // Recalculate when snapshot changed for this policy (date OR count)
-        const sig = (snap?.snapshot_date || '') + '|' + history.length;
+        // Bei Depot zusätzlich Quote-Signatur in den Cache-Key, damit Live-
+        // Preise die Neuberechnung triggern.
+        let quoteSig = '';
+        if (p.type === 'depot') {
+          const hs = Array.isArray(p.params?.holdings) ? p.params.holdings : [];
+          quoteSig = hs.map((h) => {
+            const q = (h.symbol && pageQuotes[h.symbol]) || (h.isin && pageQuotes[h.isin]);
+            return `${h.id || ''}:${q?.price ?? ''}`;
+          }).join('|');
+        }
+        const sig = (snap?.snapshot_date || '') + '|' + history.length + '|' + quoteSig;
         if (existing && existing._snapSig === sig) return existing;
-        return { ...p, result: runCalc(p.type, p.params, snap, history, p), _snapSig: sig };
+        return {
+          ...p,
+          result:   runCalc(p.type, p.params, snap, history, p, pageQuotes),
+          _snapSig: sig,
+        };
       });
     });
-  }, [policies, loading, snapshots, getLatestForPolicy, getAllForPolicy]);
+  }, [policies, loading, snapshots, getLatestForPolicy, getAllForPolicy, pageQuotes]);
 
   // ── Param change + debounced save ─────────────────────────────────────────
   const handleParamChange = useCallback((polId, newParams) => {
@@ -3662,7 +3720,11 @@ export default function ETFRechnerPage({ isDark }) {
       if (p.id !== polId) return p;
       const snap    = getLatestForPolicy(polId);
       const history = getAllForPolicy(polId);
-      return { ...p, params: newParams, result: runCalc(p.type, newParams, snap, history, p) };
+      return {
+        ...p,
+        params: newParams,
+        result: runCalc(p.type, newParams, snap, history, p, pageQuotes),
+      };
     }));
     clearTimeout(debounceTimers.current[polId]);
     debounceTimers.current[polId] = setTimeout(async () => {
@@ -3675,7 +3737,7 @@ export default function ETFRechnerPage({ isDark }) {
         setSaveStatus('error');
       }
     }, 2000);
-  }, [savePolicy, getLatestForPolicy, getAllForPolicy]);
+  }, [savePolicy, getLatestForPolicy, getAllForPolicy, pageQuotes]);
 
   // ── Rename ─────────────────────────────────────────────────────────────────
   const handleRename = useCallback((polId, name) => {
@@ -3684,9 +3746,6 @@ export default function ETFRechnerPage({ isDark }) {
   }, [updatePolicy]);
 
   // ── Spalten-Felder updaten (z.B. is_passive für bAV-Beitragsfrei-Stellung)
-  // Im Gegensatz zu handleParamChange schreibt das nicht ins JSONB-`params`,
-  // sondern direkt in eine Zeilen-Spalte. Lokal werden Recalc + Snapshot-
-  // Signatur invalidiert, damit die Projektion sofort neu gerechnet wird.
   const handleUpdatePolicyMeta = useCallback((polId, patch) => {
     setLocalPolicies(prev => prev.map(p => {
       if (p.id !== polId) return p;
@@ -3695,19 +3754,22 @@ export default function ETFRechnerPage({ isDark }) {
       const history = getAllForPolicy(polId);
       return {
         ...merged,
-        result:    runCalc(merged.type, merged.params, snap, history, merged),
+        result:    runCalc(merged.type, merged.params, snap, history, merged, pageQuotes),
         _snapSig:  (snap?.snapshot_date || '') + '|' + history.length + '|' + JSON.stringify(patch),
       };
     }));
     updatePolicy(polId, patch).catch(() => {});
-  }, [updatePolicy, getLatestForPolicy, getAllForPolicy]);
+  }, [updatePolicy, getLatestForPolicy, getAllForPolicy, pageQuotes]);
 
   // ── Add policy ─────────────────────────────────────────────────────────────
   async function handleAddPolicy(type) {
     setTypeModalOpen(false);
     try {
       const newRow = await addPolicy(type);
-      const withResult = { ...newRow, result: runCalc(newRow.type, newRow.params, null, null, newRow) };
+      const withResult = {
+        ...newRow,
+        result: runCalc(newRow.type, newRow.params, null, null, newRow, pageQuotes),
+      };
       setLocalPolicies(prev => [...prev, withResult]);
       setActiveTab(newRow.id);
     } catch (e) {
