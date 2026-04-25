@@ -75,8 +75,9 @@ export function useQuotes(items) {
     })();
 
     return () => { cancelled = true; };
-    // refreshTick bewusst in deps, damit refresh() einen neuen Fetch triggert.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // fetchKey ist eine stabile, geordnete Hash der ISIN/Symbol-Liste; items
+    // bewusst NICHT in deps, damit Render-bedingte Re-Renderings keine
+    // unnötigen Refetches auslösen. refreshTick triggert manuelles Refresh.
   }, [fetchKey, refreshTick]);
 
   return { quotes, errors, loading, refresh, lastFetch };

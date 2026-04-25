@@ -49,8 +49,9 @@ export const navItems = [
     moduleKey:    'show_savings',
     appModuleKey: 'savings',
     children: [
-      { label: 'Asset-Manager',     path: '/guthaben',       icon: 'piggy', appModuleKey: 'savings' },
-      { label: 'Ruhestandsplanung', path: '/guthaben/rente', icon: 'chart', moduleKey: 'show_retirement_plan', appModuleKey: 'retirement' },
+      { label: 'Asset-Manager',         path: '/guthaben',         icon: 'piggy', appModuleKey: 'savings' },
+      { label: 'Freistellungsaufträge', path: '/guthaben/steuern', icon: 'tax',   appModuleKey: 'savings' },
+      { label: 'Ruhestandsplanung',     path: '/guthaben/rente',   icon: 'chart', moduleKey: 'show_retirement_plan', appModuleKey: 'retirement' },
     ],
   },
   {

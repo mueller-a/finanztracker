@@ -18,6 +18,7 @@ import OverviewPage          from './pages/OverviewPage';
 import InsurancesPage        from './pages/InsurancesPage';
 import StromPage             from './pages/StromPage';
 import GuthabenPage          from './pages/GuthabenPage';
+import FreistellungsauftraegePage from './pages/FreistellungsauftraegePage';
 import VerbindlichkeitenPage from './pages/VerbindlichkeitenPage';
 import DebtDetailPage from './pages/DebtDetailPage';
 import BudgetPage            from './pages/BudgetPage';
@@ -84,6 +85,7 @@ function AppRoutes({ isDark, onToggleDark }) {
           <Route path="/budget/optimizer"   element={<ProtectedRoute moduleKey="optimizer"><ContractOptimizerPage /></ProtectedRoute>} />
           <Route path="/gehaltsrechner"     element={<ProtectedRoute moduleKey="salary"><SalaryPage /></ProtectedRoute>} />
           <Route path="/guthaben/rente"     element={<ProtectedRoute moduleKey="retirement"><ETFRechnerPage isDark={isDark} /></ProtectedRoute>} />
+          <Route path="/guthaben/steuern"   element={<ProtectedRoute moduleKey="savings"><FreistellungsauftraegePage /></ProtectedRoute>} />
           <Route path="/strom"              element={<ProtectedRoute moduleKey="electricity"><StromPage /></ProtectedRoute>} />
           <Route path="/verbindlichkeiten"            element={<ProtectedRoute moduleKey="debts"><VerbindlichkeitenPage /></ProtectedRoute>} />
           <Route path="/verbindlichkeiten/:debtId"    element={<ProtectedRoute moduleKey="debts"><DebtDetailPage /></ProtectedRoute>} />
