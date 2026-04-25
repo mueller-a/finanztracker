@@ -8,9 +8,11 @@
 -- Verwendung im Frontend: Zeitleiste der Portfolio-Veränderungen +
 -- Eingezahlt-Kapital-Verlauf-Chart in der Depot-Detail-View.
 
+-- WICHTIG: etf_policen.id ist `text` (App-generiert: 'pol' + Date.now()),
+-- nicht uuid. policy_id muss daher denselben Typ haben.
 CREATE TABLE IF NOT EXISTS public.holdings_history (
   id              uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
-  policy_id       uuid          NOT NULL REFERENCES public.etf_policen(id) ON DELETE CASCADE,
+  policy_id       text          NOT NULL REFERENCES public.etf_policen(id) ON DELETE CASCADE,
   snapshot_at     timestamptz   NOT NULL DEFAULT now(),
   holdings        jsonb         NOT NULL,
   invested_value  numeric(14,2) NOT NULL DEFAULT 0,
