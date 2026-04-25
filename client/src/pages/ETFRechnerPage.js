@@ -81,7 +81,23 @@ function runCalc(type, params, snapshot, snapshotHistory, policyMeta, quotes) {
     const baseParams = policyMeta?.is_passive != null
       ? { ...params, is_passive: policyMeta.is_passive }
       : params;
-    if (type === 'drv')   return calcDRV(baseParams);
+    if (type === 'drv') {
+      // Latest snapshot übersteuert manuelle params-Werte: User trägt
+      // Anwartschaft / Hochgerechnete / Entgeltpunkte ausschließlich über
+      // den DRV-Bescheids-Verlauf ein, der Snapshot mit dem jüngsten
+      // snapshot_date ist die Quelle der Wahrheit.
+      const drvParams = snapshot && (
+        snapshot.drv_anwartschaft != null
+        || snapshot.drv_hochgerechnete != null
+        || snapshot.drv_entgeltpunkte != null
+      ) ? {
+        ...baseParams,
+        anwartschaft:    snapshot.drv_anwartschaft   ?? baseParams.anwartschaft,
+        hochgerechnete:  snapshot.drv_hochgerechnete ?? baseParams.hochgerechnete,
+        entgeltpunkte:   snapshot.drv_entgeltpunkte  ?? baseParams.entgeltpunkte,
+      } : baseParams;
+      return calcDRV(drvParams);
+    }
     if (type === 'bav') {
       const r = calcBAV(baseParams);
       const nowDate  = new Date();
@@ -1038,10 +1054,27 @@ function DRVSidebar({ params, onChange, color, isDark }) {
 
   return (
     <Box>
-      <SectionLabel isDark={isDark}>Aus Rentenbescheid (DRV)</SectionLabel>
-      <NumField label="Bisher erreichte Anwartschaft / Monat" field="anwartschaft" helper="z.B. 555,70 €" />
-      <NumField label="Hochgerechnete Rente / Monat" field="hochgerechnete" helper="z.B. 2.564,84 €" />
-      <NumField label="Aktuelle Entgeltpunkte" field="entgeltpunkte" helper="z.B. 13,6234" decimals={4} adornment="EP" />
+      {/* Aus Rentenbescheid: Werte werden jetzt zentral im DRVSnapshotPanel
+          (rechte Content-Spalte) eingegeben. Sidebar zeigt nur einen Hinweis.
+          Der jüngste Snapshot übersteuert die alten params.* Felder per
+          runCalc-Merge. */}
+      <Box sx={{
+        mb: 2, p: 1.25, borderRadius: '8px',
+        bgcolor: 'action.hover',
+      }}>
+        <Typography variant="caption" sx={{
+          color: 'text.secondary', fontWeight: 700,
+          textTransform: 'uppercase', letterSpacing: '0.06em',
+          fontSize: '0.62rem', display: 'block', mb: 0.5,
+        }}>
+          Aus Rentenbescheid
+        </Typography>
+        <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem', display: 'block' }}>
+          Anwartschaft, hochgerechnete Rente und Entgeltpunkte werden im
+          Bescheids-Verlauf rechts erfasst — der jüngste Snapshot ist
+          automatisch maßgeblich.
+        </Typography>
+      </Box>
 
       <SectionLabel isDark={isDark}>Rentenbeginn & Anpassung</SectionLabel>
       <MonthInput label="Rentenbeginn" value={rvVal} min="2025-01" max="2080-12"
@@ -2467,6 +2500,430 @@ function DepotHistoryPanel({ policyId }) {
   );
 }
 
+// ─── DRV-Snapshot-Panel (Rentenbescheid-Verlauf) ─────────────────────────────
+// Pro DRV-Police listet & verwaltet das Panel die jährlichen Bescheide:
+//   - drv_anwartschaft, drv_hochgerechnete, drv_entgeltpunkte (aus Schema 43)
+// Anwartschaft = bisher erworbene Bruttorente / Monat
+// Hochgerechnete = hochgerechnete Bruttorente bei Renteneintritt
+// Entgeltpunkte  = aktueller Punktestand
+//
+// Latest Snapshot übersteuert per runCalc die params-Felder von DRV — siehe
+// runCalc().
+function DRVSnapshotPanel({ policyId, snapshots, onAdd, onUpdate, onDelete }) {
+  const theme = useTheme();
+  const [editing, setEditing] = useState(null);  // null | { id?, ... }
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  // Sortiert chronologisch absteigend (neueste oben)
+  const sorted = useMemo(
+    () => [...(snapshots ?? [])].sort(
+      (a, b) => new Date(b.snapshot_date) - new Date(a.snapshot_date),
+    ),
+    [snapshots],
+  );
+
+  // Chart-Daten (chronologisch aufsteigend für Linie)
+  const chartData = useMemo(
+    () => [...(snapshots ?? [])]
+      .sort((a, b) => new Date(a.snapshot_date) - new Date(b.snapshot_date))
+      .map((s) => ({
+        date:           s.snapshot_date,
+        label:          new Date(s.snapshot_date).getFullYear(),
+        anwartschaft:   Number(s.drv_anwartschaft)   || 0,
+        hochgerechnete: Number(s.drv_hochgerechnete) || 0,
+        entgeltpunkte:  Number(s.drv_entgeltpunkte)  || 0,
+      })),
+    [snapshots],
+  );
+
+  async function handleSave(form) {
+    const payload = {
+      snapshot_date:      form.snapshot_date,
+      drv_anwartschaft:   form.drv_anwartschaft   === '' ? null : Number(form.drv_anwartschaft),
+      drv_hochgerechnete: form.drv_hochgerechnete === '' ? null : Number(form.drv_hochgerechnete),
+      drv_entgeltpunkte:  form.drv_entgeltpunkte  === '' ? null : Number(form.drv_entgeltpunkte),
+      // Pflichtfelder der policy_snapshots-Tabelle: contract_value default 0
+      contract_value:     0,
+      fund_allocation:    [],
+      note:               form.note ?? '',
+    };
+    if (form.id) {
+      await onUpdate(form.id, payload);
+    } else {
+      // user_id wird via DB-Trigger trg_set_user_id_policy_snapshots gesetzt
+      await onAdd({ ...payload, policy_id: policyId });
+    }
+    setEditing(null);
+  }
+
+  // Δ pro Eintrag ggü. Vor-Eintrag (Trend-Anzeige in der Liste)
+  const rows = sorted.map((s, i) => {
+    const next = sorted[i + 1]; // älterer Eintrag (zeitlich davor)
+    const prevHoch = next ? Number(next.drv_hochgerechnete) || 0 : null;
+    const currHoch = Number(s.drv_hochgerechnete) || 0;
+    const deltaHoch = prevHoch != null ? currHoch - prevHoch : null;
+    const prevEP = next ? Number(next.drv_entgeltpunkte) || 0 : null;
+    const currEP = Number(s.drv_entgeltpunkte) || 0;
+    const deltaEP = prevEP != null ? currEP - prevEP : null;
+    return { ...s, deltaHoch, deltaEP };
+  });
+
+  return (
+    <>
+      <Stack spacing={2}>
+        {/* Headline + Add-Button */}
+        <Stack direction="row" alignItems="center" justifyContent="space-between">
+          <Box>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, letterSpacing: '-0.01em' }}>
+              Rentenbescheide
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Jährlicher Verlauf von Anwartschaft, Hochrechnung und Entgeltpunkten
+            </Typography>
+          </Box>
+          <Button
+            size="small" variant="contained" startIcon={<AddIcon />}
+            onClick={() => setEditing({
+              snapshot_date:      new Date().toISOString().split('T')[0],
+              drv_anwartschaft:   '',
+              drv_hochgerechnete: '',
+              drv_entgeltpunkte:  '',
+              note:               '',
+            })}
+          >
+            Bescheid hinzufügen
+          </Button>
+        </Stack>
+
+        {/* Latest-Snapshot-Hero */}
+        {sorted.length > 0 && (() => {
+          const latest = sorted[0];
+          return (
+            <Paper variant="outlined" sx={{ borderRadius: '16px', p: 2.25, bgcolor: 'background.default' }}>
+              <Typography variant="overline" sx={{
+                color: 'text.secondary', display: 'block',
+                fontSize: '0.625rem', letterSpacing: '0.08em', mb: 1.25,
+              }}>
+                Aktueller Bescheid · {new Date(latest.snapshot_date).toLocaleDateString('de-DE')}
+              </Typography>
+              <Box sx={{
+                display: 'grid', gap: 2,
+                gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
+              }}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                    Anwartschaft (heute)
+                  </Typography>
+                  <Typography sx={{
+                    fontFamily: '"Manrope", sans-serif', fontWeight: 800,
+                    letterSpacing: '-0.01em', fontSize: '1.25rem',
+                  }}>
+                    {latest.drv_anwartschaft != null ? `${euro(latest.drv_anwartschaft)}/Mo` : '–'}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                    Hochgerechnete Rente
+                  </Typography>
+                  <Typography sx={{
+                    fontFamily: '"Manrope", sans-serif', fontWeight: 800,
+                    letterSpacing: '-0.01em', fontSize: '1.25rem',
+                    color: 'success.main',
+                  }}>
+                    {latest.drv_hochgerechnete != null ? `${euro(latest.drv_hochgerechnete)}/Mo` : '–'}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                    Entgeltpunkte
+                  </Typography>
+                  <Typography sx={{
+                    fontFamily: '"Manrope", sans-serif', fontWeight: 800,
+                    letterSpacing: '-0.01em', fontSize: '1.25rem',
+                  }}>
+                    {latest.drv_entgeltpunkte != null ? `${num(latest.drv_entgeltpunkte, 4)} EP` : '–'}
+                  </Typography>
+                </Box>
+              </Box>
+            </Paper>
+          );
+        })()}
+
+        {/* Chart: Hochgerechnete Rente + Anwartschaft über Jahre */}
+        {chartData.length >= 2 && (
+          <Paper variant="outlined" sx={{ borderRadius: '16px', p: 2 }}>
+            <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
+              <Typography variant="overline" sx={{
+                color: 'text.secondary', fontSize: '0.625rem', letterSpacing: '0.08em',
+              }}>
+                Verlauf
+              </Typography>
+              <Stack direction="row" spacing={1.5}>
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'success.main' }} />
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                    Hochgerechnet
+                  </Typography>
+                </Stack>
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'primary.main' }} />
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                    Anwartschaft
+                  </Typography>
+                </Stack>
+              </Stack>
+            </Stack>
+            <Box sx={{ height: 200 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} vertical={false} />
+                  <XAxis dataKey="label"
+                    tick={{ fill: theme.palette.text.secondary, fontSize: 11 }}
+                    axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: theme.palette.text.secondary, fontSize: 11 }}
+                    axisLine={false} tickLine={false}
+                    tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(1)}K` : `${v}`}
+                    width={50} />
+                  <Tooltip
+                    formatter={(v, k) => [`${euro(v)}/Mo`, k === 'hochgerechnete' ? 'Hochgerechnet' : 'Anwartschaft']}
+                    labelFormatter={(l) => `Jahr ${l}`}
+                    contentStyle={{
+                      background: theme.palette.background.paper,
+                      border: `1px solid ${theme.palette.divider}`,
+                      borderRadius: 8, fontSize: 12,
+                    }}
+                  />
+                  <Line type="monotone" dataKey="hochgerechnete"
+                    stroke={theme.palette.success.main} strokeWidth={2.5}
+                    dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                  <Line type="monotone" dataKey="anwartschaft"
+                    stroke={theme.palette.primary.main} strokeWidth={2}
+                    strokeDasharray="4 3"
+                    dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </Box>
+          </Paper>
+        )}
+
+        {/* Liste aller Bescheide */}
+        {sorted.length === 0 ? (
+          <Paper variant="outlined" sx={{ borderRadius: '16px', p: 4, textAlign: 'center' }}>
+            <Box component="span" className="material-symbols-outlined"
+              sx={{ fontSize: 48, color: 'accent.positiveSurface' }}>
+              receipt_long
+            </Box>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, mt: 1 }}>
+              Noch kein Rentenbescheid hinterlegt
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Trage deinen jüngsten Bescheid ein, damit die Prognose mit echten Werten rechnet.
+            </Typography>
+            <Button variant="contained" startIcon={<AddIcon />}
+              onClick={() => setEditing({
+                snapshot_date:      new Date().toISOString().split('T')[0],
+                drv_anwartschaft:   '',
+                drv_hochgerechnete: '',
+                drv_entgeltpunkte:  '',
+                note:               '',
+              })}>
+              Bescheid hinzufügen
+            </Button>
+          </Paper>
+        ) : (
+          <Stack spacing={1}>
+            {rows.map((s) => (
+              <Paper key={s.id} variant="outlined" sx={{
+                borderRadius: '12px', p: 1.75,
+                transition: 'box-shadow 0.15s',
+                '&:hover': {
+                  boxShadow: '0 4px 12px rgba(11,28,48,0.06)',
+                  '& .drv-actions': { opacity: 1 },
+                },
+              }}>
+                <Stack direction="row" alignItems="center" spacing={2}>
+                  <Box sx={{ minWidth: 90 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+                      {new Date(s.snapshot_date).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </Typography>
+                    {s.note && (
+                      <Typography variant="caption" color="text.secondary" sx={{
+                        fontStyle: 'italic', fontSize: '0.65rem',
+                        display: 'block', mt: 0.25,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {s.note}
+                      </Typography>
+                    )}
+                  </Box>
+                  <Box sx={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5 }}>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.6rem' }}>
+                        Anwartschaft
+                      </Typography>
+                      <Typography sx={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.85rem' }}>
+                        {s.drv_anwartschaft != null ? `${euro(s.drv_anwartschaft)}/Mo` : '–'}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.6rem' }}>
+                        Hochgerechnet
+                      </Typography>
+                      <Stack direction="row" alignItems="baseline" spacing={0.75}>
+                        <Typography sx={{
+                          fontFamily: 'monospace', fontWeight: 700, fontSize: '0.85rem',
+                          color: 'success.main',
+                        }}>
+                          {s.drv_hochgerechnete != null ? `${euro(s.drv_hochgerechnete)}/Mo` : '–'}
+                        </Typography>
+                        {s.deltaHoch != null && Math.abs(s.deltaHoch) > 0.01 && (
+                          <Typography sx={{
+                            fontSize: '0.62rem', fontWeight: 700,
+                            color: s.deltaHoch > 0 ? 'success.main' : 'error.main',
+                          }}>
+                            {s.deltaHoch > 0 ? '+' : '−'}{euro(Math.abs(s.deltaHoch))}
+                          </Typography>
+                        )}
+                      </Stack>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.6rem' }}>
+                        Entgeltpunkte
+                      </Typography>
+                      <Stack direction="row" alignItems="baseline" spacing={0.75}>
+                        <Typography sx={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.85rem' }}>
+                          {s.drv_entgeltpunkte != null ? `${num(s.drv_entgeltpunkte, 4)}` : '–'}
+                        </Typography>
+                        {s.deltaEP != null && Math.abs(s.deltaEP) > 0.0001 && (
+                          <Typography sx={{
+                            fontSize: '0.62rem', fontWeight: 700,
+                            color: s.deltaEP > 0 ? 'success.main' : 'error.main',
+                          }}>
+                            {s.deltaEP > 0 ? '+' : '−'}{num(Math.abs(s.deltaEP), 4)}
+                          </Typography>
+                        )}
+                      </Stack>
+                    </Box>
+                  </Box>
+                  <Box className="drv-actions" sx={{
+                    display: 'flex', opacity: { xs: 1, md: 0 }, transition: 'opacity 0.15s',
+                  }}>
+                    <IconButton size="small" onClick={() => setEditing({
+                      id:                 s.id,
+                      snapshot_date:      s.snapshot_date,
+                      drv_anwartschaft:   s.drv_anwartschaft   ?? '',
+                      drv_hochgerechnete: s.drv_hochgerechnete ?? '',
+                      drv_entgeltpunkte:  s.drv_entgeltpunkte  ?? '',
+                      note:               s.note ?? '',
+                    })}
+                      sx={{ color: 'text.disabled', '&:hover': { color: 'text.primary' } }}>
+                      <EditOutlinedIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => setConfirmDelete(s)}
+                      sx={{ color: 'text.disabled', '&:hover': { color: 'error.main' } }}>
+                      <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Box>
+                </Stack>
+              </Paper>
+            ))}
+          </Stack>
+        )}
+      </Stack>
+
+      {editing && (
+        <DRVSnapshotDialog initial={editing}
+          onSave={handleSave}
+          onClose={() => setEditing(null)} />
+      )}
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Rentenbescheid löschen?"
+        message={confirmDelete
+          ? `Eintrag vom ${new Date(confirmDelete.snapshot_date).toLocaleDateString('de-DE')} wird unwiderruflich gelöscht.`
+          : ''}
+        onConfirm={async () => {
+          await onDelete(confirmDelete.id);
+          setConfirmDelete(null);
+        }}
+        onCancel={() => setConfirmDelete(null)}
+      />
+    </>
+  );
+}
+
+function DRVSnapshotDialog({ initial, onSave, onClose }) {
+  const [form, setForm] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const [err,  setErr]  = useState('');
+
+  function set(field, value) { setForm((f) => ({ ...f, [field]: value })); }
+
+  async function submit(e) {
+    e.preventDefault();
+    if (!form.snapshot_date) { setErr('Datum fehlt.'); return; }
+    setBusy(true); setErr('');
+    try { await onSave(form); }
+    catch (ex) { setErr(ex.message); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <Dialog open onClose={onClose} maxWidth="sm" fullWidth component="form" onSubmit={submit}>
+      <DialogTitle sx={{ pr: 6 }}>
+        {form.id ? 'Bescheid bearbeiten' : 'Neuer Rentenbescheid'}
+        <IconButton onClick={onClose} aria-label="Schließen"
+          sx={{ position: 'absolute', right: 12, top: 12 }}>
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent dividers sx={{ pt: 2 }}>
+        <Stack spacing={2}>
+          <DateField label="Stichtag des Bescheids"
+            value={form.snapshot_date}
+            onChange={(v) => set('snapshot_date', v)} />
+          <CurrencyField
+            label="Bisher erreichte Anwartschaft / Monat"
+            value={form.drv_anwartschaft}
+            onChange={(v) => set('drv_anwartschaft', v === '' ? '' : v)}
+            fullWidth size="small" decimals={2}
+            helperText="Der bereits erarbeitete Bruttoanteil deiner künftigen Rente"
+          />
+          <CurrencyField
+            label="Hochgerechnete Rente / Monat"
+            value={form.drv_hochgerechnete}
+            onChange={(v) => set('drv_hochgerechnete', v === '' ? '' : v)}
+            fullWidth size="small" decimals={2}
+            helperText="Erwartete Bruttorente bei Renteneintritt laut Bescheid"
+          />
+          <CurrencyField
+            label="Aktuelle Entgeltpunkte"
+            value={form.drv_entgeltpunkte}
+            onChange={(v) => set('drv_entgeltpunkte', v === '' ? '' : v)}
+            fullWidth size="small" decimals={4}
+            adornment="EP"
+            helperText="z.B. 13,6234"
+          />
+          <TextField
+            label="Notiz (optional)"
+            value={form.note}
+            onChange={(e) => set('note', e.target.value)}
+            fullWidth size="small" multiline rows={2}
+          />
+          {err && <Alert severity="error">{err}</Alert>}
+        </Stack>
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button onClick={onClose} disabled={busy}>Abbrechen</Button>
+        <Button type="submit" variant="contained" disabled={busy}>
+          {busy ? '…' : form.id ? 'Speichern' : 'Hinzufügen'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
 function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, snapshots, onAddSnapshot, onUpdateSnapshot, onDeleteSnapshot }) {
   const t = useTokens(isDark);
   const { birthday } = useModules();
@@ -2578,9 +3035,9 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
 
       {/* Content */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {/* Sub-tabs nur für Versicherungen/bAV/DRV — beim Depot übernehmen
-            die Holdings (linke Sidebar) die Rolle des Snapshot-Trackings. */}
-        {(pol.type === 'insurance' || pol.type === 'bav' || pol.type === 'drv') && (
+        {/* Sub-tabs nur für Versicherungen/bAV — DRV nutzt das eigene
+            Bescheid-Panel, Depot die Holdings in der Sidebar. */}
+        {(pol.type === 'insurance' || pol.type === 'bav') && (
           <div style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${t.bdr}` }}>
             {[
               { id: 'detail',    label: 'Prognose & Details' },
@@ -2599,9 +3056,8 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
           </div>
         )}
 
-        {/* Snapshots tab — Versicherung/bAV/DRV: komplexer SnapshotPanel
-            mit Fondsverteilung + Kostenblöcken */}
-        {(pol.type === 'insurance' || pol.type === 'bav' || pol.type === 'drv') && activeSubTab === 'snapshots' && (
+        {/* Snapshots tab — Versicherung/bAV: SnapshotPanel mit Fondsverteilung */}
+        {(pol.type === 'insurance' || pol.type === 'bav') && activeSubTab === 'snapshots' && (
           <SnapshotPanel
             policyId={pol.id}
             snapshots={snapshots || []}
@@ -2609,6 +3065,18 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
             onUpdate={onUpdateSnapshot}
             onDelete={onDeleteSnapshot}
             isDark={isDark}
+          />
+        )}
+
+        {/* DRV: Eigenes Bescheids-Panel oben — Quelle der Wahrheit für
+            anwartschaft / hochgerechnete / entgeltpunkte */}
+        {pol.type === 'drv' && (
+          <DRVSnapshotPanel
+            policyId={pol.id}
+            snapshots={snapshots || []}
+            onAdd={onAddSnapshot}
+            onUpdate={onUpdateSnapshot}
+            onDelete={onDeleteSnapshot}
           />
         )}
 
@@ -2654,8 +3122,9 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
           <BavTaxSimulatorCard pol={pol} birthday={birthday} />
         )}
 
-        {/* GRV Steuer-Simulator (Kohortenregel + KVdR) */}
-        {pol.type === 'drv' && activeSubTab === 'detail' && r && (
+        {/* GRV Steuer-Simulator (Kohortenregel + KVdR) — DRV hat keine
+            Sub-Tabs mehr, daher unabhängig von activeSubTab */}
+        {pol.type === 'drv' && r && (
           <GrvTaxSimulatorCard pol={pol} />
         )}
 
