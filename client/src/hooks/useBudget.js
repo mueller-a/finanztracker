@@ -290,6 +290,8 @@ export function useBudget(month, year) {
       }));
 
     // ── Gehalt (from SalaryPage via localStorage) ─────────────────────────
+    // source_id muss null bleiben — die Spalte ist `uuid`, und Gehalt hat keine
+    // DB-Zeile zum Referenzieren. Dedup läuft über source + label.
     const salaryCandidates = [];
     const salaryData = readSalaryNetto();
     if (salaryData?.netto > 0) {
@@ -299,7 +301,7 @@ export function useBudget(month, year) {
         share_percent: 100,
         type:          'income',
         source:        'salary',
-        source_id:     'salary_netto',
+        source_id:     null,
         note:          'Aus Gehaltsrechner',
       });
     }
