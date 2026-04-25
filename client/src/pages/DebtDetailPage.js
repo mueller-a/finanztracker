@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Stack, Typography, Button, IconButton, Paper, ToggleButton, ToggleButtonGroup,
   CircularProgress, Alert, Chip, Table, TableHead, TableBody, MenuItem, Menu,
-  Dialog, DialogTitle, DialogContent,
+  Dialog, DialogTitle, DialogContent, Tabs, Tab,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { useTheme } from '@mui/material/styles';
@@ -56,20 +56,26 @@ function rangeStartIso(range, scheduleStart, scheduleEnd) {
 }
 
 // ─── Chart-Komponente ─────────────────────────────────────────────────────────
-function BalanceChart({ schedule, range }) {
+function BalanceChart({ debt, schedule, range }) {
   const theme = useTheme();
 
   const data = useMemo(() => {
     if (!schedule || schedule.length === 0) return [];
-    const start = rangeStartIso(range, schedule[0].date, schedule[schedule.length - 1].date);
-    return schedule
-      .filter((e) => e.date >= start)
-      .map((e) => ({
-        date: e.date,
-        label: fmtMonth(e.date),
-        balance: e.balance,
-      }));
-  }, [schedule, range]);
+    // Initial-Punkt am Kreditstart: Auszahlung der vollen Kreditsumme.
+    // Ohne diesen Punkt zeigt der Chart erst die erste Rate (Monat nach Start).
+    const initialPoint = {
+      date: debt.start_date,
+      label: fmtMonth(debt.start_date),
+      balance: Number(debt.total_amount),
+    };
+    const points = [initialPoint, ...schedule.map((e) => ({
+      date: e.date,
+      label: fmtMonth(e.date),
+      balance: e.balance,
+    }))];
+    const start = rangeStartIso(range, points[0].date, points[points.length - 1].date);
+    return points.filter((p) => p.date >= start);
+  }, [debt, schedule, range]);
 
   if (data.length === 0) {
     return (
@@ -124,13 +130,15 @@ function BalanceChart({ schedule, range }) {
 }
 
 // ─── Buchungen-Tabelle ────────────────────────────────────────────────────────
-function PaymentsTable({ payments, onEdit, onDelete }) {
+// Zeigt zusammengeführt: reguläre Tilgungsraten aus dem Schedule (vergangen,
+// nicht editierbar) + alle debt_payments (Sondertilgung / Abbuchung, editierbar).
+function BookingsTable({ rows, onEdit, onDelete }) {
   const theme = useTheme();
-  if (payments.length === 0) {
+  if (rows.length === 0) {
     return (
       <Paper variant="outlined" sx={{ borderRadius: '12px', p: 4, textAlign: 'center' }}>
         <Typography variant="body2" color="text.secondary">
-          Noch keine Buchungen erfasst.
+          Noch keine Buchungen für diesen Kredit.
         </Typography>
       </Paper>
     );
@@ -147,6 +155,12 @@ function PaymentsTable({ payments, onEdit, onDelete }) {
     }}>{children}</th>
   );
 
+  const typeMeta = {
+    schedule:    { label: 'Reguläre Rate', color: 'default' },
+    repayment:   { label: 'Sondertilgung', color: 'success' },
+    withdrawal:  { label: 'Abbuchung',     color: 'warning' },
+  };
+
   return (
     <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden' }}>
       <Box sx={{ overflowX: 'auto' }}>
@@ -161,47 +175,140 @@ function PaymentsTable({ payments, onEdit, onDelete }) {
             </tr>
           </TableHead>
           <TableBody>
-            {payments.map((p, i) => {
-              const isWithdrawal = p.type === 'withdrawal';
+            {rows.map((r, i) => {
+              const meta = typeMeta[r.kind];
+              const editable = r.kind !== 'schedule';
+              const isOutflow = r.kind === 'repayment' || r.kind === 'schedule';
+              const valueColor = r.kind === 'withdrawal' ? theme.palette.warning.main
+                              : r.kind === 'schedule'   ? theme.palette.text.primary
+                              :                            theme.palette.success.main;
               return (
-                <tr key={p.id} style={{
+                <tr key={r.key} style={{
                   borderTop: `1px solid ${theme.palette.divider}`,
                   background: i % 2 === 1 ? theme.palette.action.hover : 'transparent',
                 }}>
                   <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>
-                    {fmtDateLong(p.date)}
+                    {fmtDateLong(r.date)}
                   </td>
                   <td style={{ padding: '10px 14px' }}>
-                    <Chip
-                      label={isWithdrawal ? 'Abbuchung' : 'Tilgung / Sondertilgung'}
-                      size="small"
-                      color={isWithdrawal ? 'warning' : 'success'}
+                    <Chip label={meta.label} size="small" color={meta.color}
                       variant="outlined"
-                      sx={{ height: 22, fontSize: '0.65rem', fontWeight: 700 }}
-                    />
+                      sx={{ height: 22, fontSize: '0.65rem', fontWeight: 700 }} />
                   </td>
                   <td style={{
                     padding: '10px 14px', color: theme.palette.text.secondary,
                     fontSize: '0.85rem', maxWidth: 360,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
-                    {p.note || '—'}
+                    {r.note || '—'}
                   </td>
                   <td style={{
                     padding: '10px 14px', textAlign: 'right',
                     fontFamily: 'monospace', fontWeight: 700, fontSize: '0.95rem',
-                    color: isWithdrawal ? theme.palette.warning.main : theme.palette.success.main,
-                    whiteSpace: 'nowrap',
+                    color: valueColor, whiteSpace: 'nowrap',
                   }}>
-                    {isWithdrawal ? '−' : '+'} {fmt2(p.amount)} €
+                    {isOutflow ? '−' : '+'} {fmt2(r.amount)} €
                   </td>
                   <td style={{ padding: '6px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <IconButton size="small" onClick={() => onEdit(p)} title="Bearbeiten">
-                      <EditOutlinedIcon sx={{ fontSize: 16 }} />
-                    </IconButton>
-                    <IconButton size="small" color="error" onClick={() => onDelete(p)} title="Löschen">
-                      <DeleteOutlineIcon sx={{ fontSize: 16 }} />
-                    </IconButton>
+                    {editable ? (
+                      <>
+                        <IconButton size="small" onClick={() => onEdit(r.payment)} title="Bearbeiten">
+                          <EditOutlinedIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                        <IconButton size="small" color="error" onClick={() => onDelete(r.payment)} title="Löschen">
+                          <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </>
+                    ) : (
+                      <Typography variant="caption" color="text.disabled" sx={{ pr: 1 }}>auto</Typography>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </Box>
+    </Paper>
+  );
+}
+
+// ─── Tilgungsplan-Tabelle (alle Schedule-Einträge, Vergangenheit + Zukunft) ──
+function ScheduleTable({ schedule }) {
+  const theme = useTheme();
+  if (!schedule || schedule.length === 0) {
+    return (
+      <Paper variant="outlined" sx={{ borderRadius: '12px', p: 4, textAlign: 'center' }}>
+        <Typography variant="body2" color="text.secondary">
+          Kein Tilgungsplan verfügbar.
+        </Typography>
+      </Paper>
+    );
+  }
+
+  const TH = ({ children, align = 'left' }) => (
+    <th style={{
+      padding: '10px 14px', textAlign: align,
+      color: theme.palette.text.secondary,
+      fontSize: '0.65rem', fontWeight: 700,
+      textTransform: 'uppercase', letterSpacing: '0.08em',
+      background: theme.palette.action.hover,
+      whiteSpace: 'nowrap',
+      position: 'sticky', top: 0,
+    }}>{children}</th>
+  );
+
+  const todayKey = new Date().toISOString().slice(0, 7);
+
+  return (
+    <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden' }}>
+      <Box sx={{ overflow: 'auto', maxHeight: 480 }}>
+        <Table size="small" sx={{ borderCollapse: 'collapse' }}>
+          <TableHead>
+            <tr>
+              <TH>Monat</TH>
+              <TH align="right">Rate</TH>
+              <TH align="right">Zinsen</TH>
+              <TH align="right">Tilgung</TH>
+              <TH align="right">Sondertilgung</TH>
+              <TH align="right">Restschuld</TH>
+            </tr>
+          </TableHead>
+          <TableBody>
+            {schedule.map((e, i) => {
+              const isPast    = e.date <= new Date().toISOString().slice(0, 10);
+              const isCurrent = e.monthKey === todayKey || e.date.slice(0, 7) === todayKey;
+              const rate      = (Number(e.zinsen) || 0) + (Number(e.tilgung) || 0);
+              return (
+                <tr key={i} style={{
+                  borderTop: `1px solid ${theme.palette.divider}`,
+                  background: isCurrent
+                    ? (theme.palette.mode === 'dark' ? 'rgba(245,158,11,0.15)' : '#fef3c7')
+                    : (i % 2 === 1 ? theme.palette.action.hover : 'transparent'),
+                  opacity: isPast ? 1 : 0.85,
+                }}>
+                  <td style={{ padding: '8px 14px', whiteSpace: 'nowrap', fontSize: '0.85rem' }}>
+                    {fmtDateLong(e.date)}
+                  </td>
+                  <td style={{ padding: '8px 14px', textAlign: 'right', fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                    {fmt2(rate)} €
+                  </td>
+                  <td style={{ padding: '8px 14px', textAlign: 'right', fontFamily: 'monospace', fontSize: '0.85rem',
+                    color: theme.palette.error.main }}>
+                    {fmt2(e.zinsen)} €
+                  </td>
+                  <td style={{ padding: '8px 14px', textAlign: 'right', fontFamily: 'monospace', fontSize: '0.85rem',
+                    color: theme.palette.success.main }}>
+                    {fmt2(e.tilgung)} €
+                  </td>
+                  <td style={{ padding: '8px 14px', textAlign: 'right', fontFamily: 'monospace', fontSize: '0.85rem',
+                    color: e.extra > 0 ? theme.palette.success.main : theme.palette.text.disabled }}>
+                    {e.extra > 0 ? `${fmt2(e.extra)} €` : '–'}
+                  </td>
+                  <td style={{ padding: '8px 14px', textAlign: 'right', fontFamily: 'monospace', fontSize: '0.9rem',
+                    fontWeight: 700,
+                    color: e.balance === 0 ? theme.palette.success.main : theme.palette.text.primary }}>
+                    {e.balance === 0 ? '✓ Abbezahlt' : fmt2(e.balance)}
                   </td>
                 </tr>
               );
@@ -231,6 +338,7 @@ export default function DebtDetailPage() {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [editPayment,      setEditPayment]      = useState(null);
   const [editDebtOpen,     setEditDebtOpen]     = useState(false);
+  const [activeTab,        setActiveTab]        = useState('buchungen');
 
   const debt = useMemo(() => debts.find((d) => d.id === debtId), [debts, debtId]);
   const debtPayments = useMemo(
@@ -251,6 +359,47 @@ export default function DebtDetailPage() {
     if (isRevolving(debt)) return schedule[schedule.length - 1].balance;
     return getCurrentBalance(schedule, TODAY) ?? Number(debt.total_amount);
   }, [schedule, debt]);
+
+  // Buchungen: reguläre Tilgungs-Raten aus Schedule (nur vergangene) +
+  // alle debt_payments. Neueste oben.
+  const bookingRows = useMemo(() => {
+    if (!debt) return [];
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const rev = isRevolving(debt);
+    const rows = [];
+
+    // Reguläre Tilgungen nur für Annuitätskredite — Rahmenkredite haben keine
+    // fixe Monatsrate, dort sind alle Bewegungen explizit erfasst.
+    if (!rev) {
+      schedule.forEach((e) => {
+        if (e.date > todayIso) return;
+        const rate = (Number(e.zinsen) || 0) + (Number(e.tilgung) || 0);
+        if (rate <= 0) return;
+        rows.push({
+          key:    `s:${e.date}`,
+          kind:   'schedule',
+          date:   e.date,
+          amount: rate,
+          note:   `Zinsen ${fmt2(e.zinsen)} € · Tilgung ${fmt2(e.tilgung)} €`,
+          payment: null,
+        });
+      });
+    }
+
+    // Alle gespeicherten Buchungen (Sondertilgungen + Abbuchungen)
+    debtPayments.forEach((p) => {
+      rows.push({
+        key:    `p:${p.id}`,
+        kind:   p.type === 'withdrawal' ? 'withdrawal' : 'repayment',
+        date:   p.date,
+        amount: Number(p.amount),
+        note:   p.note ?? '',
+        payment: p,
+      });
+    });
+
+    return rows.sort((a, b) => b.date.localeCompare(a.date));
+  }, [debt, schedule, debtPayments]);
 
   if (loading) {
     return (
@@ -384,24 +533,29 @@ export default function DebtDetailPage() {
           </ToggleButtonGroup>
         </Stack>
 
-        <BalanceChart schedule={schedule} range={range} />
+        <BalanceChart debt={debt} schedule={schedule} range={range} />
       </Paper>
 
-      {/* Buchungen */}
+      {/* Tabs: Buchungen / Tilgungsplan */}
       <Box>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: '-0.01em' }}>
-            Buchungen
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {debtPayments.length} {debtPayments.length === 1 ? 'Eintrag' : 'Einträge'}
-          </Typography>
-        </Stack>
-        <PaymentsTable
-          payments={debtPayments}
-          onEdit={(p) => { setEditPayment(p); setPaymentModalOpen(true); }}
-          onDelete={(p) => setConfirmDeletePayment(p)}
-        />
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+          <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
+            <Tab value="buchungen" label={`Buchungen (${bookingRows.length})`} />
+            <Tab value="tilgungsplan" label={`Tilgungsplan${schedule.length > 0 ? ` (${schedule.length})` : ''}`} />
+          </Tabs>
+        </Box>
+
+        {activeTab === 'buchungen' && (
+          <BookingsTable
+            rows={bookingRows}
+            onEdit={(p) => { setEditPayment(p); setPaymentModalOpen(true); }}
+            onDelete={(p) => setConfirmDeletePayment(p)}
+          />
+        )}
+
+        {activeTab === 'tilgungsplan' && (
+          <ScheduleTable schedule={schedule} />
+        )}
       </Box>
 
       {/* Add/Edit Payment Modal */}
