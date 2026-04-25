@@ -348,11 +348,14 @@ function EmptyBanner({ onImport, onCopyPrev, onSelectiveImport, importing }) {
 // ─── Inline-editable cell ─────────────────────────────────────────────────────
 function EditCell({ value, field, itemId, onCommit, type = 'text', style, invalid }) {
   const theme = useTheme();
-  const [local,   setLocal]   = useState(value ?? '');
+  // safeValue normalisiert null/undefined → '' (sonst Endlosschleife unten,
+  // weil String(null) === 'null' niemals === String('') === '' wird).
+  const safeValue = value ?? '';
+  const [local,   setLocal]   = useState(safeValue);
   const [focused, setFocused] = useState(false);
   const timer = useRef(null);
 
-  if (!focused && String(value) !== String(local)) setLocal(value ?? '');
+  if (!focused && String(safeValue) !== String(local)) setLocal(safeValue);
 
   function handleChange(e) {
     const v = e.target.value;
