@@ -192,10 +192,49 @@ export function useETFPolicen() {
     }
   }, [fetchAll]);
 
+  // ── Holdings-Hash für History-Dedup ─────────────────────────────────────────
+  // Vergleich: nur Felder, die für den Wert relevant sind (id, shares, price).
+  // Reine Reihenfolge oder name-Änderungen lösen kein neues History-Event aus.
+  function holdingsHash(holdings) {
+    if (!Array.isArray(holdings) || holdings.length === 0) return '';
+    return holdings
+      .map((h) => `${h.id || h.isin || h.symbol || h.name}:${h.shares}:${h.avg_buy_price}`)
+      .sort()
+      .join('|');
+  }
+
+  async function maybeWriteHoldingsHistory(policyId, prevHoldings, newHoldings) {
+    if (holdingsHash(prevHoldings) === holdingsHash(newHoldings)) return;
+    const invested = (newHoldings ?? []).reduce(
+      (s, h) => s + (Number(h.shares) || 0) * (Number(h.avg_buy_price) || 0), 0,
+    );
+    try {
+      await supabase.from('holdings_history').insert({
+        policy_id:      policyId,
+        holdings:       newHoldings ?? [],
+        invested_value: Math.round(invested * 100) / 100,
+        market_value:   null,  // wird im Frontend nachträglich aus useQuotes gesetzt, optional
+      });
+    } catch {
+      // Best-effort — History-Fehler dürfen den Save-Flow nicht blocken
+    }
+  }
+
   // ── Save params (debounce target) ────────────────────────────────────────────
   const savePolicy = useCallback(async (id, params) => {
+    // Vor dem Save: prüfen, ob die Holdings sich geändert haben — nur dann
+    // einen History-Eintrag schreiben. Vergleich mit dem zuletzt gespeicherten
+    // Stand aus dem Local-State (vor optimistic update).
+    const prev = policies.find(p => p.id === id);
+    const prevHoldings = prev?.type === 'depot' ? prev?.params?.holdings : null;
+    const newHoldings  = prev?.type === 'depot' ? params?.holdings : null;
+
     await updatePolicy(id, { params });
-  }, [updatePolicy]);
+
+    if (prev?.type === 'depot') {
+      maybeWriteHoldingsHistory(id, prevHoldings, newHoldings);
+    }
+  }, [updatePolicy, policies]);
 
   // ── Delete policy ────────────────────────────────────────────────────────────
   const deletePolicy = useCallback(async (id) => {

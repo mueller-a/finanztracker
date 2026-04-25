@@ -19,6 +19,7 @@ import {
 import { useETFPolicen } from '../hooks/useETFPolicen';
 import { usePolicySnapshots } from '../hooks/usePolicySnapshots';
 import { useQuotes } from '../hooks/useQuotes';
+import { useHoldingsHistory } from '../hooks/useHoldingsHistory';
 import {
   calcPolicy, calcAVD, calcDepot, calcBAV, calcDRV,
   euro, num, fmtShort
@@ -2353,6 +2354,119 @@ function GrvTaxSimulatorCard({ pol }) {
 
 // ── Policy panel ──────────────────────────────────────────────────────────────
 
+// ─── Depot Holdings-History Panel ─────────────────────────────────────────────
+// Zeigt den realen Kapitalverlauf einer Depot-Police: bei jeder
+// Holdings-Änderung (= jedem Save mit unterschiedlicher Holdings-Hash) wird
+// eine Zeile in `holdings_history` geschrieben. Hier rendern wir:
+//   - eine Mini-Area-Chart von 'invested_value' über Zeit (eingezahltes Kapital)
+//   - eine Aktivitäts-Liste mit Datum + Δ ggü. Vor-Eintrag
+function DepotHistoryPanel({ policyId }) {
+  const theme = useTheme();
+  const { history, loading } = useHoldingsHistory(policyId);
+
+  if (loading || history.length === 0) return null;
+
+  // Δ-Berechnungen pro Eintrag
+  const rows = history.map((h, i) => {
+    const prev = history[i - 1];
+    const delta = prev ? Number(h.invested_value) - Number(prev.invested_value) : null;
+    return { ...h, delta };
+  }).reverse(); // neueste oben
+
+  // Chart-Daten
+  const chartData = history.map((h) => ({
+    label: new Date(h.snapshot_at).toLocaleDateString('de-DE', { month: 'short', year: '2-digit' }),
+    invested: Number(h.invested_value) || 0,
+  }));
+
+  return (
+    <Paper variant="outlined" sx={{ borderRadius: '16px', p: 2, mt: 1 }}>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
+        <Typography variant="overline" sx={{
+          color: 'text.secondary', fontWeight: 700, letterSpacing: '0.08em', fontSize: '0.65rem',
+        }}>
+          Verlauf eingezahltes Kapital
+        </Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+          {history.length} Änderung{history.length !== 1 ? 'en' : ''}
+        </Typography>
+      </Stack>
+
+      {/* Mini-Chart */}
+      {chartData.length >= 2 && (
+        <Box sx={{ height: 120, mb: 2 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id={`hist-${policyId}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%"  stopColor={theme.palette.primary.main} stopOpacity={0.35} />
+                  <stop offset="100%" stopColor={theme.palette.primary.main} stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} vertical={false} />
+              <XAxis dataKey="label" tick={{ fill: theme.palette.text.secondary, fontSize: 10 }}
+                axisLine={false} tickLine={false} minTickGap={20} />
+              <YAxis tick={{ fill: theme.palette.text.secondary, fontSize: 10 }}
+                axisLine={false} tickLine={false}
+                tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : v} width={50} />
+              <Tooltip
+                formatter={(v) => [`${euro(v)}`, 'Eingezahlt']}
+                contentStyle={{
+                  background: theme.palette.background.paper,
+                  border: `1px solid ${theme.palette.divider}`,
+                  borderRadius: 8, fontSize: 12,
+                }}
+              />
+              <Area type="monotone" dataKey="invested"
+                stroke={theme.palette.primary.main} strokeWidth={2}
+                fill={`url(#hist-${policyId})`} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </Box>
+      )}
+
+      {/* Aktivitäts-Liste */}
+      <Stack spacing={0.5}>
+        {rows.slice(0, 8).map((h) => (
+          <Stack key={h.id} direction="row" alignItems="center" spacing={1}
+            sx={{ py: 0.5, px: 1, borderRadius: 1, '&:hover': { bgcolor: 'action.hover' } }}>
+            <Typography variant="caption" sx={{
+              color: 'text.secondary', fontSize: '0.7rem', minWidth: 80,
+            }}>
+              {new Date(h.snapshot_at).toLocaleDateString('de-DE', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+              })}
+            </Typography>
+            <Typography variant="caption" sx={{ flex: 1, color: 'text.secondary', fontSize: '0.7rem' }}>
+              {(h.holdings || []).length} Position{(h.holdings || []).length !== 1 ? 'en' : ''}
+            </Typography>
+            <Typography sx={{
+              fontFamily: 'monospace', fontWeight: 700, fontSize: '0.78rem', minWidth: 100, textAlign: 'right',
+            }}>
+              {euro(Number(h.invested_value))}
+            </Typography>
+            {h.delta != null && Math.abs(h.delta) > 0.01 && (
+              <Typography sx={{
+                fontWeight: 700, fontSize: '0.7rem', minWidth: 70, textAlign: 'right',
+                color: h.delta > 0 ? 'success.main' : 'error.main',
+              }}>
+                {h.delta > 0 ? '+' : '−'}{euro(Math.abs(h.delta))}
+              </Typography>
+            )}
+          </Stack>
+        ))}
+        {rows.length > 8 && (
+          <Typography variant="caption" sx={{
+            color: 'text.disabled', textAlign: 'center', fontSize: '0.65rem', pt: 0.5,
+          }}>
+            … {rows.length - 8} weitere Einträge ausgeblendet
+          </Typography>
+        )}
+      </Stack>
+    </Paper>
+  );
+}
+
 function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, snapshots, onAddSnapshot, onUpdateSnapshot, onDeleteSnapshot }) {
   const t = useTokens(isDark);
   const { birthday } = useModules();
@@ -2543,6 +2657,11 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
         {/* GRV Steuer-Simulator (Kohortenregel + KVdR) */}
         {pol.type === 'drv' && activeSubTab === 'detail' && r && (
           <GrvTaxSimulatorCard pol={pol} />
+        )}
+
+        {/* Depot: Holdings-History — realer Kapitalverlauf bis heute */}
+        {pol.type === 'depot' && (
+          <DepotHistoryPanel policyId={pol.id} />
         )}
 
         {(pol.type === 'avd' || activeSubTab === 'detail') && <>
