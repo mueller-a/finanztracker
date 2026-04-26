@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Box, Stack, Typography, Button, IconButton, Paper, MenuItem,
   CircularProgress, Alert, LinearProgress, TextField,
@@ -53,6 +53,19 @@ function OrderDialog({ open, year, initial, onClose, onSave }) {
   const [note,            setNote]            = useState(initial?.note ?? '');
   const [busy,            setBusy]            = useState(false);
   const [err,             setErr]             = useState('');
+
+  // useState liest `initial` nur beim ersten Mount. Beim Wechsel von „Neu"
+  // auf „Bearbeiten" (oder zwischen verschiedenen Bestehenden) muss die
+  // Form daher manuell mit den neuen Werten gefüllt werden — bei jedem
+  // Öffnen des Dialogs.
+  useEffect(() => {
+    if (!open) return;
+    setProvider(initial?.provider ?? '');
+    setAllottedAmount(initial?.allotted_amount ?? '');
+    setUsedAmount(initial?.used_amount ?? '');
+    setNote(initial?.note ?? '');
+    setErr('');
+  }, [open, initial]);
 
   function reset() {
     setProvider(initial?.provider ?? '');
