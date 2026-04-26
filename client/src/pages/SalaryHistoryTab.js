@@ -18,7 +18,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { useSalaryHistory } from '../hooks/useSalaryHistory';
 import { useInflationData } from '../hooks/useInflationData';
 import { calcGehaltResult } from '../utils/salaryCalculations';
-import { enrichWithSteigerung, enrichWithInflation, buildEstimateNet } from '../utils/salaryHistoryCalc';
+import { enrichWithSteigerung, enrichWithInflation, enrichWithNetto, buildEstimateNet } from '../utils/salaryHistoryCalc';
 import { DEFAULT_FUTURE_INFLATION_PCT } from '../lib/inflationData';
 
 const fmt0 = (v) => v == null || isNaN(v) ? '–' : Math.round(v).toLocaleString('de-DE') + ' €';
@@ -110,6 +110,183 @@ function MobileSalaryCard({ row, isEditing, editDraft, setEditDraft, startEdit, 
   );
 }
 
+// ─── Reale Kaufkraftentwicklung — primäre Kennzahl-Sektion ───────────────────
+// Drei Vergleichsebenen für den letzten Jahresübergang:
+//   1) Brutto nominal vs. Inflation (bisheriger, teils irreführender Vergleich)
+//   2) Netto nominal — kalte-Progression-Effekt sichtbar
+//   3) Real Netto — tatsächliche Kaufkraftveränderung (Hauptkennzahl)
+function KaufkraftSection({ yoy }) {
+  const realPct = yoy.realNettoPct;
+  const realTone = Math.abs(realPct) <= 0.1
+    ? 'neutral'
+    : realPct > 0 ? 'positive' : 'negative';
+  const realColor = realTone === 'positive' ? 'success.main'
+                  : realTone === 'negative' ? 'error.main'
+                  : 'text.primary';
+
+  const fmtPctSigned = (v) => v == null || isNaN(v)
+    ? '–'
+    : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2).replace('.', ',') + ' %';
+  const fmtPpSigned = (v) => v == null || isNaN(v)
+    ? '–'
+    : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2).replace('.', ',') + ' Pp';
+
+  return (
+    <Card elevation={2} sx={{ borderRadius: 1, overflow: 'hidden' }}>
+      <Box sx={{
+        bgcolor: 'primary.dark', color: 'primary.contrastText',
+        p: { xs: 2.5, sm: 3 },
+        position: 'relative', overflow: 'hidden',
+        '&::before': {
+          content: '""', position: 'absolute', inset: 0,
+          background: (t) => `linear-gradient(135deg, ${t.palette.primary.dark} 0%, ${t.palette.primary.main} 100%)`,
+          opacity: 0.5, pointerEvents: 'none',
+        },
+      }}>
+        <Box sx={{ position: 'relative', zIndex: 1 }}>
+          <Stack direction="row" alignItems="baseline" justifyContent="space-between" sx={{ mb: 1 }}>
+            <Typography variant="overline" sx={{ color: 'primary.light', letterSpacing: '0.08em' }}>
+              Reale Kaufkraftentwicklung
+            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="caption" sx={{ color: 'primary.light' }}>
+                {yoy.fromYear} → {yoy.toYear}
+              </Typography>
+              {yoy.isProjection && (
+                <Chip label="Prognose" size="small" color="warning" variant="outlined"
+                  sx={{ height: 18, fontSize: '0.6rem', borderColor: 'warning.light' }} />
+              )}
+            </Stack>
+          </Stack>
+
+          {/* Hero: Δ Real Netto (Hauptkennzahl) */}
+          <Stack direction="row" alignItems="baseline" spacing={1.5} sx={{ mb: 0.5 }}>
+            <Typography sx={{
+              fontFamily: '"Manrope", sans-serif',
+              fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.05,
+              fontSize: { xs: '2.25rem', sm: '2.75rem' },
+              color: realTone === 'positive' ? 'accent.positiveSurface'
+                   : realTone === 'negative' ? 'error.light'
+                   : 'primary.contrastText',
+            }}>
+              {fmtPctSigned(realPct)}
+            </Typography>
+            <MuiTooltip
+              arrow
+              title={`Δ Real Netto = ((Netto[${yoy.toYear}] / Netto[${yoy.fromYear}]) / (1 + Inflation)) − 1. ` +
+                     'Diese Zahl ist die ökonomisch relevante Veränderung deiner Kaufkraft.'}
+            >
+              <Box component="span" className="material-symbols-outlined" sx={{
+                fontSize: 18, color: 'primary.light', cursor: 'help',
+              }}>
+                info
+              </Box>
+            </MuiTooltip>
+          </Stack>
+          <Typography variant="caption" sx={{ color: 'primary.light', display: 'block' }}>
+            {realTone === 'positive' ? 'Kaufkraftgewinn'
+             : realTone === 'negative' ? 'Kaufkraftverlust'
+             : 'Kaufkraft nahezu unverändert'}
+            {' · Netto nach Inflation'}
+          </Typography>
+        </Box>
+      </Box>
+
+      {/* Vergleichsebenen */}
+      <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+        <Box sx={{
+          display: 'grid', gap: 2,
+          gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
+        }}>
+          <KaufkraftLevel
+            label="Brutto nominal"
+            tag="Bruttosicht"
+            value={yoy.bruttoNominalPct}
+            sub={`vs. ${fmtPctSigned(yoy.inflationPct)} Inflation`}
+            color={
+              yoy.bruttoNominalPct > yoy.inflationPct
+                ? 'success.main' : 'error.main'
+            }
+          />
+          <KaufkraftLevel
+            label="Netto nominal"
+            tag="kalte Progression"
+            value={yoy.nettoNominalPct}
+            sub={yoy.kalteProgressionPp != null
+              ? `Δ Brutto − Δ Netto = ${fmtPpSigned(yoy.kalteProgressionPp)}`
+              : null}
+            color={
+              yoy.nettoNominalPct >= 0 ? 'text.primary' : 'error.main'
+            }
+            warn={yoy.kalteProgressionPp != null && yoy.kalteProgressionPp > 0}
+          />
+          <KaufkraftLevel
+            label="Real Netto"
+            tag="Kaufkraft (primär)"
+            value={realPct}
+            sub="nach Inflation"
+            color={realColor}
+            highlight
+          />
+        </Box>
+
+        <Alert severity="info" variant="outlined" sx={{ mt: 2, fontSize: '0.78rem' }}>
+          Die <strong>nominale Bruttosicht</strong> ignoriert die kalte Progression und progressive
+          Steuersätze. Die <strong>Netto-Sicht</strong> zeigt die effektive Steigerung deiner
+          Auszahlung. Erst die <strong>Real-Netto-Veränderung</strong> beziffert deine
+          tatsächliche Kaufkraft, weil sie zusätzlich um die Inflation bereinigt ist.
+        </Alert>
+      </CardContent>
+    </Card>
+  );
+}
+
+function KaufkraftLevel({ label, tag, value, sub, color, highlight, warn }) {
+  const fmtPctSigned = (v) => v == null || isNaN(v)
+    ? '–'
+    : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2).replace('.', ',') + ' %';
+  return (
+    <Box sx={{
+      borderRadius: '12px',
+      p: 1.75,
+      bgcolor: highlight ? 'accent.positiveSurface' : 'background.default',
+      border: 1, borderColor: highlight ? 'accent.positiveSurface' : 'divider',
+    }}>
+      <Stack direction="row" alignItems="baseline" justifyContent="space-between" sx={{ mb: 0.5 }}>
+        <Typography variant="caption" sx={{
+          color: highlight ? 'primary.dark' : 'text.secondary',
+          fontWeight: 700, letterSpacing: '0.06em', fontSize: '0.62rem',
+          textTransform: 'uppercase',
+        }}>
+          {label}
+        </Typography>
+        <Chip label={tag} size="small" variant="outlined"
+          sx={{
+            height: 18, fontSize: '0.6rem', fontWeight: 700,
+            color: warn ? 'warning.main' : 'text.secondary',
+            borderColor: warn ? 'warning.light' : 'divider',
+          }} />
+      </Stack>
+      <Typography sx={{
+        fontFamily: '"Manrope", sans-serif',
+        fontWeight: 800, letterSpacing: '-0.01em', lineHeight: 1.1,
+        fontSize: '1.4rem',
+        color: highlight ? 'primary.dark' : color,
+      }}>
+        {fmtPctSigned(value)}
+      </Typography>
+      {sub && (
+        <Typography variant="caption" sx={{
+          color: highlight ? 'primary.dark' : 'text.secondary',
+          display: 'block', fontSize: '0.7rem', mt: 0.25,
+        }}>
+          {sub}
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
 export default function SalaryHistoryTab({ baseParams }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -132,11 +309,34 @@ export default function SalaryHistoryTab({ baseParams }) {
     [baseParams],
   );
 
-  // Reihenfolge: erst Steigerung, dann Inflation/Real-Gehalt drüber.
+  // Reihenfolge: Brutto-Steigerung → Inflation/Real-Brutto → Netto-Schätzung
+  // mit jahresspezifischer Steuerkonfig + Δ Real-Netto (Kaufkraft).
   const enriched = useMemo(() => {
     const withSteig = enrichWithSteigerung(rows);
-    return enrichWithInflation(withSteig, vpi, futureInflPct);
-  }, [rows, vpi, futureInflPct]);
+    const withInfl  = enrichWithInflation(withSteig, vpi, futureInflPct);
+    return enrichWithNetto(withInfl, estimateNet);
+  }, [rows, vpi, futureInflPct, estimateNet]);
+
+  // Reale Kaufkraftentwicklung — letzter Jahresübergang als primäre Kennzahl.
+  const kaufkraftYoY = useMemo(() => {
+    // Suche das jüngste Paar [year_n-1 → year_n] mit vollständigen Werten
+    for (let i = enriched.length - 1; i > 0; i--) {
+      const r = enriched[i];
+      if (r.steigerungPct == null || r.nettoSteigerungPct == null
+          || r.realNettoSteigerungPct == null || r.inflationPct == null) continue;
+      return {
+        fromYear:        enriched[i - 1].year,
+        toYear:          r.year,
+        bruttoNominalPct: r.steigerungPct,
+        nettoNominalPct:  r.nettoSteigerungPct,
+        realNettoPct:     r.realNettoSteigerungPct,
+        inflationPct:     r.inflationPct,
+        kalteProgressionPp: r.kalteProgressionPp,
+        isProjection:     !!r.is_projection,
+      };
+    }
+    return null;
+  }, [enriched]);
 
   // Chart-Daten: Brutto/Jahr nominal vs. realer Kaufkraft (in Basisjahr-€).
   const chartData = useMemo(() => enriched.map((r) => ({
@@ -234,6 +434,9 @@ export default function SalaryHistoryTab({ baseParams }) {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <Stack spacing={2.5}>
+      {/* Reale Kaufkraftentwicklung — primäre Kennzahl */}
+      {kaufkraftYoY && <KaufkraftSection yoy={kaufkraftYoY} />}
+
       {/* Toolbar: Prognose-Konfiguration */}
       <Card elevation={2} sx={{ borderRadius: 1 }}>
         <CardContent>

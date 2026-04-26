@@ -83,24 +83,85 @@ export function enrichWithInflation(rows, vpi, futureInflPct = 2) {
   });
 }
 
-// Liefert eine reine Funktion (gross_p_a → netto_p_m).
+// Liefert eine reine Funktion (gross_p_a [, year]) → netto_p_m.
 // Wir tauschen `ghBrutto` im baseParams aus, da der existierende Rechner
-// eine Monats-Brutto erwartet. Annahme: Stellschrauben (Steuerklasse,
-// Bundesland, Vorsorge, Kirchensteuer, …) bleiben über die Jahre konstant
-// — eine gröbere, aber pragmatisch nützliche Schätzung.
+// eine Monats-Brutto erwartet. Optional kann ein `year`-Override mitgegeben
+// werden — calcGehaltResult lädt dann via getTaxConfig(year, …) die jahres-
+// spezifischen Tarifeckwerte, BBGen und SV-Sätze. Stellschrauben (Steuer-
+// klasse, Bundesland, Vorsorge, Kirchensteuer, …) bleiben über die Jahre
+// konstant — pragmatische Schätzung für Real-Kaufkraft-Vergleiche.
 export function buildEstimateNet(baseParams, calcGehaltResult) {
   if (!baseParams || typeof calcGehaltResult !== 'function') {
     return () => null;
   }
-  return function estimateNet(annualGross) {
+  return function estimateNet(annualGross, year) {
     if (!annualGross || annualGross <= 0) return null;
     try {
       const monthlyGross = annualGross / 12;
-      const params = { ...baseParams, ghBrutto: monthlyGross };
+      const params = {
+        ...baseParams,
+        ghBrutto: monthlyGross,
+        ...(year != null ? { ghYear: Number(year) } : {}),
+      };
       const r = calcGehaltResult(params, params.ghPkvBeitrag || 0, 0);
       return r?.netto ?? null;
     } catch {
       return null;
     }
   };
+}
+
+// Reichert die Tabellen-Zeilen um Netto-Steigerungen + Kaufkraft-Veränderung an:
+//   nettoMonthlyComputed — pro Jahr neu berechnetes Netto (mit jahresspezifischer
+//                          getTaxConfig: Tarif, BBGen, Soli, Soli-Freigrenze, SV-Sätze).
+//   nettoSteigerungPct  — Δ Netto nominal vs. Vorjahr (%)
+//   realNettoSteigerungPct — Δ Real-Netto = ((Netto[t]/Netto[t-1])/(1+infl[t]))-1
+//   kalteProgressionPp  — kalte-Progression-Effekt = Δ Brutto% − Δ Netto%
+//
+// `estimateNet` muss eine Funktion (annualGross, year) → monthlyNetto sein,
+// idealerweise via `buildEstimateNet`. Existiert bereits ein manuell
+// gepflegtes net_monthly in der Zeile, wird das dem Schätzwert vorgezogen.
+export function enrichWithNetto(rows, estimateNet) {
+  if (!Array.isArray(rows) || rows.length === 0 || typeof estimateNet !== 'function') {
+    return rows;
+  }
+  const sorted = [...rows].sort((a, b) => a.year - b.year);
+  return sorted.map((r, i) => {
+    // Netto-Monatswert pro Jahr: bevorzugt manuell gepflegt, sonst per estimate
+    // mit jahresspezifischer Config.
+    const computed = estimateNet(Number(r.annual_gross), r.year);
+    const nettoMonthly = (r.net_monthly != null ? Number(r.net_monthly) : null) ?? computed;
+
+    // Vorjahres-Netto (gleiche Logik)
+    const prev = i > 0 ? sorted[i - 1] : null;
+    const prevComputed = prev ? estimateNet(Number(prev.annual_gross), prev.year) : null;
+    const prevNetto = prev
+      ? (prev.net_monthly != null ? Number(prev.net_monthly) : null) ?? prevComputed
+      : null;
+
+    // Δ Netto nominal
+    const nettoSteigerungPct = (prevNetto != null && prevNetto > 0 && nettoMonthly != null)
+      ? ((nettoMonthly - prevNetto) / prevNetto) * 100
+      : null;
+
+    // Δ Real Netto (Kaufkraft) ggü. Vorjahr
+    const inflFactor = r.inflationPct != null ? 1 + r.inflationPct / 100 : null;
+    const realNettoSteigerungPct = (nettoSteigerungPct != null && inflFactor != null && inflFactor > 0)
+      ? ((1 + nettoSteigerungPct / 100) / inflFactor - 1) * 100
+      : null;
+
+    // Kalte Progression in Prozentpunkten = Δ Brutto% − Δ Netto%
+    const kalteProgressionPp = (r.steigerungPct != null && nettoSteigerungPct != null)
+      ? r.steigerungPct - nettoSteigerungPct
+      : null;
+
+    return {
+      ...r,
+      nettoMonthlyComputed: computed,
+      nettoMonthlyEffective: nettoMonthly,
+      nettoSteigerungPct,
+      realNettoSteigerungPct,
+      kalteProgressionPp,
+    };
+  });
 }
