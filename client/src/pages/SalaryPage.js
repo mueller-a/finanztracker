@@ -22,6 +22,7 @@ import { useModules, calculateAge } from '../context/ModuleContext';
 import { fetchBmfTaxValidation } from '../lib/bmfValidator';
 import { PageHeader, SectionCard, CurrencyField } from '../components/mui';
 import SalaryHistoryTab from './SalaryHistoryTab';
+import SalaryForecastTab from './SalaryForecastTab';
 
 // ─── Lohnsteuer Tooltip Body ──────────────────────────────────────────────────
 function LohnsteuerTooltipContent({ result, gh }) {
@@ -370,9 +371,14 @@ export default function SalaryPage() {
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2.5 }}>
         <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
           <Tab value="current" label="Aktueller Rechner" />
-          <Tab value="history" label="Gehaltshistorie & Prognose" />
+          <Tab value="forecast" label="Forecast & Kaufkraft" />
+          <Tab value="history" label="Gehaltshistorie" />
         </Tabs>
       </Box>
+
+      {activeTab === 'forecast' && (
+        <SalaryForecastTab baseParams={gh} />
+      )}
 
       {activeTab === 'history' && (
         <SalaryHistoryTab baseParams={gh} />
