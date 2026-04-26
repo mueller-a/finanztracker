@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box, Stack, Typography, Button, IconButton, TextField, MenuItem,
   Tabs, Tab, Dialog, DialogTitle, DialogContent, Alert, CircularProgress,
@@ -37,7 +38,7 @@ const COLOR_PALETTE = [
   '#45464d',  // on_surface_variant
 ];
 
-const KATEGORIEN = [
+export const KATEGORIEN = [
   { value: 'rücklagen',           label: 'Rücklagen',          icon: 'savings' },
   { value: 'tagesgeld',           label: 'Tagesgeldkonto',     icon: 'account_balance' },
   { value: 'anleihen',            label: 'Anleihen / Bonds',   icon: 'description' },
@@ -75,7 +76,7 @@ function getEtfProjectedValue(policy) {
 }
 
 // ─── Calc helpers ─────────────────────────────────────────────────────────────
-function activeEntries(goalId, entries) {
+export function activeEntries(goalId, entries) {
   const forGoal = entries.filter((e) => e.goal_id === goalId);
   const neustarts = forGoal.filter((e) => e.type === 'neustart').sort((a, b) => new Date(b.date) - new Date(a.date));
   if (neustarts.length === 0) return forGoal;
@@ -102,7 +103,7 @@ function monthlyIst(goalId, entries, year, month) {
     .reduce((sum, e) => sum + (e.type === 'einzahlung' ? Number(e.amount) : -Number(e.amount)), 0);
 }
 
-function effectiveBalance(goal, entries, etfPolicies) {
+export function effectiveBalance(goal, entries, etfPolicies) {
   if (goal.etf_id) {
     const policy = etfPolicies.find((p) => p.id === goal.etf_id);
     return getEtfProjectedValue(policy);
@@ -304,7 +305,7 @@ function TotalWidget({ goals, entries, etfPolicies }) {
 }
 
 // ─── Goal Card ────────────────────────────────────────────────────────────────
-function GoalCard({ goal, entries, etfPolicies, onAddEntry, onEdit, onDelete, view = 'grid' }) {
+function GoalCard({ goal, entries, etfPolicies, onAddEntry, onEdit, onDelete, onOpenDetails, view = 'grid' }) {
   const theme = useTheme();
   const balance      = effectiveBalance(goal, entries, etfPolicies);
   const hasTarget    = goal.target_amount != null;
@@ -330,9 +331,11 @@ function GoalCard({ goal, entries, etfPolicies, onAddEntry, onEdit, onDelete, vi
     return (
       <Paper
         variant="outlined"
+        onClick={onOpenDetails ? () => onOpenDetails(goal) : undefined}
         sx={{
           borderRadius: '16px', p: { xs: 2, sm: 2.5 },
           borderColor: isAnleihe && maturityAlert ? `${maturityColor}55` : 'divider',
+          cursor: onOpenDetails ? 'pointer' : 'default',
           transition: 'box-shadow 0.15s',
           '&:hover': {
             boxShadow: '0 6px 20px rgba(11,28,48,0.06)',
@@ -373,8 +376,9 @@ function GoalCard({ goal, entries, etfPolicies, onAddEntry, onEdit, onDelete, vi
               </Box>
             </Stack>
 
-            {/* Aktionen unter dem Header */}
-            <Stack direction="row" spacing={0.5} alignItems="center">
+            {/* Aktionen unter dem Header — Klicks stoppen Propagation */}
+            <Stack direction="row" spacing={0.5} alignItems="center"
+              onClick={(e) => e.stopPropagation()}>
               <Button
                 size="small"
                 variant="contained"
@@ -489,6 +493,7 @@ function GoalCard({ goal, entries, etfPolicies, onAddEntry, onEdit, onDelete, vi
   return (
     <Paper
       variant="outlined"
+      onClick={onOpenDetails ? () => onOpenDetails(goal) : undefined}
       sx={{
         borderRadius: '16px',
         p: 2.25,
@@ -496,8 +501,12 @@ function GoalCard({ goal, entries, etfPolicies, onAddEntry, onEdit, onDelete, vi
         flexDirection: 'column',
         gap: 1.5,
         borderColor: isAnleihe && maturityAlert ? `${maturityColor}55` : 'divider',
-        transition: 'border-color 0.15s',
-        '&:hover .goalcard-actions': { opacity: 1 },
+        cursor: onOpenDetails ? 'pointer' : 'default',
+        transition: 'border-color 0.15s, box-shadow 0.15s',
+        '&:hover': {
+          boxShadow: '0 6px 20px rgba(11,28,48,0.06)',
+          '& .goalcard-actions': { opacity: 1 },
+        },
       }}
     >
       {/* Header: Icon + Name/Ziel + Betrag (rechtsbündig) + Aktionen (hover) */}
@@ -589,7 +598,8 @@ function GoalCard({ goal, entries, etfPolicies, onAddEntry, onEdit, onDelete, vi
       ) : null}
 
       {/* Actions: Einzahlung/Entnahme + Edit/Delete (dezent unten) */}
-      <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mt: 'auto', pt: 0.5 }}>
+      <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mt: 'auto', pt: 0.5 }}
+        onClick={(e) => e.stopPropagation()}>
         <Button
           size="small"
           variant="text"
@@ -756,7 +766,7 @@ function CompactGoalCard({ goal, entries, etfPolicies, onEdit, onDelete }) {
 }
 
 // ─── Goal Form ────────────────────────────────────────────────────────────────
-function GoalForm({ initial, onSave, onCancel, etfPolicies }) {
+export function GoalForm({ initial, onSave, onCancel, etfPolicies }) {
   const [name,              setName]              = useState(initial?.name              ?? '');
   const [kat,               setKat]               = useState(initial?.kategorie         ?? 'rücklagen');
   const [target,            setTarget]            = useState(initial?.target_amount     ?? '');
@@ -933,7 +943,7 @@ function GoalForm({ initial, onSave, onCancel, etfPolicies }) {
 }
 
 // ─── Entry Modal ──────────────────────────────────────────────────────────────
-function EntryModal({ goals, preselectedGoal, onSave, onClose }) {
+export function EntryModal({ goals, preselectedGoal, onSave, onClose }) {
   const TODAY_ISO = new Date().toISOString().split('T')[0];
   const [goalId, setGoalId] = useState(preselectedGoal?.id ?? goals[0]?.id ?? '');
   const [date,   setDate]   = useState(TODAY_ISO);
@@ -1448,6 +1458,7 @@ function TransactionHistory({ goals, entries, onDelete }) {
 
 // ─── GuthabenPage ─────────────────────────────────────────────────────────────
 export default function GuthabenPage() {
+  const navigate = useNavigate();
   const { goals, entries, loading, error, addGoal, updateGoal, deleteGoal, addEntry, deleteEntry } = useSavings();
   const { policies: etfPolicies } = useETFPolicen();
 
@@ -1675,6 +1686,7 @@ export default function GuthabenPage() {
                           onAddEntry={(goal) => setEntryModal(goal)}
                           onEdit={onEdit}
                           onDelete={onDelete}
+                          onOpenDetails={(goal) => navigate(`/guthaben/asset/${goal.id}`)}
                         />
                       ))}
                     </Box>

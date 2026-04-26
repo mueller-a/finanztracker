@@ -18,6 +18,7 @@ import OverviewPage          from './pages/OverviewPage';
 import InsurancesPage        from './pages/InsurancesPage';
 import StromPage             from './pages/StromPage';
 import GuthabenPage          from './pages/GuthabenPage';
+import AssetDetailPage       from './pages/AssetDetailPage';
 import FreistellungsauftraegePage from './pages/FreistellungsauftraegePage';
 import VerbindlichkeitenPage from './pages/VerbindlichkeitenPage';
 import DebtDetailPage from './pages/DebtDetailPage';
@@ -91,6 +92,7 @@ function AppRoutes({ isDark, onToggleDark }) {
           <Route path="/verbindlichkeiten/:debtId"    element={<ProtectedRoute moduleKey="debts"><DebtDetailPage /></ProtectedRoute>} />
           <Route path="/immobilien"         element={<ProtectedRoute moduleKey="real_estate"><RealEstatePage /></ProtectedRoute>} />
           <Route path="/guthaben"           element={<ProtectedRoute moduleKey="savings"><GuthabenPage /></ProtectedRoute>} />
+          <Route path="/guthaben/asset/:goalId" element={<ProtectedRoute moduleKey="savings"><AssetDetailPage /></ProtectedRoute>} />
           <Route path="/settings"           element={<SettingsPage />} />
           <Route path="/admin/modules"      element={<AdminModulesPage />} />
           {/* Catch-all → back to overview */}
