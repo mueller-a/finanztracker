@@ -1,25 +1,35 @@
-import { useMemo, useState, useCallback } from 'react';
+// Reine Gehaltshistorie — was bis heute verdient wurde.
+//
+// Realkaufkraft-Vergleich, Inflations-Anreicherung und Prognose-Funktionen
+// sind in den Tab „Forecast & Kaufkraft" gewandert. Hier bleibt nur:
+//   - Tabelle der vergangenen Jahre (Brutto, Δ-Steigerung, Netto)
+//   - Neuen Eintrag hinzufügen / bearbeiten / löschen
+//   - Schlanke Brutto-Verlaufs-Grafik
+//
+// Projekt-Datensätze (is_projection = true) werden hier nicht mehr
+// angezeigt; sie bleiben in der DB unberührt, damit andere Module
+// (Forecast-Tab) sie weiterhin nutzen könnten.
+
+import { useMemo, useState } from 'react';
 import {
   Box, Stack, Typography, Card, CardContent, Table, TableHead, TableBody,
   TableRow, TableCell, IconButton, TextField, Button, InputAdornment,
-  CircularProgress, Alert, Skeleton, Chip, Tooltip as MuiTooltip,
-  Paper, Divider, useMediaQuery,
+  CircularProgress, Alert, Chip, Paper, useMediaQuery,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import {
-  ResponsiveContainer, LineChart, Line, BarChart, Bar, Cell, ReferenceLine,
-  XAxis, YAxis, CartesianGrid, Tooltip as RechartTooltip, Legend,
+  ResponsiveContainer, LineChart, Line,
+  XAxis, YAxis, CartesianGrid, Tooltip as RechartTooltip,
 } from 'recharts';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+
 import { useSalaryHistory } from '../hooks/useSalaryHistory';
-import { useInflationData } from '../hooks/useInflationData';
 import { calcGehaltResult } from '../utils/salaryCalculations';
-import { enrichWithSteigerung, enrichWithInflation, enrichWithNetto, buildEstimateNet } from '../utils/salaryHistoryCalc';
-import { DEFAULT_FUTURE_INFLATION_PCT } from '../lib/inflationData';
+import { enrichWithSteigerung, buildEstimateNet } from '../utils/salaryHistoryCalc';
 
 const fmt0 = (v) => v == null || isNaN(v) ? '–' : Math.round(v).toLocaleString('de-DE') + ' €';
 const fmt2 = (v) => v == null || isNaN(v) ? '–' : Number(v).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
@@ -27,339 +37,41 @@ const fmtPct = (v) => v == null || isNaN(v) ? '–' : (v >= 0 ? '+' : '') + v.to
 
 const CURRENT_YEAR = new Date().getFullYear();
 
-// ─── Mobile Salary Card ──────────────────────────────────────────────────────
-function MobileSalaryCard({ row, isEditing, editDraft, setEditDraft, startEdit, cancelEdit, saveEdit, handleDelete, busy, estimateNet }) {
-  const theme = useTheme();
-  const isProj = !!row.is_projection;
-
-  if (isEditing) {
-    return (
-      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1, bgcolor: 'action.hover' }}>
-        <Stack spacing={1.5}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Typography variant="body2" sx={{ fontWeight: 700, fontFamily: 'monospace' }}>{row.year}</Typography>
-            <Stack direction="row" spacing={0.5}>
-              <IconButton size="small" color="success" onClick={() => saveEdit(row.year)} disabled={busy}><CheckIcon fontSize="small" /></IconButton>
-              <IconButton size="small" onClick={cancelEdit} disabled={busy}><CloseIcon fontSize="small" /></IconButton>
-            </Stack>
-          </Stack>
-          <TextField size="small" fullWidth type="number" label="Jahresgehalt (Brutto)"
-            value={editDraft.annual_gross}
-            onChange={(e) => setEditDraft((d) => ({ ...d, annual_gross: e.target.value }))}
-            inputProps={{ inputMode: 'decimal' }}
-            InputProps={{ endAdornment: <InputAdornment position="end">€</InputAdornment> }}
-          />
-          <TextField size="small" fullWidth type="number" label="Netto / Monat"
-            placeholder={(() => { const e = estimateNet(parseFloat(editDraft.annual_gross)); return e ? `~${Math.round(e)}` : 'auto'; })()}
-            value={editDraft.net_monthly ?? ''}
-            onChange={(e) => setEditDraft((d) => ({ ...d, net_monthly: e.target.value }))}
-            inputProps={{ inputMode: 'decimal' }}
-            InputProps={{ endAdornment: <InputAdornment position="end">€</InputAdornment> }}
-          />
-        </Stack>
-      </Paper>
-    );
-  }
-
-  return (
-    <Paper variant="outlined" sx={{
-      p: 1.5, borderRadius: 1,
-      ...(isProj ? { borderLeft: `3px solid ${theme.palette.warning.main}`, fontStyle: 'italic' } : {}),
-    }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.75 }}>
-        <Stack direction="row" alignItems="center" spacing={1}>
-          <Typography variant="body2" sx={{ fontWeight: 700, fontFamily: 'monospace' }}>{row.year}</Typography>
-          {isProj && <Chip label="Prognose" size="small" color="warning" variant="outlined" sx={{ height: 18, fontSize: '0.6rem' }} />}
-        </Stack>
-        <Stack direction="row" spacing={0.5}>
-          <IconButton size="small" onClick={() => startEdit(row)}><EditOutlinedIcon fontSize="small" /></IconButton>
-          <IconButton size="small" color="error" onClick={() => handleDelete(row.year)} disabled={busy}><DeleteOutlineIcon fontSize="small" /></IconButton>
-        </Stack>
-      </Stack>
-      <Stack direction="row" spacing={2} sx={{ mb: 0.5 }}>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="caption" color="text.secondary">Brutto/Jahr</Typography>
-          <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{fmt0(row.annual_gross)}</Typography>
-        </Box>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="caption" color="text.secondary">Netto/Monat</Typography>
-          <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>{row.net_monthly != null ? fmt2(row.net_monthly) : '–'}</Typography>
-        </Box>
-      </Stack>
-      <Stack direction="row" spacing={2}>
-        <Box>
-          <Typography variant="caption" color="text.secondary">Steigerung</Typography>
-          <Typography variant="caption" sx={{
-            display: 'block', fontFamily: 'monospace', fontWeight: 600,
-            color: row.steigerungPct == null ? 'text.disabled' : row.steigerungPct >= 0 ? 'success.main' : 'error.main',
-          }}>{fmtPct(row.steigerungPct)}</Typography>
-        </Box>
-        <Box>
-          <Typography variant="caption" color="text.secondary">Inflation</Typography>
-          <Typography variant="caption" sx={{ display: 'block', fontFamily: 'monospace', color: 'warning.main' }}>{fmtPct(row.inflationPct)}</Typography>
-        </Box>
-        <Box>
-          <Typography variant="caption" color="text.secondary">Real-Gehalt</Typography>
-          <Typography variant="caption" sx={{
-            display: 'block', fontFamily: 'monospace',
-            color: row.realPctVsBase >= 0 ? 'success.main' : 'error.main',
-          }}>{row.realGross != null ? fmt0(row.realGross) : '–'}</Typography>
-        </Box>
-      </Stack>
-    </Paper>
-  );
-}
-
-// ─── Reale Kaufkraftentwicklung — primäre Kennzahl-Sektion ───────────────────
-// Drei Vergleichsebenen für den letzten Jahresübergang:
-//   1) Brutto nominal vs. Inflation (bisheriger, teils irreführender Vergleich)
-//   2) Netto nominal — kalte-Progression-Effekt sichtbar
-//   3) Real Netto — tatsächliche Kaufkraftveränderung (Hauptkennzahl)
-function KaufkraftSection({ yoy }) {
-  const realPct = yoy.realNettoPct;
-  const realTone = Math.abs(realPct) <= 0.1
-    ? 'neutral'
-    : realPct > 0 ? 'positive' : 'negative';
-  const realColor = realTone === 'positive' ? 'success.main'
-                  : realTone === 'negative' ? 'error.main'
-                  : 'text.primary';
-
-  const fmtPctSigned = (v) => v == null || isNaN(v)
-    ? '–'
-    : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2).replace('.', ',') + ' %';
-  const fmtPpSigned = (v) => v == null || isNaN(v)
-    ? '–'
-    : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2).replace('.', ',') + ' Pp';
-
-  return (
-    <Card elevation={2} sx={{ borderRadius: 1, overflow: 'hidden' }}>
-      <Box sx={{
-        bgcolor: 'primary.dark', color: 'primary.contrastText',
-        p: { xs: 2.5, sm: 3 },
-        position: 'relative', overflow: 'hidden',
-        '&::before': {
-          content: '""', position: 'absolute', inset: 0,
-          background: (t) => `linear-gradient(135deg, ${t.palette.primary.dark} 0%, ${t.palette.primary.main} 100%)`,
-          opacity: 0.5, pointerEvents: 'none',
-        },
-      }}>
-        <Box sx={{ position: 'relative', zIndex: 1 }}>
-          <Stack direction="row" alignItems="baseline" justifyContent="space-between" sx={{ mb: 1 }}>
-            <Typography variant="overline" sx={{ color: 'primary.light', letterSpacing: '0.08em' }}>
-              Reale Kaufkraftentwicklung
-            </Typography>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Typography variant="caption" sx={{ color: 'primary.light' }}>
-                {yoy.fromYear} → {yoy.toYear}
-              </Typography>
-              {yoy.isProjection && (
-                <Chip label="Prognose" size="small" color="warning" variant="outlined"
-                  sx={{ height: 18, fontSize: '0.6rem', borderColor: 'warning.light' }} />
-              )}
-            </Stack>
-          </Stack>
-
-          {/* Hero: Δ Real Netto (Hauptkennzahl) */}
-          <Stack direction="row" alignItems="baseline" spacing={1.5} sx={{ mb: 0.5 }}>
-            <Typography sx={{
-              fontFamily: '"Manrope", sans-serif',
-              fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.05,
-              fontSize: { xs: '2.25rem', sm: '2.75rem' },
-              color: realTone === 'positive' ? 'accent.positiveSurface'
-                   : realTone === 'negative' ? 'error.light'
-                   : 'primary.contrastText',
-            }}>
-              {fmtPctSigned(realPct)}
-            </Typography>
-            <MuiTooltip
-              arrow
-              title={`Δ Real Netto = ((Netto[${yoy.toYear}] / Netto[${yoy.fromYear}]) / (1 + Inflation)) − 1. ` +
-                     'Diese Zahl ist die ökonomisch relevante Veränderung deiner Kaufkraft.'}
-            >
-              <Box component="span" className="material-symbols-outlined" sx={{
-                fontSize: 18, color: 'primary.light', cursor: 'help',
-              }}>
-                info
-              </Box>
-            </MuiTooltip>
-          </Stack>
-          <Typography variant="caption" sx={{ color: 'primary.light', display: 'block' }}>
-            {realTone === 'positive' ? 'Kaufkraftgewinn'
-             : realTone === 'negative' ? 'Kaufkraftverlust'
-             : 'Kaufkraft nahezu unverändert'}
-            {' · Netto nach Inflation'}
-          </Typography>
-        </Box>
-      </Box>
-
-      {/* Vergleichsebenen */}
-      <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
-        <Box sx={{
-          display: 'grid', gap: 2,
-          gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
-        }}>
-          <KaufkraftLevel
-            label="Brutto nominal"
-            tag="Bruttosicht"
-            value={yoy.bruttoNominalPct}
-            sub={`vs. ${fmtPctSigned(yoy.inflationPct)} Inflation`}
-            color={
-              yoy.bruttoNominalPct > yoy.inflationPct
-                ? 'success.main' : 'error.main'
-            }
-          />
-          <KaufkraftLevel
-            label="Netto nominal"
-            tag="kalte Progression"
-            value={yoy.nettoNominalPct}
-            sub={yoy.kalteProgressionPp != null
-              ? `Δ Brutto − Δ Netto = ${fmtPpSigned(yoy.kalteProgressionPp)}`
-              : null}
-            color={
-              yoy.nettoNominalPct >= 0 ? 'text.primary' : 'error.main'
-            }
-            warn={yoy.kalteProgressionPp != null && yoy.kalteProgressionPp > 0}
-          />
-          <KaufkraftLevel
-            label="Real Netto"
-            tag="Kaufkraft (primär)"
-            value={realPct}
-            sub="nach Inflation"
-            color={realColor}
-            highlight
-          />
-        </Box>
-
-        <Alert severity="info" variant="outlined" sx={{ mt: 2, fontSize: '0.78rem' }}>
-          Die <strong>nominale Bruttosicht</strong> ignoriert die kalte Progression und progressive
-          Steuersätze. Die <strong>Netto-Sicht</strong> zeigt die effektive Steigerung deiner
-          Auszahlung. Erst die <strong>Real-Netto-Veränderung</strong> beziffert deine
-          tatsächliche Kaufkraft, weil sie zusätzlich um die Inflation bereinigt ist.
-        </Alert>
-      </CardContent>
-    </Card>
-  );
-}
-
-function KaufkraftLevel({ label, tag, value, sub, color, highlight, warn }) {
-  const fmtPctSigned = (v) => v == null || isNaN(v)
-    ? '–'
-    : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2).replace('.', ',') + ' %';
-  return (
-    <Box sx={{
-      borderRadius: '12px',
-      p: 1.75,
-      bgcolor: highlight ? 'accent.positiveSurface' : 'background.default',
-      border: 1, borderColor: highlight ? 'accent.positiveSurface' : 'divider',
-    }}>
-      <Stack direction="row" alignItems="baseline" justifyContent="space-between" sx={{ mb: 0.5 }}>
-        <Typography variant="caption" sx={{
-          color: highlight ? 'primary.dark' : 'text.secondary',
-          fontWeight: 700, letterSpacing: '0.06em', fontSize: '0.62rem',
-          textTransform: 'uppercase',
-        }}>
-          {label}
-        </Typography>
-        <Chip label={tag} size="small" variant="outlined"
-          sx={{
-            height: 18, fontSize: '0.6rem', fontWeight: 700,
-            color: warn ? 'warning.main' : 'text.secondary',
-            borderColor: warn ? 'warning.light' : 'divider',
-          }} />
-      </Stack>
-      <Typography sx={{
-        fontFamily: '"Manrope", sans-serif',
-        fontWeight: 800, letterSpacing: '-0.01em', lineHeight: 1.1,
-        fontSize: '1.4rem',
-        color: highlight ? 'primary.dark' : color,
-      }}>
-        {fmtPctSigned(value)}
-      </Typography>
-      {sub && (
-        <Typography variant="caption" sx={{
-          color: highlight ? 'primary.dark' : 'text.secondary',
-          display: 'block', fontSize: '0.7rem', mt: 0.25,
-        }}>
-          {sub}
-        </Typography>
-      )}
-    </Box>
-  );
-}
-
 export default function SalaryHistoryTab({ baseParams }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const { rows, loading, error, upsertYear, deleteYear, bulkProjection, clearProjections } = useSalaryHistory();
-  const { vpi, status: inflStatus, error: inflError } = useInflationData();
+  const { rows, loading, error, upsertYear, deleteYear } = useSalaryHistory();
 
   const [editingYear, setEditingYear] = useState(null);
   const [editDraft,   setEditDraft]   = useState({ annual_gross: '', net_monthly: '' });
   const [newRow,      setNewRow]      = useState({ year: CURRENT_YEAR, annual_gross: '' });
   const [showAddRow,  setShowAddRow]  = useState(false);
-  const [growthPct,   setGrowthPct]   = useState(3);
-  const [untilYear,   setUntilYear]   = useState(2030);
-  const [futureInflPct, setFutureInflPct] = useState(DEFAULT_FUTURE_INFLATION_PCT);
   const [busy,        setBusy]        = useState(false);
   const [opError,     setOpError]     = useState('');
 
-  // Brutto → Netto/Monat-Schätzer aus dem aktuellen Rechner-State.
+  // Brutto → Netto/Monat Schätzer aus dem aktuellen Rechner-State.
   const estimateNet = useMemo(
     () => buildEstimateNet(baseParams, calcGehaltResult),
     [baseParams],
   );
 
-  // Reihenfolge: Brutto-Steigerung → Inflation/Real-Brutto → Netto-Schätzung
-  // mit jahresspezifischer Steuerkonfig + Δ Real-Netto (Kaufkraft).
+  // Nur reale Einträge (keine Projektionen) — chronologisch absteigend
+  // anzeigen. Steigerung wird zwischen aufsteigenden Jahren berechnet.
+  const realRows = useMemo(
+    () => (rows || []).filter((r) => !r.is_projection),
+    [rows],
+  );
+
   const enriched = useMemo(() => {
-    const withSteig = enrichWithSteigerung(rows);
-    const withInfl  = enrichWithInflation(withSteig, vpi, futureInflPct);
-    return enrichWithNetto(withInfl, estimateNet);
-  }, [rows, vpi, futureInflPct, estimateNet]);
+    const withSteig = enrichWithSteigerung(realRows); // aufsteigend sortiert
+    return [...withSteig].reverse();                   // neueste oben
+  }, [realRows]);
 
-  // Reale Kaufkraftentwicklung — letzter Jahresübergang als primäre Kennzahl.
-  const kaufkraftYoY = useMemo(() => {
-    // Suche das jüngste Paar [year_n-1 → year_n] mit vollständigen Werten
-    for (let i = enriched.length - 1; i > 0; i--) {
-      const r = enriched[i];
-      if (r.steigerungPct == null || r.nettoSteigerungPct == null
-          || r.realNettoSteigerungPct == null || r.inflationPct == null) continue;
-      return {
-        fromYear:        enriched[i - 1].year,
-        toYear:          r.year,
-        bruttoNominalPct: r.steigerungPct,
-        nettoNominalPct:  r.nettoSteigerungPct,
-        realNettoPct:     r.realNettoSteigerungPct,
-        inflationPct:     r.inflationPct,
-        kalteProgressionPp: r.kalteProgressionPp,
-        isProjection:     !!r.is_projection,
-      };
-    }
-    return null;
-  }, [enriched]);
-
-  // Chart-Daten: Brutto/Jahr nominal vs. realer Kaufkraft (in Basisjahr-€).
-  const chartData = useMemo(() => enriched.map((r) => ({
-    year:    r.year,
-    brutto:  Number(r.annual_gross),
-    netto:   r.net_monthly != null ? Number(r.net_monthly) * 12 : null,
-    real:    r.realGross != null ? Math.round(r.realGross) : null,
-    realPct: r.realPctVsBase,
-    isProjection: r.is_projection,
-  })), [enriched]);
-
-  // Kaufkraft-Differenz (kumuliert) zwischen erstem und letztem Jahr — für Tooltip-Hint
-  const kaufkraftSummary = useMemo(() => {
-    if (enriched.length < 2) return null;
-    const last = enriched[enriched.length - 1];
-    if (last?.realPctVsBase == null) return null;
-    return {
-      baseYear:   enriched[0].year,
-      lastYear:   last.year,
-      pctChange:  last.realPctVsBase,
-      realDelta:  (last.realGross ?? 0) - Number(enriched[0].annual_gross),
-    };
-  }, [enriched]);
+  const chartData = useMemo(() => enrichWithSteigerung(realRows).map((r) => ({
+    year:   r.year,
+    brutto: Number(r.annual_gross),
+    netto:  r.net_monthly != null ? Number(r.net_monthly) * 12 : null,
+  })), [realRows]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
   function startEdit(row) {
@@ -382,7 +94,7 @@ export default function SalaryHistoryTab({ baseParams }) {
         ? null
         : parseFloat(editDraft.net_monthly);
       if (net == null) {
-        const est = estimateNet(gross);
+        const est = estimateNet(gross, year);
         if (est != null) net = est;
       }
       await upsertYear({ year, annual_gross: gross, net_monthly: net, is_projection: false });
@@ -397,9 +109,11 @@ export default function SalaryHistoryTab({ baseParams }) {
     try {
       const gross = parseFloat(newRow.annual_gross);
       const yr    = parseInt(newRow.year, 10);
-      if (!Number.isFinite(yr) || yr < 1990 || yr > 2100) throw new Error('Jahr ungültig.');
-      if (isNaN(gross) || gross < 0)                       throw new Error('Bruttojahresgehalt ungültig.');
-      const net = estimateNet(gross);
+      if (!Number.isFinite(yr) || yr < 1990 || yr > CURRENT_YEAR + 1) {
+        throw new Error('Jahr ungültig (max. ' + (CURRENT_YEAR + 1) + ').');
+      }
+      if (isNaN(gross) || gross < 0) throw new Error('Bruttojahresgehalt ungültig.');
+      const net = estimateNet(gross, yr);
       await upsertYear({ year: yr, annual_gross: gross, net_monthly: net, is_projection: false });
       setNewRow({ year: yr + 1, annual_gross: '' });
       setShowAddRow(false);
@@ -415,542 +129,328 @@ export default function SalaryHistoryTab({ baseParams }) {
     finally { setBusy(false); }
   }
 
-  async function handleProject() {
-    setBusy(true); setOpError('');
-    try {
-      await bulkProjection({ growthPct, untilYear, estimateNet });
-    } catch (ex) {
-      setOpError(ex.message);
-    } finally { setBusy(false); }
-  }
-
-  async function handleClearProjections() {
-    setBusy(true); setOpError('');
-    try { await clearProjections(); }
-    catch (ex) { setOpError(ex.message); }
-    finally { setBusy(false); }
-  }
-
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <Stack spacing={2.5}>
-      {/* Reale Kaufkraftentwicklung — primäre Kennzahl */}
-      {kaufkraftYoY && <KaufkraftSection yoy={kaufkraftYoY} />}
+      {/* Header + Add-Button */}
+      <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1.5}>
+        <Box>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+            Gehaltshistorie
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Bisheriges Jahresgehalt — Forecast & Kaufkraft im eigenen Tab nebenan.
+          </Typography>
+        </Box>
+        <Button variant="contained" size="small" startIcon={<AddIcon />}
+          onClick={() => setShowAddRow(true)} disabled={showAddRow || busy}>
+          Jahr hinzufügen
+        </Button>
+      </Stack>
 
-      {/* Toolbar: Prognose-Konfiguration */}
-      <Card elevation={2} sx={{ borderRadius: 1 }}>
-        <CardContent>
-          <Stack
-            direction={{ xs: 'column', md: 'row' }}
-            spacing={2}
-            alignItems={{ xs: 'stretch', md: 'flex-end' }}
-          >
-            <Stack sx={{ flex: 1, minWidth: 188 }}>
-              <Typography variant="caption" sx={{
-                color: 'text.secondary', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
-              }}>
-                Prognose
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Erweitert die Tabelle ab dem nächsten Jahr nach dem letzten realen Eintrag.
-                Bestehende reale Werte bleiben unberührt.
-              </Typography>
+      {opError && <Alert severity="error" onClose={() => setOpError('')}>{opError}</Alert>}
+      {error   && <Alert severity="error">Daten konnten nicht geladen werden: {error}</Alert>}
+
+      {/* Add-Row */}
+      {showAddRow && (
+        <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1, bgcolor: 'action.hover' }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="center">
+            <TextField size="small" type="number" label="Jahr"
+              value={newRow.year}
+              onChange={(e) => setNewRow((r) => ({ ...r, year: e.target.value }))}
+              inputProps={{ inputMode: 'numeric', min: 1990, max: CURRENT_YEAR + 1 }}
+              sx={{ width: { xs: '100%', sm: 110 } }}
+            />
+            <TextField size="small" type="number" label="Bruttojahresgehalt" fullWidth
+              value={newRow.annual_gross}
+              onChange={(e) => setNewRow((r) => ({ ...r, annual_gross: e.target.value }))}
+              inputProps={{ inputMode: 'decimal' }}
+              InputProps={{ endAdornment: <InputAdornment position="end">€</InputAdornment> }}
+            />
+            <Stack direction="row" spacing={0.5} sx={{ alignSelf: { xs: 'flex-end', sm: 'auto' } }}>
+              <IconButton size="small" color="success" onClick={handleAddRow} disabled={busy}>
+                <CheckIcon fontSize="small" />
+              </IconButton>
+              <IconButton size="small" onClick={() => setShowAddRow(false)} disabled={busy}>
+                <CloseIcon fontSize="small" />
+              </IconButton>
             </Stack>
-            <TextField
-              size="small"
-              type="number"
-              label="Steigerung p.a."
-              value={growthPct}
-              onChange={(e) => setGrowthPct(parseFloat(e.target.value) || 0)}
-              inputProps={{ step: 0.5, min: 0, max: 20 }}
-              InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
-              sx={{ width: { xs: '100%', md: 160 } }}
-            />
-            <TextField
-              size="small"
-              type="number"
-              label="Bis Jahr"
-              value={untilYear}
-              onChange={(e) => setUntilYear(parseInt(e.target.value, 10) || CURRENT_YEAR)}
-              inputProps={{ step: 1, min: CURRENT_YEAR, max: 2100 }}
-              sx={{ width: { xs: '100%', md: 120 } }}
-            />
-            <TextField
-              size="small"
-              type="number"
-              label="Erwartete Inflation p.a."
-              value={futureInflPct}
-              onChange={(e) => setFutureInflPct(parseFloat(e.target.value) || 0)}
-              inputProps={{ step: 0.1, min: -5, max: 20 }}
-              InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
-              helperText="Für künftige Jahre (Real-Gehalt-Berechnung)"
-              sx={{ width: { xs: '100%', md: 200 } }}
-            />
-            <Button
-              variant="contained"
-              onClick={handleProject}
-              disabled={busy || rows.filter((r) => !r.is_projection).length === 0}
-            >
-              Prognose erstellen
-            </Button>
-            <Button
-              variant="outlined"
-              color="inherit"
-              onClick={handleClearProjections}
-              disabled={busy || rows.filter((r) => r.is_projection).length === 0}
-            >
-              Prognose zurücksetzen
-            </Button>
           </Stack>
-        </CardContent>
-      </Card>
-
-      {/* Inflations-Datenquelle: Status-Hinweis (nur wenn Fallback aktiv) */}
-      {inflStatus === 'fallback' && (
-        <Alert severity="warning" variant="outlined">
-          Destatis API nicht erreichbar — verwende Fallback-VPI-Werte (statisch, Stand 2025).
-          Real-Gehalt-Berechnung verwendet Default-Inflation von {DEFAULT_FUTURE_INFLATION_PCT} % für unbekannte Jahre.
-          {inflError ? ` Details: ${inflError}` : ''}
-        </Alert>
+        </Paper>
       )}
 
-      {(error || opError) && (
-        <Alert severity="error" onClose={() => setOpError('')}>
-          {opError || error}
-        </Alert>
+      {/* Loading-State */}
+      {loading && (
+        <Stack direction="row" alignItems="center" justifyContent="center" spacing={1.5}
+          sx={{ py: 4, color: 'text.secondary' }}>
+          <CircularProgress size={20} />
+          <Typography variant="body2">Lade Gehaltshistorie…</Typography>
+        </Stack>
       )}
 
-      {/* Tabelle / Mobile Cards */}
-      <Card elevation={2} sx={{ borderRadius: 1 }}>
-        <CardContent sx={{ p: 0 }}>
-          {loading ? (
-            <Stack spacing={1} sx={{ p: 2 }}>
-              {[1, 2, 3, 4].map((i) => <Skeleton key={i} variant="rounded" height={48} />)}
-            </Stack>
-          ) : isMobile ? (
-            /* ── Mobile Card View ── */
-            <Stack spacing={1} sx={{ p: 1.5 }}>
-              {enriched.length === 0 && !showAddRow && (
-                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-                  Noch keine Einträge. Klicke „Jahr hinzufügen".
-                </Typography>
-              )}
-              {enriched.map((row) => (
-                <MobileSalaryCard
-                  key={row.year}
-                  row={row}
-                  isEditing={editingYear === row.year}
-                  editDraft={editDraft}
-                  setEditDraft={setEditDraft}
-                  startEdit={startEdit}
-                  cancelEdit={cancelEdit}
-                  saveEdit={saveEdit}
-                  handleDelete={handleDelete}
-                  busy={busy}
-                  estimateNet={estimateNet}
-                />
-              ))}
-            </Stack>
-          ) : (
-            /* ── Desktop Table ── */
-            <Table size="small">
-              <TableHead>
-                <TableRow sx={{ '& th': { fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'text.secondary' } }}>
-                  <TableCell>Jahr</TableCell>
-                  <TableCell align="right">Jahresgehalt (Brutto)</TableCell>
-                  <TableCell align="right">Steigerung</TableCell>
-                  <TableCell align="right">Inflation</TableCell>
-                  <TableCell align="right">
-                    <MuiTooltip title={`Kaufkraft bezogen auf Basisjahr ${enriched[0]?.year ?? '–'}`} arrow>
-                      <span>Real-Gehalt</span>
-                    </MuiTooltip>
-                  </TableCell>
-                  <TableCell align="right">Brutto / Monat</TableCell>
-                  <TableCell align="right">Netto / Monat</TableCell>
-                  <TableCell align="right" sx={{ width: 96 }}>Aktion</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {enriched.length === 0 && !showAddRow && (
+      {/* Empty-State */}
+      {!loading && enriched.length === 0 && !showAddRow && (
+        <Paper variant="outlined" sx={{ borderRadius: '16px', p: 4, textAlign: 'center' }}>
+          <Box component="span" className="material-symbols-outlined"
+            sx={{ fontSize: 48, color: 'accent.positiveSurface' }}>
+            history
+          </Box>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, mt: 1 }}>
+            Noch keine Jahre erfasst
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Trage dein Bruttojahresgehalt für vergangene Jahre ein, um die Steigerung sichtbar zu machen.
+          </Typography>
+          <Button variant="contained" startIcon={<AddIcon />}
+            onClick={() => setShowAddRow(true)}>
+            Erstes Jahr hinzufügen
+          </Button>
+        </Paper>
+      )}
+
+      {/* Tabelle / Karten */}
+      {!loading && enriched.length > 0 && (
+        isMobile ? (
+          <Stack spacing={1.25}>
+            {enriched.map((row) => (
+              <MobileSalaryRow
+                key={row.year}
+                row={row}
+                isEditing={editingYear === row.year}
+                editDraft={editDraft}
+                setEditDraft={setEditDraft}
+                startEdit={startEdit}
+                cancelEdit={cancelEdit}
+                saveEdit={saveEdit}
+                handleDelete={handleDelete}
+                busy={busy}
+                estimateNet={estimateNet}
+              />
+            ))}
+          </Stack>
+        ) : (
+          <Card elevation={1} sx={{ borderRadius: 1, overflow: 'hidden' }}>
+            <Box sx={{ overflowX: 'auto' }}>
+              <Table size="small">
+                <TableHead>
                   <TableRow>
-                    <TableCell colSpan={8} sx={{ textAlign: 'center', color: 'text.secondary', py: 4 }}>
-                      Noch keine Einträge. Klicke unten „Jahr hinzufügen", um zu starten.
-                    </TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Jahr</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700 }}>Brutto / Jahr</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700 }}>Brutto / Monat</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700 }}>Δ Steigerung</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700 }}>Netto / Monat</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700, width: 90 }}>Aktionen</TableCell>
                   </TableRow>
-                )}
-                {enriched.map((row) => {
-                  const isEditing = editingYear === row.year;
-                  const isProj    = !!row.is_projection;
-                  const rowSx = isProj ? {
-                    fontStyle: 'italic',
-                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(245,158,11,0.06)' : 'rgba(245,158,11,0.05)',
-                  } : {};
-                  return (
-                    <TableRow key={row.year} sx={rowSx} hover>
-                      <TableCell sx={{ fontWeight: 700, fontFamily: 'monospace' }}>
-                        <Stack direction="row" alignItems="center" spacing={1}>
-                          {row.year}
-                          {isProj && (
-                            <Chip label="Prognose" size="small" color="warning" variant="outlined"
-                              sx={{ height: 18, fontSize: '0.62rem', fontWeight: 700 }} />
-                          )}
-                        </Stack>
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontFamily: 'monospace' }}>
-                        {isEditing ? (
-                          <TextField
-                            size="small"
-                            type="number"
-                            value={editDraft.annual_gross}
-                            onChange={(e) => setEditDraft((d) => ({ ...d, annual_gross: e.target.value }))}
-                            inputProps={{ step: 100, min: 0, style: { textAlign: 'right' } }}
-                            InputProps={{ endAdornment: <InputAdornment position="end">€</InputAdornment> }}
-                            sx={{ width: 160 }}
-                          />
-                        ) : (
-                          fmt0(row.annual_gross)
-                        )}
-                      </TableCell>
-                      <TableCell align="right" sx={{
-                        fontFamily: 'monospace',
-                        color: row.steigerungPct == null
-                          ? 'text.disabled'
-                          : row.steigerungPct >= 0 ? 'success.main' : 'error.main',
-                      }}>
-                        {fmtPct(row.steigerungPct)}
-                      </TableCell>
-                      <TableCell align="right" sx={{
-                        fontFamily: 'monospace',
-                        color: row.inflationPct == null ? 'text.disabled' : 'warning.main',
-                      }}>
-                        {fmtPct(row.inflationPct)}
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontFamily: 'monospace' }}>
-                        <MuiTooltip
-                          title={row.realPctVsBase != null
-                            ? `Kaufkraft ggü. ${row.baseYear}: ${fmtPct(row.realPctVsBase)}`
-                            : ''}
-                          arrow
-                          disableHoverListener={row.realPctVsBase == null}
-                        >
-                          <Box component="span" sx={{
-                            color: row.realGross == null ? 'text.disabled'
-                                 : row.realPctVsBase >= 0 ? 'success.main'
-                                 :                          'error.main',
-                            cursor: row.realPctVsBase != null ? 'help' : 'default',
-                          }}>
-                            {row.realGross != null ? fmt0(row.realGross) : '–'}
-                          </Box>
-                        </MuiTooltip>
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>
-                        {fmt2(row.grossMonthly)}
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontFamily: 'monospace' }}>
-                        {isEditing ? (
-                          <TextField
-                            size="small"
-                            type="number"
-                            placeholder={(() => { const e = estimateNet(parseFloat(editDraft.annual_gross)); return e ? `~${Math.round(e)}` : 'auto'; })()}
-                            value={editDraft.net_monthly ?? ''}
-                            onChange={(e) => setEditDraft((d) => ({ ...d, net_monthly: e.target.value }))}
-                            inputProps={{ step: 10, min: 0, style: { textAlign: 'right' } }}
-                            InputProps={{ endAdornment: <InputAdornment position="end">€</InputAdornment> }}
-                            sx={{ width: 140 }}
-                          />
-                        ) : (
-                          row.net_monthly != null ? fmt2(row.net_monthly) : (
-                            <Typography component="span" variant="caption" color="text.disabled" sx={{ fontStyle: 'italic' }}>
-                              –
-                            </Typography>
-                          )
-                        )}
-                      </TableCell>
-                      <TableCell align="right">
-                        {isEditing ? (
-                          <Stack direction="row" justifyContent="flex-end" spacing={0.5}>
+                </TableHead>
+                <TableBody>
+                  {enriched.map((row) => {
+                    const isEditing = editingYear === row.year;
+                    if (isEditing) {
+                      return (
+                        <TableRow key={row.year} sx={{ bgcolor: 'action.hover' }}>
+                          <TableCell sx={{ fontWeight: 700, fontFamily: 'monospace' }}>{row.year}</TableCell>
+                          <TableCell align="right">
+                            <TextField size="small" type="number"
+                              value={editDraft.annual_gross}
+                              onChange={(e) => setEditDraft((d) => ({ ...d, annual_gross: e.target.value }))}
+                              inputProps={{ inputMode: 'decimal', style: { textAlign: 'right' } }}
+                              InputProps={{ endAdornment: <InputAdornment position="end">€</InputAdornment> }}
+                              sx={{ width: 160 }}
+                            />
+                          </TableCell>
+                          <TableCell align="right" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>
+                            {fmt0((parseFloat(editDraft.annual_gross) || 0) / 12)}
+                          </TableCell>
+                          <TableCell align="right" />
+                          <TableCell align="right">
+                            <TextField size="small" type="number"
+                              placeholder={(() => { const e = estimateNet(parseFloat(editDraft.annual_gross), row.year); return e ? `~${Math.round(e)}` : 'auto'; })()}
+                              value={editDraft.net_monthly ?? ''}
+                              onChange={(e) => setEditDraft((d) => ({ ...d, net_monthly: e.target.value }))}
+                              inputProps={{ inputMode: 'decimal', style: { textAlign: 'right' } }}
+                              InputProps={{ endAdornment: <InputAdornment position="end">€</InputAdornment> }}
+                              sx={{ width: 140 }}
+                            />
+                          </TableCell>
+                          <TableCell align="right">
                             <IconButton size="small" color="success" onClick={() => saveEdit(row.year)} disabled={busy}>
                               <CheckIcon fontSize="small" />
                             </IconButton>
                             <IconButton size="small" onClick={cancelEdit} disabled={busy}>
                               <CloseIcon fontSize="small" />
                             </IconButton>
-                          </Stack>
-                        ) : (
-                          <Stack direction="row" justifyContent="flex-end" spacing={0.5}>
-                            <IconButton size="small" onClick={() => startEdit(row)} title="Bearbeiten">
-                              <EditOutlinedIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton size="small" color="error" onClick={() => handleDelete(row.year)} title="Löschen" disabled={busy}>
-                              <DeleteOutlineIcon fontSize="small" />
-                            </IconButton>
-                          </Stack>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-                {showAddRow && (
-                  <TableRow sx={{ bgcolor: 'action.hover' }}>
-                    <TableCell sx={{ fontWeight: 700 }}>
-                      <TextField
-                        size="small"
-                        type="number"
-                        value={newRow.year}
-                        onChange={(e) => setNewRow((r) => ({ ...r, year: e.target.value }))}
-                        inputProps={{ step: 1, min: 1990, max: 2100 }}
-                        sx={{ width: 90 }}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <TextField
-                        size="small"
-                        type="number"
-                        autoFocus
-                        placeholder="z.B. 60000"
-                        value={newRow.annual_gross}
-                        onChange={(e) => setNewRow((r) => ({ ...r, annual_gross: e.target.value }))}
-                        inputProps={{ step: 100, min: 0, style: { textAlign: 'right' } }}
-                        InputProps={{ endAdornment: <InputAdornment position="end">€</InputAdornment> }}
-                        sx={{ width: 160 }}
-                      />
-                    </TableCell>
-                    <TableCell colSpan={5} sx={{ color: 'text.disabled', fontStyle: 'italic' }}>
-                      Steigerung, Inflation, Real-Gehalt & Brutto/Monat werden automatisch berechnet
-                    </TableCell>
-                    <TableCell align="right">
-                      <Stack direction="row" justifyContent="flex-end" spacing={0.5}>
-                        <IconButton size="small" color="success" onClick={handleAddRow} disabled={busy}>
-                          <CheckIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton size="small" onClick={() => setShowAddRow(false)} disabled={busy}>
-                          <CloseIcon fontSize="small" />
-                        </IconButton>
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
-          {!loading && !showAddRow && (
-            <Box sx={{ p: 1.5, borderTop: 1, borderColor: 'divider' }}>
-              <Button
-                size="small"
-                startIcon={<AddIcon />}
-                onClick={() => {
-                  // Default: Jahr nach dem letzten Eintrag oder aktuelles Jahr
-                  const lastYear = rows.length > 0 ? Math.max(...rows.map((r) => r.year)) : CURRENT_YEAR - 1;
-                  setNewRow({ year: lastYear + 1, annual_gross: '' });
-                  setShowAddRow(true);
-                }}
-                sx={{ textTransform: 'none' }}
-              >
-                Jahr hinzufügen
-              </Button>
-              {busy && <CircularProgress size={14} sx={{ ml: 1.5 }} />}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    }
+                    return (
+                      <TableRow key={row.year} hover
+                        sx={{ ...(row.year === CURRENT_YEAR ? { bgcolor: 'action.selected' } : {}) }}>
+                        <TableCell sx={{ fontWeight: 700, fontFamily: 'monospace' }}>
+                          {row.year}
+                          {row.year === CURRENT_YEAR && (
+                            <Chip label="aktuell" size="small" variant="outlined"
+                              sx={{ height: 16, fontSize: '0.55rem', ml: 0.75 }} />
+                          )}
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
+                          {fmt0(row.annual_gross)}
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>
+                          {fmt0(row.grossMonthly)}
+                        </TableCell>
+                        <TableCell align="right" sx={{
+                          fontFamily: 'monospace', fontWeight: 600,
+                          color: row.steigerungPct == null ? 'text.disabled'
+                               : row.steigerungPct >= 0 ? 'success.main'
+                               : 'error.main',
+                        }}>
+                          {fmtPct(row.steigerungPct)}
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontFamily: 'monospace' }}>
+                          {row.net_monthly != null ? fmt2(row.net_monthly) : '–'}
+                        </TableCell>
+                        <TableCell align="right">
+                          <IconButton size="small" onClick={() => startEdit(row)}>
+                            <EditOutlinedIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small" color="error" onClick={() => handleDelete(row.year)} disabled={busy}>
+                            <DeleteOutlineIcon fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </Box>
-          )}
-        </CardContent>
-      </Card>
+          </Card>
+        )
+      )}
 
-      {/* Line-Chart unter der Tabelle */}
-      {chartData.length >= 2 && (
-        <Card elevation={2} sx={{ borderRadius: 1 }}>
-          <CardContent>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
-              <Typography variant="caption" sx={{
-                display: 'block', color: 'text.secondary', fontWeight: 700,
-                letterSpacing: '0.08em', textTransform: 'uppercase',
-              }}>
-                Verlauf · Nominal-Brutto vs. Kaufkraft (Real)
-              </Typography>
-              {kaufkraftSummary && (
-                <MuiTooltip
-                  title={`Reales Brutto ${kaufkraftSummary.lastYear} ggü. ${kaufkraftSummary.baseYear}: ${
-                    kaufkraftSummary.realDelta >= 0 ? '+' : '−'
-                  }${fmt0(Math.abs(kaufkraftSummary.realDelta))} (in ${kaufkraftSummary.baseYear}-€)`}
-                  arrow
-                >
-                  <Chip
-                    size="small"
-                    label={`Kaufkraft: ${fmtPct(kaufkraftSummary.pctChange)}`}
-                    color={kaufkraftSummary.pctChange >= 0 ? 'success' : 'error'}
-                    variant="outlined"
+      {/* Brutto-Verlaufs-Chart */}
+      {!loading && chartData.length >= 2 && (
+        <Card elevation={1} sx={{ borderRadius: 1 }}>
+          <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+            <Typography variant="overline" sx={{
+              color: 'text.secondary', letterSpacing: '0.08em', display: 'block', mb: 1,
+            }}>
+              Brutto-Verlauf
+            </Typography>
+            <Box sx={{ height: 240 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} vertical={false} />
+                  <XAxis dataKey="year"
+                    tick={{ fill: theme.palette.text.secondary, fontSize: 11 }}
+                    axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: theme.palette.text.secondary, fontSize: 11 }}
+                    axisLine={false} tickLine={false}
+                    tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : v}
+                    width={60} />
+                  <RechartTooltip
+                    formatter={(v) => [fmt0(v), 'Brutto/Jahr']}
+                    labelFormatter={(l) => `Jahr ${l}`}
+                    contentStyle={{
+                      background: theme.palette.background.paper,
+                      border: `1px solid ${theme.palette.divider}`,
+                      borderRadius: 8, fontSize: 12,
+                    }}
                   />
-                </MuiTooltip>
-              )}
-            </Stack>
-            <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={chartData} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} vertical={false} />
-                <XAxis dataKey="year" tick={{ fontSize: 11, fill: theme.palette.text.secondary }}
-                  axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: theme.palette.text.secondary }}
-                  axisLine={false} tickLine={false} width={68}
-                  tickFormatter={(v) => `${(v / 1000).toFixed(0)}k €`} />
-                <RechartTooltip
-                  formatter={(v, name) => {
-                    const labels = {
-                      brutto: 'Brutto / Jahr (nominal)',
-                      netto:  'Netto / Jahr',
-                      real:   `Real / Jahr (in ${enriched[0]?.year ?? '–'}-€)`,
-                    };
-                    return [fmt0(v), labels[name] ?? name];
-                  }}
-                  contentStyle={{
-                    background: theme.palette.background.paper,
-                    border: `1px solid ${theme.palette.divider}`,
-                    borderRadius: 10, fontSize: 12,
-                  }}
-                  labelStyle={{ color: theme.palette.text.primary, fontWeight: 700 }}
-                />
-                <Legend
-                  iconType="circle" iconSize={8}
-                  formatter={(v) => v === 'brutto' ? 'Brutto (nominal)'
-                                : v === 'netto'  ? 'Netto / Jahr'
-                                : v === 'real'   ? `Kaufkraft (Basis ${enriched[0]?.year ?? '–'})`
-                                :                   v}
-                  wrapperStyle={{ fontSize: 12, paddingTop: 8, color: theme.palette.text.secondary }}
-                />
-                <Line type="monotone" dataKey="brutto"
-                  stroke={theme.palette.primary.main} strokeWidth={2.5}
-                  dot={{ r: 3, strokeWidth: 0, fill: theme.palette.primary.main }} />
-                <Line type="monotone" dataKey="real" connectNulls
-                  stroke={theme.palette.warning.main} strokeWidth={2.5}
-                  strokeDasharray="6 3"
-                  dot={{ r: 3, strokeWidth: 0, fill: theme.palette.warning.main }} />
-                <Line type="monotone" dataKey="netto" connectNulls
-                  stroke={theme.palette.success.main} strokeWidth={2}
-                  dot={{ r: 3, strokeWidth: 0, fill: theme.palette.success.main }} />
-              </LineChart>
-            </ResponsiveContainer>
+                  <Line type="monotone" dataKey="brutto"
+                    stroke={theme.palette.primary.main} strokeWidth={2.5}
+                    dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </Box>
           </CardContent>
         </Card>
       )}
-
-      <InflationHistoryChart vpi={vpi} status={inflStatus} />
     </Stack>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Inflations-Verlauf der letzten 20 Jahre (jährliche Veränderungsrate des VPI).
-// Quelle ist der `useInflationData`-Status — die Komponente zeigt einen Chip,
-// ob die Daten live von Destatis kommen oder aus dem statischen Fallback.
-// ─────────────────────────────────────────────────────────────────────────────
-function InflationHistoryChart({ vpi, status }) {
-  const theme = useTheme();
-
-  // Letzte 20 Jahre der jährlichen Inflation (auf Basis der VPI-Map).
-  const data = useMemo(() => {
-    const years = Object.keys(vpi).map(Number).sort((a, b) => a - b);
-    if (years.length < 2) return [];
-    const minYear = Math.max(years[0] + 1, CURRENT_YEAR - 19);
-    const out = [];
-    for (let y = minYear; y <= CURRENT_YEAR; y++) {
-      const cur  = vpi[y];
-      const prev = vpi[y - 1];
-      if (cur == null || prev == null || prev === 0) continue;
-      out.push({
-        year: y,
-        rate: Math.round(((cur / prev) - 1) * 1000) / 10, // 1 Dezimalstelle
-      });
-    }
-    return out;
-  }, [vpi]);
-
-  const avg = useMemo(() => {
-    if (data.length === 0) return null;
-    return data.reduce((s, d) => s + d.rate, 0) / data.length;
-  }, [data]);
-
-  const sourceChip = (() => {
-    if (status === 'loading')  return { label: 'Wird geladen…', color: 'default' };
-    if (status === 'live')     return { label: 'Live · Destatis',          color: 'success' };
-    if (status === 'cached')   return { label: 'Live · gecached (24 h)',   color: 'success' };
-    if (status === 'fallback') return { label: 'Fallback · statische Daten', color: 'warning' };
-    return { label: status, color: 'default' };
-  })();
-
-  return (
-    <Card elevation={2} sx={{ borderRadius: 1 }}>
-      <CardContent>
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1.5 }}>
-          <Box>
-            <Typography variant="caption" sx={{
-              color: 'text.secondary', fontWeight: 700,
-              letterSpacing: '0.08em', textTransform: 'uppercase',
-            }}>
-              Inflation (VPI) · letzte 20 Jahre
-            </Typography>
-            {avg != null && (
-              <Typography variant="body2" color="text.secondary">
-                Ø {avg.toFixed(2).replace('.', ',')} % p.a. ·{' '}
-                {data.length > 0 ? `${data[0].year}–${data[data.length - 1].year}` : '–'}
-              </Typography>
-            )}
-          </Box>
-          <Chip
-            size="small"
-            label={sourceChip.label}
-            color={sourceChip.color}
-            variant="outlined"
+// ─── Mobile Row ──────────────────────────────────────────────────────────────
+function MobileSalaryRow({ row, isEditing, editDraft, setEditDraft, startEdit, cancelEdit, saveEdit, handleDelete, busy, estimateNet }) {
+  if (isEditing) {
+    return (
+      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1, bgcolor: 'action.hover' }}>
+        <Stack spacing={1.5}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="body2" sx={{ fontWeight: 700, fontFamily: 'monospace' }}>{row.year}</Typography>
+            <Stack direction="row" spacing={0.5}>
+              <IconButton size="small" color="success" onClick={() => saveEdit(row.year)} disabled={busy}>
+                <CheckIcon fontSize="small" />
+              </IconButton>
+              <IconButton size="small" onClick={cancelEdit} disabled={busy}>
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Stack>
+          </Stack>
+          <TextField size="small" fullWidth type="number" label="Jahresgehalt (Brutto)"
+            value={editDraft.annual_gross}
+            onChange={(e) => setEditDraft((d) => ({ ...d, annual_gross: e.target.value }))}
+            inputProps={{ inputMode: 'decimal' }}
+            InputProps={{ endAdornment: <InputAdornment position="end">€</InputAdornment> }}
+          />
+          <TextField size="small" fullWidth type="number" label="Netto / Monat"
+            placeholder={(() => { const e = estimateNet(parseFloat(editDraft.annual_gross), row.year); return e ? `~${Math.round(e)}` : 'auto'; })()}
+            value={editDraft.net_monthly ?? ''}
+            onChange={(e) => setEditDraft((d) => ({ ...d, net_monthly: e.target.value }))}
+            inputProps={{ inputMode: 'decimal' }}
+            InputProps={{ endAdornment: <InputAdornment position="end">€</InputAdornment> }}
           />
         </Stack>
-        {data.length === 0 ? (
-          <Box sx={{ py: 3, textAlign: 'center', color: 'text.secondary' }}>
-            <Typography variant="body2">Keine VPI-Daten verfügbar.</Typography>
-          </Box>
-        ) : (
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={data} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} vertical={false} />
-              <XAxis dataKey="year" tick={{ fontSize: 11, fill: theme.palette.text.secondary }}
-                axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: theme.palette.text.secondary }}
-                axisLine={false} tickLine={false} width={50}
-                tickFormatter={(v) => `${v} %`} />
-              <RechartTooltip
-                formatter={(v) => [`${Number(v).toFixed(1).replace('.', ',')} %`, 'Inflation']}
-                contentStyle={{
-                  background: theme.palette.background.paper,
-                  border: `1px solid ${theme.palette.divider}`,
-                  borderRadius: 10, fontSize: 12,
-                }}
-                labelStyle={{ color: theme.palette.text.primary, fontWeight: 700 }}
-              />
-              {avg != null && (
-                <ReferenceLine
-                  y={avg}
-                  stroke={theme.palette.text.secondary}
-                  strokeDasharray="4 3"
-                  label={{
-                    value: `Ø ${avg.toFixed(1).replace('.', ',')} %`,
-                    fill: theme.palette.text.secondary,
-                    fontSize: 10,
-                    position: 'insideTopRight',
-                  }}
-                />
-              )}
-              <Bar dataKey="rate" radius={[4, 4, 0, 0]}>
-                {data.map((d) => (
-                  <Cell
-                    key={d.year}
-                    // Hohe Inflation rot, niedrige grün, EZB-Ziel ~2 % als Schwelle
-                    fill={d.rate >= 4 ? theme.palette.error.main
-                        : d.rate >= 2 ? theme.palette.warning.main
-                        : theme.palette.success.main}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        )}
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-          Quelle: Destatis Tabelle 61111-0001 (Verbraucherpreisindex Deutschland, Basisjahr 2020 = 100).
-        </Typography>
-      </CardContent>
-    </Card>
+      </Paper>
+    );
+  }
+
+  return (
+    <Paper variant="outlined" sx={{
+      p: 1.5, borderRadius: 1,
+      ...(row.year === CURRENT_YEAR ? { borderLeft: '3px solid', borderLeftColor: 'primary.main' } : {}),
+    }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.75 }}>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Typography variant="body2" sx={{ fontWeight: 700, fontFamily: 'monospace' }}>{row.year}</Typography>
+          {row.year === CURRENT_YEAR && (
+            <Chip label="aktuell" size="small" variant="outlined" sx={{ height: 18, fontSize: '0.6rem' }} />
+          )}
+        </Stack>
+        <Stack direction="row" spacing={0.5}>
+          <IconButton size="small" onClick={() => startEdit(row)}>
+            <EditOutlinedIcon fontSize="small" />
+          </IconButton>
+          <IconButton size="small" color="error" onClick={() => handleDelete(row.year)} disabled={busy}>
+            <DeleteOutlineIcon fontSize="small" />
+          </IconButton>
+        </Stack>
+      </Stack>
+      <Stack direction="row" spacing={2}>
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="caption" color="text.secondary">Brutto/Jahr</Typography>
+          <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
+            {fmt0(row.annual_gross)}
+          </Typography>
+        </Box>
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="caption" color="text.secondary">Netto/Monat</Typography>
+          <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+            {row.net_monthly != null ? fmt2(row.net_monthly) : '–'}
+          </Typography>
+        </Box>
+        <Box>
+          <Typography variant="caption" color="text.secondary">Steigerung</Typography>
+          <Typography variant="body2" sx={{
+            fontFamily: 'monospace', fontWeight: 600,
+            color: row.steigerungPct == null ? 'text.disabled'
+                 : row.steigerungPct >= 0 ? 'success.main'
+                 : 'error.main',
+          }}>
+            {fmtPct(row.steigerungPct)}
+          </Typography>
+        </Box>
+      </Stack>
+    </Paper>
   );
 }
