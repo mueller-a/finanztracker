@@ -43,30 +43,6 @@ Remember: Claude is capable of extraordinary creative work. Don't hold back, sho
 
 ---
 
-## Finanztracker — Verbindliche Design-Tokens
+## Note on Project-Specific Constraints
 
-Diese Werte sind projektspezifische Konstanten für den Finanztracker. Sie werden
-zentral im MUI-Theme (`client/src/theme.js`) gepflegt und dürfen in Seiten/Komponenten
-nicht abweichend überschrieben werden, sofern nicht ausdrücklich begründet.
-
-### Border-Radius
-
-- **Einheitlich 16 px** für alle Container-Elemente: `<Card>`, `<Paper>`,
-  `<Dialog>`, `<TextField>`, `<Alert>`, `<Select>`, `<Button>`, `<Tooltip>`,
-  `<TableContainer>`.
-- `theme.shape.borderRadius = 16`. Der MUI-`sx`-Prop behandelt
-  `borderRadius` als **Multiplikator**:
-  - `sx={{ borderRadius: 1 }}` → `1 × 16 px = 16 px` ✅ **Standard**.
-  - `sx={{ borderRadius: 2 }}` → `2 × 16 px = 32 px` ❌ **nicht verwenden**.
-  - Alternativ: `sx={{ borderRadius: '16px' }}` (expliziter String, keine
-    Multiplikation).
-- **Ausnahmen**:
-  - `<Chip>` / Pills / Tags: `borderRadius: 99` (voll runde Kapsel — MUI
-    clamped visuell auf max. Dimension).
-  - `<LinearProgress>`: `borderRadius: 99`.
-  - Kleine Indikator-Boxen (< 24 × 24 px): explizit via `borderRadius: '8px'`
-    angeben, wenn eine kleinere Rundung gewünscht ist.
-
-Alle globalen Komponenten-Overrides sind im Theme bereits auf 16 px konfiguriert.
-Bei neuen Containern einfach `<Card>`, `<Paper>`, `<Dialog>` nutzen — ohne
-Inline-`borderRadius`-Prop — dann greift der Standard automatisch.
+For tasks **inside the Finanztracker project**, defer to the project's design tokens and component conventions documented in [`.claude/skills/design-system/SKILL.md`](../skills/design-system/SKILL.md). The aesthetic guidelines above describe **how** to think about design; the design-system skill defines **which tokens** must be used inside this codebase.
