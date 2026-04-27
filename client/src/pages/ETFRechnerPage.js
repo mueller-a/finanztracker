@@ -163,6 +163,29 @@ const TYPE_FILTERS = [
   { value: 'depot',     label: 'Depot' },
   { value: 'insurance', label: 'Privat' },
 ];
+
+// 3-Schichten-Mapping (deutsches Vorsorge-System)
+//   Schicht 1: gesetzliche Rente (DRV)
+//   Schicht 2: betriebliche Altersvorsorge + AVD (staatlich gefördert)
+//   Schicht 3: private Rentenversicherung + freies ETF-Depot
+const TYPE_LAYER = { drv: 1, bav: 2, avd: 2, insurance: 3, depot: 3 };
+const LAYER_LABEL = {
+  1: 'Schicht 1 · Gesetzliche Rente',
+  2: 'Schicht 2 · Betriebliche & geförderte Altersvorsorge',
+  3: 'Schicht 3 · Private Vorsorge',
+};
+// Stabile Sortierung: Schicht aufsteigend → Type alphabetisch → Name alphabetisch.
+// Verhindert, dass DB-`order_by('updated_at')` die Reihenfolge bei jeder
+// Bearbeitung umwirft.
+function sortPoliciesByLayer(policies) {
+  return [...policies].sort((a, b) => {
+    const la = TYPE_LAYER[a.type] ?? 99;
+    const lb = TYPE_LAYER[b.type] ?? 99;
+    if (la !== lb)         return la - lb;
+    if (a.type !== b.type) return a.type.localeCompare(b.type);
+    return (a.name || '').localeCompare(b.name || '', 'de');
+  });
+}
 const TYPE_NAME  = {
   insurance: 'Rentenversicherung',
   avd:       'AVD Depot',
@@ -2595,60 +2618,6 @@ function DRVSnapshotPanel({ policyId, snapshots, onAdd, onUpdate, onDelete }) {
           </Button>
         </Stack>
 
-        {/* Latest-Snapshot-Hero */}
-        {sorted.length > 0 && (() => {
-          const latest = sorted[0];
-          return (
-            <Paper variant="outlined" sx={{ borderRadius: '16px', p: 2.25, bgcolor: 'background.default' }}>
-              <Typography variant="overline" sx={{
-                color: 'text.secondary', display: 'block',
-                fontSize: '0.625rem', letterSpacing: '0.08em', mb: 1.25,
-              }}>
-                Aktueller Bescheid · {new Date(latest.snapshot_date).toLocaleDateString('de-DE')}
-              </Typography>
-              <Box sx={{
-                display: 'grid', gap: 2,
-                gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
-              }}>
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                    Anwartschaft (heute)
-                  </Typography>
-                  <Typography sx={{
-                    fontFamily: '"Manrope", sans-serif', fontWeight: 800,
-                    letterSpacing: '-0.01em', fontSize: '1.25rem',
-                  }}>
-                    {latest.drv_anwartschaft != null ? `${euro(latest.drv_anwartschaft)}/Mo` : '–'}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                    Hochgerechnete Rente
-                  </Typography>
-                  <Typography sx={{
-                    fontFamily: '"Manrope", sans-serif', fontWeight: 800,
-                    letterSpacing: '-0.01em', fontSize: '1.25rem',
-                    color: 'success.main',
-                  }}>
-                    {latest.drv_hochgerechnete != null ? `${euro(latest.drv_hochgerechnete)}/Mo` : '–'}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                    Entgeltpunkte
-                  </Typography>
-                  <Typography sx={{
-                    fontFamily: '"Manrope", sans-serif', fontWeight: 800,
-                    letterSpacing: '-0.01em', fontSize: '1.25rem',
-                  }}>
-                    {latest.drv_entgeltpunkte != null ? `${num(latest.drv_entgeltpunkte, 4)} EP` : '–'}
-                  </Typography>
-                </Box>
-              </Box>
-            </Paper>
-          );
-        })()}
-
         {/* Chart: Hochgerechnete Rente + Anwartschaft über Jahre */}
         {chartData.length >= 2 && (
           <Paper variant="outlined" sx={{ borderRadius: '16px', p: 2 }}>
@@ -3697,52 +3666,6 @@ function OverviewPanel({ policies, onTabSwitch, onDelete, isDark }) {
         />
       </Box>
 
-      {/* DRV InfoCard — shown whenever at least one DRV policy is configured */}
-      {drvPols.length > 0 && (
-        <div style={{ background: t.card, border: `2px solid #22c55e40`, borderRadius: 16, padding: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-            <span style={{ fontSize: '1.2rem' }}>🏛</span>
-            <div>
-              <div style={{ color: t.text, fontWeight: 700, fontSize: '0.9rem' }}>Gesetzliche Rente (DRV)</div>
-              <div style={{ color: t.sub, fontSize: '0.72rem' }}>Auf Basis des aktuellen Rentenbescheids</div>
-            </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
-            {drvPols.map(pol => {
-              const r = pol.result;
-              return (
-                <div key={pol.id} style={{ display: 'contents' }}>
-                  <div style={{ background: t.cardAlt, border: `1px solid ${t.bdr}`, borderRadius: 10, padding: '10px 12px' }}>
-                    <div style={{ color: t.sub, fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>Entgeltpunkte</div>
-                    <div style={{ color: CHART.positive, fontWeight: 700, fontSize: '0.9rem', fontFamily: 'monospace' }}>{num(r.entgeltpunkte, 4)} EP</div>
-                  </div>
-                  <div style={{ background: t.cardAlt, border: `1px solid ${t.bdr}`, borderRadius: 10, padding: '10px 12px' }}>
-                    <div style={{ color: t.sub, fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>Anwartschaft</div>
-                    <div style={{ color: t.text, fontWeight: 700, fontSize: '0.9rem', fontFamily: 'monospace' }}>{euro(r.anwartschaft)}/M</div>
-                  </div>
-                  <div style={{ background: t.cardAlt, border: `1px solid ${t.bdr}`, borderRadius: 10, padding: '10px 12px' }}>
-                    <div style={{ color: t.sub, fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>Bruttorente {r.rentenJahr}</div>
-                    <div style={{ color: CHART.positive, fontWeight: 700, fontSize: '0.9rem', fontFamily: 'monospace' }}>{euro(r.bruttoRente)}/M</div>
-                  </div>
-                  <div style={{ background: t.cardAlt, border: `1px solid ${t.bdr}`, borderRadius: 10, padding: '10px 12px' }}>
-                    <div style={{ color: t.sub, fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>Netto-Echt-Rente</div>
-                    <div style={{ color: CHART.positive, fontWeight: 700, fontSize: '0.9rem', fontFamily: 'monospace' }}>{euro(r.nettoRente)}/M</div>
-                    <div style={{ color: t.sub, fontSize: '0.62rem', marginTop: 2 }}>nach Steuer & PKV</div>
-                  </div>
-                  {r.pkvNettobeitrag > 0 && (
-                    <div style={{ background: t.cardAlt, border: `1px solid ${t.bdr}`, borderRadius: 10, padding: '10px 12px' }}>
-                      <div style={{ color: t.sub, fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>PKV-Abzug</div>
-                      <div style={{ color: CHART.warning, fontWeight: 700, fontSize: '0.9rem', fontFamily: 'monospace' }}>-{euro(r.pkvNettobeitrag)}/M</div>
-                      <div style={{ color: t.sub, fontSize: '0.62rem', marginTop: 2 }}>nach RV-Zuschuss</div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {/* Netto-Breakdown */}
       {netRetirement.perPolicy.length > 0 && (
         <div style={{ background: t.card, border: `1px solid ${t.bdr}`, borderRadius: 16, padding: 16 }}>
@@ -3766,7 +3689,7 @@ function OverviewPanel({ policies, onTabSwitch, onDelete, isDark }) {
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {netRetirement.perPolicy.map(p => {
+            {sortPoliciesByLayer(netRetirement.perPolicy).map(p => {
               const total = netRetirement.totalBrutto || 1;
               const netPct = Math.round((p.netto / total) * 100);
               const stPct  = Math.round((p.steuer / total) * 100);
@@ -3844,7 +3767,7 @@ function OverviewPanel({ policies, onTabSwitch, onDelete, isDark }) {
             textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16 }}>
             Policen im Vergleich
           </div>
-          {policies.map(pol => {
+          {sortPoliciesByLayer(policies).map(pol => {
             const r = pol.result;
             const w = r ? Math.round((r.kapBeiRente || 0) / maxKap * 100) : 0;
             return (
@@ -3902,9 +3825,35 @@ function PolicyListSection({ policies, onOpen, onDelete }) {
     return acc;
   }, [policies]);
 
-  const filtered = typeFilter === 'all'
-    ? policies
-    : policies.filter(p => p.type === typeFilter);
+  // Stabile Sortierung nach Schicht (1 → 2 → 3) → Type → Name. Verhindert,
+  // dass die Reihenfolge bei jeder Bearbeitung wackelt (DB sortiert nach
+  // updated_at, was nicht visuell sinnvoll ist).
+  const sorted = useMemo(() => {
+    const list = typeFilter === 'all'
+      ? policies
+      : policies.filter(p => p.type === typeFilter);
+    return sortPoliciesByLayer(list);
+  }, [policies, typeFilter]);
+
+  // Bei "Alle"-Filter zusätzlich nach Schicht gruppieren mit Section-Headers.
+  // Gefilterte Ansichten zeigen nur eine flache Liste (Schicht implizit klar).
+  const groupedByLayer = useMemo(() => {
+    if (typeFilter !== 'all') return null;
+    const groups = { 1: [], 2: [], 3: [] };
+    sorted.forEach(p => {
+      const layer = TYPE_LAYER[p.type] ?? 3;
+      groups[layer].push(p);
+    });
+    return groups;
+  }, [sorted, typeFilter]);
+
+  const containerSx = cardView === 'list' ? {
+    display: 'flex', flexDirection: 'column', gap: 1.5,
+  } : {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+    gap: 1.5,
+  };
 
   return (
     <Box>
@@ -3960,21 +3909,40 @@ function PolicyListSection({ policies, onOpen, onDelete }) {
         </ToggleButtonGroup>
       </Stack>
 
-      {filtered.length === 0 ? (
+      {sorted.length === 0 ? (
         <Paper variant="outlined" sx={{ borderRadius: '16px', p: 4, textAlign: 'center' }}>
           <Typography variant="body2" color="text.secondary">
             Keine Policen in dieser Kategorie.
           </Typography>
         </Paper>
+      ) : groupedByLayer ? (
+        // "Alle"-Filter: nach Schicht gruppiert mit Section-Headers
+        <Stack spacing={2.5}>
+          {[1, 2, 3].map(layer => {
+            const items = groupedByLayer[layer];
+            if (!items || items.length === 0) return null;
+            return (
+              <Box key={layer}>
+                <Typography variant="overline" sx={{
+                  display: 'block', color: 'text.secondary', fontWeight: 700,
+                  letterSpacing: '0.08em', fontSize: '0.7rem', mb: 1.25,
+                }}>
+                  {LAYER_LABEL[layer]} · {items.length}
+                </Typography>
+                <Box sx={containerSx}>
+                  {items.map(pol => (
+                    <PolicyCard key={pol.id} pol={pol} view={cardView}
+                      onOpen={onOpen} onDelete={onDelete} />
+                  ))}
+                </Box>
+              </Box>
+            );
+          })}
+        </Stack>
       ) : (
-        <Box sx={cardView === 'list' ? {
-          display: 'flex', flexDirection: 'column', gap: 1.5,
-        } : {
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: 1.5,
-        }}>
-          {filtered.map((pol) => (
+        // Gefilterte Ansicht: flache Liste ohne Header
+        <Box sx={containerSx}>
+          {sorted.map((pol) => (
             <PolicyCard key={pol.id} pol={pol} view={cardView}
               onOpen={onOpen} onDelete={onDelete} />
           ))}
