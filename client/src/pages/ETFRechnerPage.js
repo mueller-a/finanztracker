@@ -1054,28 +1054,6 @@ function DRVSidebar({ params, onChange, color, isDark }) {
 
   return (
     <Box>
-      {/* Aus Rentenbescheid: Werte werden jetzt zentral im DRVSnapshotPanel
-          (rechte Content-Spalte) eingegeben. Sidebar zeigt nur einen Hinweis.
-          Der jüngste Snapshot übersteuert die alten params.* Felder per
-          runCalc-Merge. */}
-      <Box sx={{
-        mb: 2, p: 1.25, borderRadius: '8px',
-        bgcolor: 'action.hover',
-      }}>
-        <Typography variant="caption" sx={{
-          color: 'text.secondary', fontWeight: 700,
-          textTransform: 'uppercase', letterSpacing: '0.06em',
-          fontSize: '0.62rem', display: 'block', mb: 0.5,
-        }}>
-          Aus Rentenbescheid
-        </Typography>
-        <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem', display: 'block' }}>
-          Anwartschaft, hochgerechnete Rente und Entgeltpunkte werden im
-          Bescheids-Verlauf rechts erfasst — der jüngste Snapshot ist
-          automatisch maßgeblich.
-        </Typography>
-      </Box>
-
       <SectionLabel isDark={isDark}>Rentenbeginn & Anpassung</SectionLabel>
       <MonthInput label="Rentenbeginn" value={rvVal} min="2025-01" max="2080-12"
         onChange={onMonth} isDark={isDark} />
@@ -1113,6 +1091,28 @@ function DRVSidebar({ params, onChange, color, isDark }) {
           helperText="Bereits nach Rentenzuschuss (kein Doppelabzug)"
           inputProps={{ step: 1, min: 0 }}
         />
+      </Box>
+
+      {/* Aus Rentenbescheid: Werte werden zentral im DRVSnapshotPanel
+          (rechte Content-Spalte) eingegeben. Sidebar zeigt nur einen Hinweis.
+          Der jüngste Snapshot übersteuert die alten params.* Felder per
+          runCalc-Merge. */}
+      <Box sx={{
+        mt: 2, p: 1.25, borderRadius: '8px',
+        bgcolor: 'action.hover',
+      }}>
+        <Typography variant="caption" sx={{
+          color: 'text.secondary', fontWeight: 700,
+          textTransform: 'uppercase', letterSpacing: '0.06em',
+          fontSize: '0.62rem', display: 'block', mb: 0.5,
+        }}>
+          Aus Rentenbescheid
+        </Typography>
+        <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem', display: 'block' }}>
+          Anwartschaft, hochgerechnete Rente und Entgeltpunkte werden im
+          Bescheids-Verlauf rechts erfasst — der jüngste Snapshot ist
+          automatisch maßgeblich.
+        </Typography>
       </Box>
     </Box>
   );
@@ -3068,18 +3068,6 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
           />
         )}
 
-        {/* DRV: Eigenes Bescheids-Panel oben — Quelle der Wahrheit für
-            anwartschaft / hochgerechnete / entgeltpunkte */}
-        {pol.type === 'drv' && (
-          <DRVSnapshotPanel
-            policyId={pol.id}
-            snapshots={snapshots || []}
-            onAdd={onAddSnapshot}
-            onUpdate={onUpdateSnapshot}
-            onDelete={onDeleteSnapshot}
-          />
-        )}
-
         {/* Hybrid Tracking Banner */}
         {pol.type === 'insurance' && activeSubTab === 'detail' && r?.usingSnapshot && (
           <div style={{
@@ -3094,7 +3082,7 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
           </div>
         )}
 
-        {(pol.type === 'avd' || activeSubTab === 'detail') && r?.depletionYear && (
+        {pol.type !== 'drv' && (pol.type === 'avd' || activeSubTab === 'detail') && r?.depletionYear && (
           <div style={{
             background: '#ef444415', border: '1px solid #ef4444',
             borderRadius: 10, padding: '10px 14px', color: CHART.negative, fontSize: '0.82rem',
@@ -3103,8 +3091,107 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
           </div>
         )}
 
-        {/* Stat cards (hidden in snapshots tab) */}
-        {(pol.type === 'avd' || activeSubTab === 'detail') && (
+        {/* ─── DRV: eigenes Layout ────────────────────────────────────────────
+            Reihenfolge: KPIs → Rentenbescheide → Detailübersicht →
+            GRV Steuer-Simulator → Rentenentwicklung-Chart.
+            Capital-Chart wird für DRV bewusst weggelassen (nicht relevant). */}
+        {pol.type === 'drv' && (
+          <>
+            {/* 1. KPI-Karten */}
+            {r && (
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(220px, 1fr))' }, gap: 2, alignItems: 'stretch' }}>
+                {statCards.map((s, i) => (
+                  <StatCard key={i} {...s} />
+                ))}
+              </Box>
+            )}
+
+            {/* 2. Rentenbescheide (DRV-Snapshot-Panel) */}
+            <DRVSnapshotPanel
+              policyId={pol.id}
+              snapshots={snapshots || []}
+              onAdd={onAddSnapshot}
+              onUpdate={onUpdateSnapshot}
+              onDelete={onDeleteSnapshot}
+            />
+
+            {/* 3. Detailübersicht */}
+            <div style={{ background: t.card, border: `1px solid ${t.bdr}`, borderRadius: 16, padding: 16 }}>
+              <div style={{ color: t.sub, fontSize: '0.65rem', fontWeight: 700,
+                textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
+                Detailübersicht
+              </div>
+              <DetailTable pol={pol} isDark={isDark} />
+            </div>
+
+            {/* 4. GRV Steuer-Simulator (Kohortenregel + KVdR) */}
+            {r && <GrvTaxSimulatorCard pol={pol} />}
+
+            {/* 5. Rentenentwicklung-Chart bis Rentenbeginn */}
+            {r && (() => {
+              const chartData = r.labels.map((yr, i) => ({
+                year: yr,
+                angepasst:    r.nomArr[i],
+                inflation:    r.realArr[i],
+                anwartschaft: r.einzArr[i],
+              }));
+              const kaufkraftSteigt = r.rentenAnpassung >= (r.inflation || 2);
+              return (
+                <div style={{ background: t.card, border: `1px solid ${t.bdr}`, borderRadius: 16, padding: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                    <div>
+                      <div style={{ color: t.sub, fontSize: '0.65rem', fontWeight: 700,
+                        textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>
+                        Rentenentwicklung bis {r.rentenJahr}
+                      </div>
+                      <div style={{ color: t.sub, fontSize: '0.7rem' }}>
+                        Anpassungsrate {num(r.rentenAnpassung, 1)}% vs. Inflation {num(r.inflation || 2, 1)}%
+                      </div>
+                    </div>
+                    <span style={{
+                      fontSize: '0.68rem', fontWeight: 700, padding: '3px 8px', borderRadius: 99,
+                      background: kaufkraftSteigt ? '#22c55e20' : '#ef444420',
+                      color: kaufkraftSteigt ? CHART.positive : CHART.negative,
+                      border: `1px solid ${kaufkraftSteigt ? CHART.positive : CHART.negative}`,
+                    }}>
+                      {kaufkraftSteigt ? '✓ Kaufkraft wächst' : '⚠ Kaufkraft sinkt'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
+                    {[
+                      { color: pol.color,     label: 'Mit Rentenanpassung' },
+                      { color: CHART.warning, label: 'Inflationsäquivalent' },
+                      { color: CHART.muted,   label: 'Anwartschaft (heute)' },
+                    ].map(l => (
+                      <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span style={{ width: 10, height: 10, borderRadius: '50%', background: l.color }} />
+                        <span style={{ color: t.sub, fontSize: '0.7rem' }}>{l.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={t.grid} />
+                      <XAxis dataKey="year" tick={{ fontSize: 10, fill: t.tickClr }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                      <YAxis tick={{ fontSize: 10, fill: t.tickClr }} tickLine={false} axisLine={false}
+                        tickFormatter={v => euro(v).replace(' €', '€')} width={60} />
+                      <Tooltip content={<ChartTooltip isDark={isDark} />} />
+                      <Line type="monotone" dataKey="angepasst" name="Mit Rentenanpassung"
+                        stroke={pol.color} strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
+                      <Line type="monotone" dataKey="inflation" name="Inflationsäquivalent"
+                        stroke={CHART.warning} strokeWidth={1.5} strokeDasharray="5 4" dot={false} activeDot={{ r: 4 }} />
+                      <Line type="monotone" dataKey="anwartschaft" name="Anwartschaft (heute)"
+                        stroke={CHART.muted} strokeWidth={1} strokeDasharray="3 3" dot={false} activeDot={{ r: 3 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              );
+            })()}
+          </>
+        )}
+
+        {/* Stat cards (hidden in snapshots tab) — DRV nutzt eigenen Render-Branch unten */}
+        {pol.type !== 'drv' && (pol.type === 'avd' || activeSubTab === 'detail') && (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(220px, 1fr))' }, gap: 2, alignItems: 'stretch' }}>
           {statCards.map((s, i) => (
             <StatCard key={i} {...s} />
@@ -3122,18 +3209,12 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
           <BavTaxSimulatorCard pol={pol} birthday={birthday} />
         )}
 
-        {/* GRV Steuer-Simulator (Kohortenregel + KVdR) — DRV hat keine
-            Sub-Tabs mehr, daher unabhängig von activeSubTab */}
-        {pol.type === 'drv' && r && (
-          <GrvTaxSimulatorCard pol={pol} />
-        )}
-
         {/* Depot: Holdings-History — realer Kapitalverlauf bis heute */}
         {pol.type === 'depot' && (
           <DepotHistoryPanel policyId={pol.id} />
         )}
 
-        {(pol.type === 'avd' || activeSubTab === 'detail') && <>
+        {pol.type !== 'drv' && (pol.type === 'avd' || activeSubTab === 'detail') && <>
         {/* Capital chart */}
         <div style={{ background: t.card, border: `1px solid ${t.bdr}`, borderRadius: 16, padding: 16 }}>
           <div style={{ color: t.sub, fontSize: '0.65rem', fontWeight: 700,
@@ -3169,67 +3250,6 @@ function PolicyPanel({ pol, onParamChange, onRename, onUpdatePolicy, isDark, sna
             </LineChart>
           </ResponsiveContainer>
         </div>
-
-        {/* DRV: Rentenanpassung vs. Inflation chart */}
-        {pol.type === 'drv' && r && (() => {
-          const chartData = r.labels.map((yr, i) => ({
-            year: yr,
-            angepasst:  r.nomArr[i],
-            inflation:  r.realArr[i],
-            anwartschaft: r.einzArr[i],
-          }));
-          const kaufkraftSteigt = r.rentenAnpassung >= (r.inflation || 2);
-          return (
-            <div style={{ background: t.card, border: `1px solid ${t.bdr}`, borderRadius: 16, padding: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                <div>
-                  <div style={{ color: t.sub, fontSize: '0.65rem', fontWeight: 700,
-                    textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>
-                    Rentenentwicklung bis {r.rentenJahr}
-                  </div>
-                  <div style={{ color: t.sub, fontSize: '0.7rem' }}>
-                    Anpassungsrate {num(r.rentenAnpassung, 1)}% vs. Inflation {num(r.inflation || 2, 1)}%
-                  </div>
-                </div>
-                <span style={{
-                  fontSize: '0.68rem', fontWeight: 700, padding: '3px 8px', borderRadius: 99,
-                  background: kaufkraftSteigt ? '#22c55e20' : '#ef444420',
-                  color: kaufkraftSteigt ? CHART.positive : CHART.negative,
-                  border: `1px solid ${kaufkraftSteigt ? CHART.positive : CHART.negative}`,
-                }}>
-                  {kaufkraftSteigt ? '✓ Kaufkraft wächst' : '⚠ Kaufkraft sinkt'}
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
-                {[
-                  { color: pol.color,    label: 'Mit Rentenanpassung' },
-                  { color: CHART.warning,    label: 'Inflationsäquivalent' },
-                  { color: CHART.muted,    label: 'Anwartschaft (heute)' },
-                ].map(l => (
-                  <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: l.color }} />
-                    <span style={{ color: t.sub, fontSize: '0.7rem' }}>{l.label}</span>
-                  </div>
-                ))}
-              </div>
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={t.grid} />
-                  <XAxis dataKey="year" tick={{ fontSize: 10, fill: t.tickClr }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                  <YAxis tick={{ fontSize: 10, fill: t.tickClr }} tickLine={false} axisLine={false}
-                    tickFormatter={v => euro(v).replace(' €', '€')} width={60} />
-                  <Tooltip content={<ChartTooltip isDark={isDark} />} />
-                  <Line type="monotone" dataKey="angepasst" name="Mit Rentenanpassung"
-                    stroke={pol.color} strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
-                  <Line type="monotone" dataKey="inflation" name="Inflationsäquivalent"
-                    stroke={CHART.warning} strokeWidth={1.5} strokeDasharray="5 4" dot={false} activeDot={{ r: 4 }} />
-                  <Line type="monotone" dataKey="anwartschaft" name="Anwartschaft (heute)"
-                    stroke={CHART.muted} strokeWidth={1} strokeDasharray="3 3" dot={false} activeDot={{ r: 3 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          );
-        })()}
 
         {/* bAV: Steuervorteil summary */}
         {pol.type === 'bav' && r && (
