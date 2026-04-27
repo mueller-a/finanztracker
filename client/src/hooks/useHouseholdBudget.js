@@ -185,7 +185,7 @@ export function useBudgetStats(transactions, weeklyLimit, monthlyLimit, mode = '
 
     const percentAvailable = limit > 0 ? (remaining / limit) * 100 : 0;
 
-    // Ampel-Logik nach SKILL.md:
+    // Ampel-Logik (siehe Skill "domain-haushaltsbuch"):
     //   > 50% verfügbar → grün
     //   20-50%          → gelb
     //   < 20%           → rot

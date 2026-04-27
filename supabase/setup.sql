@@ -1110,7 +1110,7 @@ CREATE POLICY "app_modules_delete_admin" ON public.app_modules
 
 
 -- ============================================================================
--- Haushaltsbuch (Wochenbudget Gemeinschaftskonto) — SKILL.md §558-578
+-- Haushaltsbuch (Wochenbudget Gemeinschaftskonto) — siehe Skill "domain-haushaltsbuch"
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS public.household_transactions (

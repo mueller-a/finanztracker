@@ -353,7 +353,7 @@ function ModuleCard({ icon, title, loading, children, onClick, hiddenFromUsers =
 
 function ModuleStatusGrid({ data, loading, navigate }) {
   // Globale Feature-Toggles aus app_modules.
-  // Sichtbarkeit folgt SKILL.md §284: Modul.is_active ODER User.role==='admin'.
+  // Sichtbarkeit folgt Skill "architecture": Modul.is_active ODER User.role==='admin'.
   // `isHiddenFromUsers` markiert für Admins, was normale User nicht sehen.
   const { isModuleEnabled, isHiddenFromUsers } = useAppModules();
 

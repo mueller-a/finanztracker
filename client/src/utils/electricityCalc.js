@@ -306,7 +306,7 @@ export function buildCostForecast(forecastKwh, tariff, today = new Date()) {
 }
 
 // ─── Multi-Arbeitspreise: gewichteter Durchschnitt ──────────────────────────
-// Formel (SKILL.md §310):
+// Formel (siehe Skill "domain-strom", Sektion "Mathematische Brücke"):
 //   AP_weighted = Σ (p_i × D_i) / D_total
 //   wobei D_i = Tage der Preis-Periode i, D_total = Tage der Abrechnungsperiode
 //
@@ -456,7 +456,7 @@ export function splitEnergyCost(periodRow, laborPrices) {
  *   + außerordentliche Gebühren (Mahn-, Rücklastschrift-, …)
  *   − Gutschriften & Boni (Neukunden-, Treuebonus, …)
  *
- * Wichtig (SKILL.md): Extra-Kosten und Gutschriften beeinflussen NUR die
+ * Wichtig (siehe Skill "domain-strom"): Extra-Kosten und Gutschriften beeinflussen NUR die
  * Periodensumme, NICHT die kWh-/Preis-Statistiken. Sie fließen ausschließlich
  * hier ein, nicht in `splitEnergyCost` oder `effectiveArbeitspreis`.
  */

@@ -1,7 +1,7 @@
 -- ============================================================
 -- Haushaltsbuch (Wochen-Budget für Gemeinschaftskonto)
 -- Stand: 2026-04-16
--- SKILL.md §558-578
+-- Siehe Skill "domain-haushaltsbuch".
 -- ============================================================
 
 -- 1. Tabelle für geteilte Haushaltstransaktionen

@@ -2,7 +2,7 @@
 // Zentrale Anlaufstelle für alle UI-Bausteine. Seiten importieren von hier statt
 // direkt aus '@mui/material', damit Theme-Tweaks einen einzigen Touchpoint haben.
 //
-// Gewachsen aus der Migration nach SKILL.md §164–171:
+// Gewachsen aus der Migration zu Material UI (siehe Skill "design-system"):
 // - Card für Versicherungs-Übersichten   → SectionCard / KpiCard
 // - Table für Snapshot-Historie          → DataTable
 // - TextField + InputAdornment für €     → CurrencyField

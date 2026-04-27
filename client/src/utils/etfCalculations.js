@@ -32,7 +32,7 @@ export function fmtShort(n) {
 //    steuer           — Persönlicher Steuersatz im Alter (%) — NUR für Auszahlungs-
 //                       Besteuerung (Halbeinkünfte/Ertragsanteil), NICHT für Sparphase.
 //                       Private Rentenversicherungen haben KEINE Abgeltungsteuer in
-//                       der Ansparphase (SKILL.md §65–93).
+//                       der Ansparphase (siehe Skill "domain-versicherungen").
 //    vbJahr/vbMonat   — Versicherungsbeginn
 //    rentenJahr/rentenMonat — Rentenbeginn
 //    leben            — Rentenphase in Jahren

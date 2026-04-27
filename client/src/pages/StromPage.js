@@ -1602,7 +1602,7 @@ function PeriodForm({ initial, onSave, onCancel, onOpenBill, onRemoveExistingBil
               inputProps={{ step: 1, min: 1, max: 24 }} />
           </Box>
 
-          {/* Dynamische Arbeitspreis-Liste mit Verbrauchsaufteilung (1:N, SKILL.md §296ff.) */}
+          {/* Dynamische Arbeitspreis-Liste mit Verbrauchsaufteilung (1:N, siehe Skill "domain-strom") */}
           <Paper variant="outlined" sx={{ borderRadius: 1, p: 1.5 }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
               <Typography variant="overline" sx={{ color: 'text.secondary', fontWeight: 700 }}>

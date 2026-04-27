@@ -1910,7 +1910,7 @@ function SnapshotPanel({ policyId, snapshots, onAdd, onUpdate, onDelete, isDark 
 // ── Tax Simulator Card ────────────────────────────────────────────────────────
 // Halbeinkünfteverfahren (§20 Abs.1 Nr.6 EStG) für Einmalauszahlung
 // Ertragsanteilbesteuerung (§22 EStG) für Monatsrente
-// Siehe SKILL.md §65–93.
+// Siehe Skill "domain-versicherungen" (Hybrid-Modell + Snapshot-Datenstruktur).
 
 function TaxSimulatorCard({ pol, birthday }) {
   const [scenario, setScenario] = useState('lumpsum'); // 'lumpsum' | 'annuity'

@@ -220,7 +220,7 @@ const components = {
 };
 
 // ─── Shared mixins ────────────────────────────────────────────────────────────
-// Used by KpiCard / page layouts to enforce the 188px-min KPI grid (SKILL.md §158)
+// Used by KpiCard / page layouts to enforce the 188px-min KPI grid — siehe Skill "design-system"
 const mixins = {
   kpiGrid: {
     display: 'grid',

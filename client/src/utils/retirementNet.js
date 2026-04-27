@@ -8,7 +8,7 @@
  *       · bAV / DRV / AVD : voll nachgelagert
  *       · insurance (Schicht 3): Ertragsanteilbesteuerung §22 EStG — NICHT voll
  *         besteuert! Ertragsanteil nach Alter bei Rentenbeginn (z.B. 17% mit 67).
- *         KVdR: Schicht-3-Rente ist regelmäßig beitragsfrei (SKILL.md §92).
+ *         KVdR: Schicht-3-Rente ist regelmäßig beitragsfrei (siehe Skill "domain-versicherungen").
  *       · depot: Abgeltungssteuer nur auf Gewinnanteil, 30% Teilfreistellung
  */
 

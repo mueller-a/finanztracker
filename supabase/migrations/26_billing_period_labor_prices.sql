@@ -3,7 +3,7 @@
 -- Run in: Supabase Dashboard → SQL Editor
 -- ============================================================
 --
--- Siehe SKILL.md "Strommodul (Erweiterte Preis-Logik)":
+-- Siehe Skill "domain-strom" (Sektion "Erweiterte Preis-Logik"):
 --   Ein Stromanbieter kann unterjährig den Arbeitspreis ändern.
 --   Aus der 1:1-Beziehung Abrechnungsperiode ↔ Arbeitspreis wird
 --   eine 1:N-Beziehung.

@@ -19,7 +19,7 @@
  *   - PV: voller Beitragssatz (kein Freibetrag, keine Teilung).
  *
  * ACHTUNG: Die aufgabenrelevante Vereinfachung ("86% steuerpflichtig")
- * aus SKILL.md / Aufgabe weicht von der realen Kohortenregel (84% für 2026)
+ * aus dem ursprünglichen Auftrag weicht von der realen Kohortenregel (84% für 2026)
  * ab. Die Utility folgt strikt dem Gesetzestext; das User-Request-Value
  * kann über `rentenbeginn` durchgereicht werden oder als Override.
  */

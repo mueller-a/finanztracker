@@ -7,7 +7,7 @@
 -- `is_projection = true` markiert berechnete Prognose-Werte
 -- (im UI kursiv/andere Farbe dargestellt).
 --
--- SKILL.md §259 ff.
+-- Siehe Skill "domain-gehalt" (Sektion "Gehaltshistorie & -prognose").
 --
 -- Idempotent: IF NOT EXISTS / DROP POLICY IF EXISTS.
 -- ============================================================

@@ -1,7 +1,7 @@
 /**
  * Steuerberechnung für private Rentenversicherungen (Schicht 3 DE).
  *
- * Rechtsgrundlagen (SKILL.md §65–93):
+ * Rechtsgrundlagen (siehe Skills "domain-versicherungen" + "steuern-de"):
  *   - KEINE Abgeltungsteuer während der Ansparphase (kein § 20 Nr. 7 EStG).
  *   - Szenario A (Kapitalabfindung): Halbeinkünfteverfahren nach § 20 Abs. 1 Nr. 6 EStG
  *     → wenn Vertragslaufzeit ≥ 12 J und Auszahlung nach vollendetem 62. LJ,

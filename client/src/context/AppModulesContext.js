@@ -6,7 +6,7 @@ import { useModules } from './ModuleContext';
 // Globale Feature-Toggles (Admin-gesteuert, für alle Nutzer gleich).
 // Tabelle: public.app_modules. Siehe migrations/35_app_modules.sql.
 //
-// Sichtbarkeits-Matrix (SKILL.md §284):
+// Sichtbarkeits-Matrix (siehe Skill "architecture", Sektion "Sichtbarkeits-Matrix"):
 //   isVisible = module.is_active || currentUser.role === 'admin'
 // → Admins sehen IMMER alle Module (auch deaktivierte) als Vorschau.
 //
@@ -63,7 +63,7 @@ export function AppModulesProvider({ children }) {
 
   // Default: true (wenn Tabelle leer oder Key unbekannt → nicht versehentlich
   // alles ausblenden; dein Admin-UI listet, was es kennt).
-  // Admin-Bypass (SKILL.md §284): Admins sehen IMMER alle Module.
+  // Admin-Bypass (siehe Skill "architecture"): Admins sehen IMMER alle Module.
   const isModuleEnabled = useCallback((key) => {
     if (!key)                         return true;
     if (isAdmin)                      return true;
