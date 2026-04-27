@@ -3,7 +3,7 @@ import {
   Slider, Box, Button, IconButton, Stack, Typography, Chip,
   Dialog, DialogTitle, DialogContent, DialogActions, Card, CardContent,
   Alert, TextField, ToggleButton, ToggleButtonGroup, Switch, Paper,
-  Table, TableBody, LinearProgress,
+  Table, TableBody, LinearProgress, Tooltip as MuiTooltip,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
@@ -3546,6 +3546,7 @@ function PolicyCard({ pol, view, onOpen, onDelete }) {
 
 function OverviewPanel({ policies, onTabSwitch, onDelete, isDark }) {
   const t = useTokens(isDark);
+  const theme = useTheme();
   const { isPkv, steuerSatzAlter, birthday } = useModules();
 
   // Geburtsjahr für Ertragsanteilbesteuerung (insurance) — Alter bei Rentenbeginn
@@ -3573,6 +3574,42 @@ function OverviewPanel({ policies, onTabSwitch, onDelete, isDark }) {
     });
     return { kap, rente, einz, gewinn, faktor: einz > 0 ? kap / einz : 0 };
   }, [policies]);
+
+  // Einmalzahlungen aus allen Policen mit explizit gewählter Kapitalauszahlung.
+  // Default-Annahme bei fehlender payoutStrategy: monatliche Rente → fließt
+  // hier NICHT ein. Pro Police wird der Netto-Betrag nach passendem Steuer-
+  // Verfahren ermittelt:
+  //   - bAV (Schicht 2):  100% nachgelagert besteuert → netto = brutto × (1−s)
+  //   - Schicht 3 (RV):   Halbeinkünfteverfahren — 50% des Gewinns steuerfrei.
+  //                       Annahme: Voraussetzung (Laufzeit ≥ 12J + Alter ≥ 62)
+  //                       erfüllt; sonst zeigt der Steuer-Simulator den exakten
+  //                       Wert auf der Detail-Page.
+  const lumpSum = useMemo(() => {
+    let totalBrutto = 0, totalNetto = 0;
+    const perLayer = { 2: 0, 3: 0 };
+    const items = [];
+    const sRate = (steuerSatzAlter || 0) / 100;
+    policies.forEach(p => {
+      const r = p.result;
+      if (!r || r.payoutStrategy !== 'lump_sum' || !r.lumpSum) return;
+      const layer = TYPE_LAYER[p.type] ?? 3;
+      const brutto = r.lumpSum;
+      let steuer = 0;
+      if (p.type === 'insurance') {
+        const gewinn = Math.max(0, brutto - (r.totalEingezahlt || 0));
+        steuer = gewinn * 0.5 * sRate;
+      } else {
+        // bAV (und alle übrigen lump_sum-Fälle): voll nachgelagert.
+        steuer = brutto * sRate;
+      }
+      const netto = brutto - steuer;
+      totalBrutto += brutto;
+      totalNetto  += netto;
+      perLayer[layer] = (perLayer[layer] || 0) + netto;
+      items.push({ id: p.id, name: p.name, type: p.type, brutto, netto, layer });
+    });
+    return { brutto: totalBrutto, netto: totalNetto, perLayer, items };
+  }, [policies, steuerSatzAlter]);
 
   // 3-Schichten Real-Netto-Summe (nur Ist-Prognose, keine Wunschrente)
   const schichten = useMemo(() => {
@@ -3657,6 +3694,15 @@ function OverviewPanel({ policies, onTabSwitch, onDelete, isDark }) {
           value={euro(totals.kap)}
           sub={'Einzahlungen: ' + euro(totals.einz)}
         />
+        {lumpSum.brutto > 0 && (
+          <StatCardSecondary
+            icon="redeem"
+            label="Kapitalauszahlung (Netto)"
+            value={euro(lumpSum.netto)}
+            badge={lumpSum.items.length === 1 ? '1 Vertrag' : `${lumpSum.items.length} Verträge`}
+            sub={`Brutto: ${euro(lumpSum.brutto)} · Steuer: -${euro(lumpSum.brutto - lumpSum.netto)}`}
+          />
+        )}
         <StatCardSecondary
           icon="trending_up"
           label="Netto-Gewinn gesamt"
@@ -3666,133 +3712,287 @@ function OverviewPanel({ policies, onTabSwitch, onDelete, isDark }) {
         />
       </Box>
 
-      {/* Netto-Breakdown */}
+      {/* Netto-Aufschlüsselung + Policen im Vergleich nebeneinander.
+          Wenn Netto-Aufschlüsselung leer ist, nimmt der Vergleich die volle Breite.
+          alignItems: 'stretch' + height 100% auf Papers → beide Panels gleich hoch. */}
+      <Box sx={{
+        display: 'grid',
+        gridTemplateColumns: {
+          xs: '1fr',
+          md: netRetirement.perPolicy.length > 0 ? '1fr 1fr' : '1fr',
+        },
+        gap: 2,
+        alignItems: 'stretch',
+      }}>
       {netRetirement.perPolicy.length > 0 && (
-        <div style={{ background: t.card, border: `1px solid ${t.bdr}`, borderRadius: 16, padding: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <div>
-              <div style={{ color: t.sub, fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                Netto-Aufschlüsselung · {steuerSatzAlter}% Steuersatz · {isPkv ? 'PKV' : 'GKV'}
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 12 }}>
+        <Paper variant="outlined" sx={{ borderRadius: '16px', p: { xs: 2.25, sm: 3 }, height: '100%' }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="flex-start"
+            spacing={2} sx={{ mb: 2.5, flexWrap: 'wrap', rowGap: 1.5 }}>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="overline" sx={{
+                display: 'block', color: 'text.secondary', fontWeight: 700,
+                letterSpacing: '0.08em', fontSize: '0.7rem',
+              }}>
+                Netto-Aufschlüsselung
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>
+                {steuerSatzAlter}% Steuersatz · {isPkv ? 'PKV (keine SV)' : 'GKV (volle SV)'}
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={3}>
               {[
-                { label: 'Netto', value: euro(netRetirement.totalNetto), color: CHART.positive },
-                { label: 'Steuer', value: '-' + euro(netRetirement.totalSteuer), color: CHART.negative },
-                { label: 'KV/PV', value: isPkv ? '0 €' : '-' + euro(netRetirement.totalSv), color: isPkv ? CHART.positive : CHART.negative },
+                { label: 'Netto', value: euro(netRetirement.totalNetto), color: 'success.main' },
+                { label: 'Steuer', value: '-' + euro(netRetirement.totalSteuer), color: 'accent.negative' },
+                { label: 'KV/PV', value: isPkv ? '0 €' : '-' + euro(netRetirement.totalSv), color: isPkv ? 'success.main' : 'accent.negative' },
               ].map(k => (
-                <div key={k.label} style={{ textAlign: 'right' }}>
-                  <div style={{ color: t.sub, fontSize: '0.6rem', textTransform: 'uppercase' }}>{k.label}</div>
-                  <div style={{ color: k.color, fontSize: '0.82rem', fontWeight: 700, fontFamily: 'monospace' }}>{k.value}</div>
-                </div>
+                <Box key={k.label} sx={{ textAlign: 'right' }}>
+                  <Typography variant="caption" color="text.secondary" sx={{
+                    display: 'block', fontSize: '0.625rem',
+                    textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700,
+                  }}>
+                    {k.label}
+                  </Typography>
+                  <Typography sx={{
+                    fontFamily: '"Manrope", sans-serif', fontWeight: 800,
+                    fontSize: '0.95rem', lineHeight: 1.2, color: k.color,
+                    letterSpacing: '-0.01em',
+                  }}>
+                    {k.value}
+                  </Typography>
+                </Box>
               ))}
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            </Stack>
+          </Stack>
+
+          <Stack spacing={1.25}>
             {sortPoliciesByLayer(netRetirement.perPolicy).map(p => {
-              const total = netRetirement.totalBrutto || 1;
-              const netPct = Math.round((p.netto / total) * 100);
-              const stPct  = Math.round((p.steuer / total) * 100);
-              const svPct  = Math.round((p.sv / total) * 100);
+              const total       = netRetirement.totalBrutto || 1;
+              const totalNetto  = netRetirement.totalNetto || 1;
+              const netPct      = (p.netto  / total) * 100;
+              const stPct       = (p.steuer / total) * 100;
+              const svPct       = (p.sv     / total) * 100;
+              const effSteuerSatz = p.brutto > 0 ? Math.round((p.steuer / p.brutto) * 100) : 0;
+              const effSvSatz     = p.brutto > 0 ? Math.round((p.sv     / p.brutto) * 100) : 0;
+              const anteilNetto   = totalNetto > 0 ? Math.round((p.netto / totalNetto) * 100) : 0;
+              const layerLabel    = LAYER_LABEL[TYPE_LAYER[p.type] ?? 3] || '';
+              const tooltipContent = (
+                <Box sx={{ minWidth: 220, py: 0.5 }}>
+                  <Typography variant="caption" sx={{
+                    display: 'block', fontWeight: 700, color: 'inherit',
+                    opacity: 0.75, fontSize: '0.65rem',
+                    textTransform: 'uppercase', letterSpacing: '0.05em', mb: 0.5,
+                  }}>
+                    {layerLabel}
+                  </Typography>
+                  <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', mb: 0.75 }}>
+                    {p.name}
+                  </Typography>
+                  {[
+                    { label: 'Brutto / Monat',  value: euro(p.brutto), color: 'inherit' },
+                    { label: `Steuer (${effSteuerSatz}%)`, value: '−' + euro(p.steuer), color: '#fca5a5' },
+                    p.sv > 0
+                      ? { label: `KV/PV (${effSvSatz}%)`, value: '−' + euro(p.sv), color: '#fcd34d' }
+                      : { label: 'KV/PV', value: '0 € · PKV-Vorteil', color: '#86efac' },
+                  ].map(row => (
+                    <Stack key={row.label} direction="row" justifyContent="space-between" spacing={2} sx={{ mb: 0.25 }}>
+                      <Typography variant="caption" sx={{ opacity: 0.85 }}>{row.label}</Typography>
+                      <Typography variant="caption" sx={{ fontFamily: 'monospace', color: row.color }}>
+                        {row.value}
+                      </Typography>
+                    </Stack>
+                  ))}
+                  <Box sx={{ borderTop: '1px solid rgba(255,255,255,0.18)', mt: 0.75, pt: 0.75 }}>
+                    <Stack direction="row" justifyContent="space-between" spacing={2}>
+                      <Typography variant="caption" sx={{ fontWeight: 700 }}>Netto / Monat</Typography>
+                      <Typography variant="caption" sx={{ fontFamily: 'monospace', fontWeight: 700, color: '#86efac' }}>
+                        {euro(p.netto)}
+                      </Typography>
+                    </Stack>
+                    <Stack direction="row" justifyContent="space-between" spacing={2}>
+                      <Typography variant="caption" sx={{ opacity: 0.7 }}>Netto / Jahr</Typography>
+                      <Typography variant="caption" sx={{ fontFamily: 'monospace', opacity: 0.85 }}>
+                        {euro(p.netto * 12)}
+                      </Typography>
+                    </Stack>
+                    <Stack direction="row" justifyContent="space-between" spacing={2}>
+                      <Typography variant="caption" sx={{ opacity: 0.7 }}>Anteil am Gesamt-Netto</Typography>
+                      <Typography variant="caption" sx={{ fontFamily: 'monospace', opacity: 0.85 }}>
+                        {anteilNetto}%
+                      </Typography>
+                    </Stack>
+                  </Box>
+                </Box>
+              );
               return (
-                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
-                  <span style={{ color: t.text, fontSize: '0.78rem', fontWeight: 600, minWidth: 120 }}>{p.name}</span>
-                  <div style={{ flex: 1, height: 8, borderRadius: 99, background: t.bdr, overflow: 'hidden', display: 'flex' }}>
-                    <div style={{ width: netPct + '%', background: CHART.positive, height: '100%' }} title={'Netto: ' + euro(p.netto)} />
-                    <div style={{ width: stPct + '%', background: CHART.negative, height: '100%' }} title={'Steuer: ' + euro(p.steuer)} />
-                    {svPct > 0 && <div style={{ width: svPct + '%', background: CHART.warning, height: '100%' }} title={'SV: ' + euro(p.sv)} />}
-                  </div>
-                  <span style={{ color: CHART.positive, fontSize: '0.75rem', fontWeight: 700, fontFamily: 'monospace', minWidth: 80, textAlign: 'right' }}>
+                <Stack key={p.id} direction="row" alignItems="center" spacing={1.5}>
+                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: p.color, flexShrink: 0 }} />
+                  <Typography variant="body2" sx={{
+                    fontWeight: 600, minWidth: 130,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {p.name}
+                  </Typography>
+                  <MuiTooltip
+                    title={tooltipContent}
+                    placement="top"
+                    arrow
+                    enterDelay={100}
+                    enterTouchDelay={50}
+                    componentsProps={{
+                      tooltip: {
+                        sx: { bgcolor: 'rgba(15,23,42,0.96)', maxWidth: 'none', px: 1.5, py: 1, borderRadius: '10px' },
+                      },
+                      arrow: { sx: { color: 'rgba(15,23,42,0.96)' } },
+                    }}
+                  >
+                    <Box sx={{
+                      flex: 1, height: 14, borderRadius: 99,
+                      bgcolor: 'action.hover', overflow: 'hidden', display: 'flex',
+                      cursor: 'help',
+                      transition: 'transform 120ms ease',
+                      '&:hover': { transform: 'scaleY(1.15)' },
+                    }}>
+                      <Box sx={{ width: `${netPct}%`, height: '100%', bgcolor: 'success.main' }} />
+                      <Box sx={{ width: `${stPct}%`, height: '100%', bgcolor: 'accent.negative' }} />
+                      {svPct > 0 && (
+                        <Box sx={{ width: `${svPct}%`, height: '100%', bgcolor: 'warning.main' }} />
+                      )}
+                    </Box>
+                  </MuiTooltip>
+                  <Typography sx={{
+                    fontFamily: '"Manrope", sans-serif', fontWeight: 700,
+                    fontSize: '0.85rem', color: 'success.main',
+                    minWidth: 90, textAlign: 'right',
+                  }}>
                     {euro(p.netto)}/M
-                  </span>
-                </div>
+                  </Typography>
+                </Stack>
               );
             })}
-          </div>
+          </Stack>
+
           {isPkv && (
-            <div style={{ marginTop: 8, padding: '6px 10px', borderRadius: 8, background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ color: CHART.positive, fontSize: '0.72rem', fontWeight: 600 }}>
-                ✓ PKV-Vorteil: Keine SV-Abzüge auf Betriebsrente, DRV & AVD — Ersparnis: {euro(netRetirement.perPolicy.reduce((s, p) => s + (p.type === 'bav' || p.type === 'drv' || p.type === 'avd' ? p.brutto * 0.189 : 0), 0))}/Monat vs. GKV
-              </span>
-            </div>
+            <Alert severity="success" variant="outlined" sx={{ mt: 2, py: 0.75 }}>
+              <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                PKV-Vorteil: keine SV-Abzüge auf Betriebsrente, DRV & AVD —
+                Ersparnis ggü. GKV: <strong>{euro(netRetirement.perPolicy.reduce((s, p) => s + (p.type === 'bav' || p.type === 'drv' || p.type === 'avd' ? p.brutto * 0.189 : 0), 0))}/Monat</strong>
+              </Typography>
+            </Alert>
           )}
-          <div style={{ color: t.sub, fontSize: '0.6rem', marginTop: 6, fontStyle: 'italic' }}>
+          <Typography variant="caption" color="text.secondary" sx={{
+            display: 'block', mt: 1.5, fontStyle: 'italic', fontSize: '0.7rem',
+          }}>
             Hinweis: Steuerberechnung basiert auf Schätzwerten. Die tatsächliche Steuerlast hängt vom Gesamteinkommen im Alter ab.
-          </div>
-        </div>
+          </Typography>
+        </Paper>
       )}
 
-      {/* Chart + Comparison */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-        {/* Aggregated chart */}
-        <div style={{ background: t.card, border: `1px solid ${t.bdr}`, borderRadius: 16, padding: 16 }}>
-          <div style={{ color: t.sub, fontSize: '0.65rem', fontWeight: 700,
-            textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
-            Kapitalentwicklung Gesamt
-          </div>
-          <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
-            {[{ color: CHART.neutral, label: 'Kapital gesamt' }, { color: CHART.warning, label: 'Einzahlungen' }].map(l => (
-              <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: l.color }} />
-                <span style={{ color: t.sub, fontSize: '0.72rem' }}>{l.label}</span>
-              </div>
-            ))}
-          </div>
-          <ResponsiveContainer width="100%" height={220}>
+        {/* Policen im Vergleich (Spalte 2 im neuen Grid neben Netto-Aufschlüsselung) */}
+        <Paper variant="outlined" sx={{ borderRadius: '16px', p: { xs: 2.25, sm: 3 }, height: '100%' }}>
+          <Typography variant="overline" sx={{
+            display: 'block', color: 'text.secondary', fontWeight: 700,
+            letterSpacing: '0.08em', fontSize: '0.7rem', mb: 0.25,
+          }}>
+            Policen im Vergleich
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2.5 }}>
+            Kapital bei Rentenbeginn pro Vertrag
+          </Typography>
+          <Stack spacing={2}>
+            {sortPoliciesByLayer(policies).map(pol => {
+              const r = pol.result;
+              const pct = r ? Math.round((r.kapBeiRente || 0) / maxKap * 100) : 0;
+              return (
+                <Box key={pol.id}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mb: 0.75 }}>
+                    <Typography variant="body2" sx={{
+                      fontWeight: 600, color: pol.color,
+                      maxWidth: '60%', overflow: 'hidden',
+                      textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
+                      {pol.name}
+                    </Typography>
+                    <Typography sx={{
+                      fontFamily: '"Manrope", sans-serif', fontWeight: 700,
+                      fontSize: '0.9rem', letterSpacing: '-0.01em',
+                    }}>
+                      {r ? euro(r.kapBeiRente) : '–'}
+                    </Typography>
+                  </Stack>
+                  <LinearProgress
+                    variant="determinate"
+                    value={Math.min(100, pct)}
+                    sx={{
+                      height: 6, borderRadius: 99,
+                      bgcolor: 'action.hover',
+                      '& .MuiLinearProgress-bar': {
+                        bgcolor: pol.color, borderRadius: 99,
+                      },
+                    }}
+                  />
+                  <Typography variant="caption" color="text.secondary" sx={{
+                    display: 'block', mt: 0.5, fontSize: '0.72rem',
+                  }}>
+                    Rente (brutto): {r ? euro(r.possibleRente) + '/M' : '–'}
+                  </Typography>
+                </Box>
+              );
+            })}
+          </Stack>
+        </Paper>
+      </Box>
+
+      {/* Kapitalentwicklung Gesamt — full width unter Netto/Vergleich */}
+      <Paper variant="outlined" sx={{ borderRadius: '16px', p: { xs: 2.25, sm: 3 } }}>
+        <Typography variant="overline" sx={{
+          display: 'block', color: 'text.secondary', fontWeight: 700,
+          letterSpacing: '0.08em', fontSize: '0.7rem', mb: 0.25,
+        }}>
+          Kapitalentwicklung Gesamt
+        </Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+          Aggregierte Sicht über alle Vorsorgeverträge
+        </Typography>
+        <Stack direction="row" spacing={2.5} sx={{ mb: 1.5 }}>
+          {[
+            { color: theme.palette.primary.main, label: 'Kapital gesamt' },
+            { color: theme.palette.warning.main, label: 'Einzahlungen' },
+          ].map(l => (
+            <Stack key={l.label} direction="row" alignItems="center" spacing={0.75}>
+              <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: l.color }} />
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.72rem' }}>
+                {l.label}
+              </Typography>
+            </Stack>
+          ))}
+        </Stack>
+        <Box sx={{ height: 260 }}>
+          <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData}>
               <defs>
                 <linearGradient id="gradKap" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={CHART.neutral} stopOpacity={0.15} />
-                  <stop offset="95%" stopColor={CHART.neutral} stopOpacity={0} />
+                  <stop offset="5%"  stopColor={theme.palette.primary.main} stopOpacity={0.18} />
+                  <stop offset="95%" stopColor={theme.palette.primary.main} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={t.grid} />
-              <XAxis dataKey="year" tick={{ fontSize: 10, fill: t.tickClr }} tickLine={false} axisLine={false}
-                interval="preserveStartEnd" />
-              <YAxis tick={{ fontSize: 10, fill: t.tickClr }} tickLine={false} axisLine={false}
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme.palette.divider} />
+              <XAxis dataKey="year"
+                tick={{ fontSize: 11, fill: theme.palette.text.secondary }}
+                tickLine={false} axisLine={false} interval="preserveStartEnd" />
+              <YAxis tick={{ fontSize: 11, fill: theme.palette.text.secondary }}
+                tickLine={false} axisLine={false}
                 tickFormatter={v => fmtShort(v)} width={48} />
               <Tooltip content={<ChartTooltip isDark={isDark} />} />
               <Area type="monotone" dataKey="kapital" name="Kapital gesamt"
-                stroke={CHART.neutral} fill="url(#gradKap)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                stroke={theme.palette.primary.main} fill="url(#gradKap)"
+                strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
               <Line type="monotone" dataKey="einzahlungen" name="Einzahlungen ges."
-                stroke={CHART.warning} strokeWidth={1.5} strokeDasharray="4 4" dot={false} activeDot={{ r: 4 }} />
+                stroke={theme.palette.warning.main} strokeWidth={1.75}
+                strokeDasharray="5 4" dot={false} activeDot={{ r: 4 }} />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
-
-        {/* Comparison bars */}
-        <div style={{ background: t.card, border: `1px solid ${t.bdr}`, borderRadius: 16, padding: 16 }}>
-          <div style={{ color: t.sub, fontSize: '0.65rem', fontWeight: 700,
-            textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16 }}>
-            Policen im Vergleich
-          </div>
-          {sortPoliciesByLayer(policies).map(pol => {
-            const r = pol.result;
-            const w = r ? Math.round((r.kapBeiRente || 0) / maxKap * 100) : 0;
-            return (
-              <div key={pol.id} style={{ marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ color: pol.color, fontSize: '0.78rem', fontWeight: 600,
-                    maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {pol.name}
-                  </span>
-                  <span style={{ color: t.text, fontSize: '0.78rem', fontFamily: 'monospace' }}>
-                    {r ? euro(r.kapBeiRente) : '-'}
-                  </span>
-                </div>
-                <div style={{ background: t.bdr, borderRadius: 99, height: 6, marginBottom: 3 }}>
-                  <div style={{ width: w + '%', background: pol.color, height: '100%',
-                    borderRadius: 99, transition: 'width 0.4s' }} />
-                </div>
-                <div style={{ color: t.sub, fontSize: '0.7rem' }}>
-                  Rente (brutto): {r ? euro(r.possibleRente) : '-'}/M
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+        </Box>
+      </Paper>
 
       {/* Policy list — Filter + Raster/Liste-Toggle + Karten */}
       <PolicyListSection
