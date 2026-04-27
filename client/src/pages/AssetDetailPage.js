@@ -26,6 +26,7 @@ import {
 import { useSavings } from '../hooks/useSavings';
 import { useETFPolicen } from '../hooks/useETFPolicen';
 import { ConfirmDialog } from '../components/mui';
+import EntityIcon from '../components/EntityIcon';
 import {
   KATEGORIEN, effectiveBalance, activeEntries,
   GoalForm, EntryModal,
@@ -329,16 +330,14 @@ export default function AssetDetailPage() {
           <IconButton onClick={() => navigate('/guthaben')} aria-label="Zurück">
             <ArrowBackIcon />
           </IconButton>
-          <Box sx={{
-            width: 48, height: 48, borderRadius: '12px',
-            bgcolor: 'accent.positiveSurface', color: 'primary.dark',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
-          }}>
-            <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 24 }}>
-              {katMeta?.icon ?? 'savings'}
-            </Box>
-          </Box>
+          <EntityIcon
+            logoId={goal.logo_id}
+            fallbackIconName={katMeta?.icon ?? 'savings'}
+            size={48}
+            bgcolor="accent.positiveSurface"
+            color="primary.dark"
+            borderRadius="12px"
+          />
           <Box sx={{ minWidth: 0 }}>
             <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: '-0.01em', lineHeight: 1.15 }}>
               {goal.name}

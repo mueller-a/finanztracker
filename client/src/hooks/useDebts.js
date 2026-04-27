@@ -27,7 +27,7 @@ export function useDebts() {
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   // ── Debts ──────────────────────────────────────────────────────────────────
-  const addDebt = useCallback(async ({ name, total_amount, interest_rate, monthly_rate, start_date, color_code, note, debt_type, credit_limit }) => {
+  const addDebt = useCallback(async ({ name, total_amount, interest_rate, monthly_rate, start_date, color_code, note, debt_type, credit_limit, logo_id }) => {
     const { data, error: sbError } = await supabase
       .from('debts')
       .insert({
@@ -40,6 +40,7 @@ export function useDebts() {
         note:          note ?? '',
         debt_type:     debt_type ?? 'annuity',
         credit_limit:  credit_limit ? Number(credit_limit) : null,
+        logo_id:       logo_id || null,
       })
       .select()
       .single();
@@ -62,6 +63,7 @@ export function useDebts() {
       note:          fields.note ?? '',
       debt_type:     fields.debt_type ?? 'annuity',
       credit_limit:  fields.credit_limit ? Number(fields.credit_limit) : null,
+      logo_id:       fields.logo_id || null,
     };
     // Wenn initial_interest_override explizit übergeben wurde, mit patchen.
     // `undefined` → nicht anfassen, `null` → zurücksetzen.

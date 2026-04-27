@@ -23,6 +23,7 @@ import {
   getCurrentBalance, isRevolving,
 } from '../utils/debtCalc';
 import { ConfirmDialog } from '../components/mui';
+import EntityIcon from '../components/EntityIcon';
 import { ExtraPaymentModal, DebtForm } from './VerbindlichkeitenPage';
 
 const TODAY = new Date();
@@ -136,7 +137,7 @@ function BookingsTable({ rows, onEdit, onDelete }) {
   const theme = useTheme();
   if (rows.length === 0) {
     return (
-      <Paper variant="outlined" sx={{ borderRadius: '12px', p: 4, textAlign: 'center' }}>
+      <Paper variant="outlined" sx={{ borderRadius: '16px', p: 4, textAlign: 'center' }}>
         <Typography variant="body2" color="text.secondary">
           Noch keine Buchungen für diesen Kredit.
         </Typography>
@@ -162,7 +163,7 @@ function BookingsTable({ rows, onEdit, onDelete }) {
   };
 
   return (
-    <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden' }}>
+    <Paper variant="outlined" sx={{ borderRadius: '16px', overflow: 'hidden' }}>
       <Box sx={{ overflowX: 'auto' }}>
         <Table size="small" sx={{ borderCollapse: 'collapse' }}>
           <TableHead>
@@ -238,7 +239,7 @@ function ScheduleTable({ schedule }) {
   const theme = useTheme();
   if (!schedule || schedule.length === 0) {
     return (
-      <Paper variant="outlined" sx={{ borderRadius: '12px', p: 4, textAlign: 'center' }}>
+      <Paper variant="outlined" sx={{ borderRadius: '16px', p: 4, textAlign: 'center' }}>
         <Typography variant="body2" color="text.secondary">
           Kein Tilgungsplan verfügbar.
         </Typography>
@@ -261,7 +262,7 @@ function ScheduleTable({ schedule }) {
   const todayKey = new Date().toISOString().slice(0, 7);
 
   return (
-    <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden' }}>
+    <Paper variant="outlined" sx={{ borderRadius: '16px', overflow: 'hidden' }}>
       <Box sx={{ overflow: 'auto', maxHeight: 480 }}>
         <Table size="small" sx={{ borderCollapse: 'collapse' }}>
           <TableHead>
@@ -458,6 +459,14 @@ export default function DebtDetailPage() {
           <IconButton onClick={() => navigate('/verbindlichkeiten')} aria-label="Zurück">
             <ArrowBackIcon />
           </IconButton>
+          <EntityIcon
+            logoId={debt.logo_id}
+            fallbackIconName={rev ? 'credit_card' : 'account_balance'}
+            size={48}
+            bgcolor="surface.highest"
+            color="text.primary"
+            borderRadius="12px"
+          />
           <Box sx={{ minWidth: 0 }}>
             <Typography variant="h5" sx={{
               fontWeight: 800, letterSpacing: '-0.01em', lineHeight: 1.15,
@@ -500,7 +509,7 @@ export default function DebtDetailPage() {
       </Stack>
 
       {/* Hero card: balance + range filter + chart */}
-      <Paper variant="outlined" sx={{ borderRadius: '12px', p: { xs: 2, sm: 3 } }}>
+      <Paper variant="outlined" sx={{ borderRadius: '16px', p: { xs: 2, sm: 3 } }}>
         <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ md: 'center' }}
           justifyContent="space-between" spacing={2} sx={{ mb: 2 }}>
           <Box>

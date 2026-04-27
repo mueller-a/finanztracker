@@ -40,7 +40,7 @@ export function useFreistellungsauftraege() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  const addOrder = useCallback(async ({ year, provider, allotted_amount, used_amount, note }) => {
+  const addOrder = useCallback(async ({ year, provider, allotted_amount, used_amount, note, logo_id }) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Nicht eingeloggt');
     const row = {
@@ -50,6 +50,7 @@ export function useFreistellungsauftraege() {
       allotted_amount: Number(allotted_amount) || 0,
       used_amount:     Number(used_amount) || 0,
       note:            note ?? null,
+      logo_id:         logo_id || null,
     };
     const { data, error: sbError } = await supabase
       .from('freistellungsauftraege')

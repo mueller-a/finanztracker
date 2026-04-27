@@ -20,6 +20,8 @@ import { useSavings } from '../hooks/useSavings';
 import { useETFPolicen } from '../hooks/useETFPolicen';
 import { calcPolicy, calcAVD, calcDepot } from '../utils/etfCalculations';
 import { PageHeader, SectionCard, CurrencyField, DateField, ConfirmDialog } from '../components/mui';
+import EntityIcon from '../components/EntityIcon';
+import EntityLogoPicker from '../components/EntityLogoPicker';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 // Data-tagging palette for assets/goals. Kept in Fiscal Gallery hues —
@@ -353,16 +355,14 @@ function GoalCard({ goal, entries, etfPolicies, onAddEntry, onEdit, onDelete, on
           {/* Spalte 1: Icon + Name + Kategorie-Subtitle, darunter Aktionen */}
           <Stack spacing={1.75} sx={{ minWidth: 0 }}>
             <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
-              <Box sx={{
-                width: 48, height: 48, borderRadius: '16px',
-                bgcolor: 'accent.positiveSurface', color: 'primary.dark',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 24 }}>
-                  {katIcon}
-                </Box>
-              </Box>
+              <EntityIcon
+                logoId={goal.logo_id}
+                fallbackIconName={katIcon}
+                size={48}
+                bgcolor="accent.positiveSurface"
+                color="primary.dark"
+                borderRadius="16px"
+              />
               <Box sx={{ minWidth: 0 }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.25,
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -511,17 +511,14 @@ function GoalCard({ goal, entries, etfPolicies, onAddEntry, onEdit, onDelete, on
     >
       {/* Header: Icon + Name/Ziel + Betrag (rechtsbündig) + Aktionen (hover) */}
       <Stack direction="row" alignItems="flex-start" spacing={1.5}>
-        <Box sx={{
-          width: 40, height: 40, borderRadius: '16px',
-          bgcolor: 'accent.positiveSurface',
-          color: 'primary.dark',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
-        }}>
-          <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 22 }}>
-            {KATEGORIEN.find((k) => k.value === kat)?.icon ?? 'savings'}
-          </Box>
-        </Box>
+        <EntityIcon
+          logoId={goal.logo_id}
+          fallbackIconName={KATEGORIEN.find((k) => k.value === kat)?.icon ?? 'savings'}
+          size={40}
+          bgcolor="accent.positiveSurface"
+          color="primary.dark"
+          borderRadius="16px"
+        />
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="body1" sx={{ fontWeight: 700, lineHeight: 1.25 }}>
             {goal.name}
@@ -778,8 +775,12 @@ export function GoalForm({ initial, onSave, onCancel, etfPolicies }) {
   const [faelligkeitsdatum, setFaelligkeitsdatum] = useState(initial?.faelligkeitsdatum ?? '');
   const [kuponIntervall,    setKuponIntervall]    = useState(initial?.kupon_intervall   ?? 'jährlich');
   const [etfId,             setEtfId]             = useState(initial?.etf_id            ?? '');
+  const [logoId,            setLogoId]            = useState(initial?.logo_id           ?? null);
+  const [logoPickerOpen, setLogoPickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err,    setErr]    = useState('');
+
+  const fallbackIcon = KATEGORIEN.find((k) => k.value === kat)?.icon ?? 'savings';
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -790,6 +791,7 @@ export function GoalForm({ initial, onSave, onCancel, etfPolicies }) {
       await onSave({
         name: name.trim(), target_amount: target || null, monthly_soll: soll || 0,
         color_code: color, kategorie: kat,
+        logo_id:           logoId || null,
         zinssatz:          kat === 'tagesgeld'           ? (zinssatz || null)          : null,
         nominalwert:       kat === 'anleihen'            ? (nominalwert || null)       : null,
         kupon:             kat === 'anleihen'            ? (kupon || null)             : null,
@@ -925,6 +927,41 @@ export function GoalForm({ initial, onSave, onCancel, etfPolicies }) {
                 title="Eigene Farbe"
               />
             </Stack>
+          </Box>
+
+          {/* Logo */}
+          <Box>
+            <Typography variant="caption" sx={{
+              display: 'block', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase',
+              letterSpacing: '0.06em', mb: 0.75,
+            }}>
+              Logo
+            </Typography>
+            <Stack direction="row" alignItems="center" spacing={1.5}>
+              <EntityIcon
+                logoId={logoId}
+                fallbackIconName={fallbackIcon}
+                size={48}
+                bgcolor="accent.positiveSurface"
+                color="primary.dark"
+                borderRadius="12px"
+              />
+              <Button variant="outlined" size="small" onClick={() => setLogoPickerOpen(true)}>
+                {logoId ? 'Logo ändern' : 'Logo wählen'}
+              </Button>
+              {logoId && (
+                <Button size="small" color="inherit" onClick={() => setLogoId(null)}>
+                  Entfernen
+                </Button>
+              )}
+            </Stack>
+            <EntityLogoPicker
+              open={logoPickerOpen}
+              onClose={() => setLogoPickerOpen(false)}
+              onSelect={(id) => { setLogoId(id); setLogoPickerOpen(false); }}
+              currentLogoId={logoId}
+              defaultName={name}
+            />
           </Box>
 
           {err && <Alert severity="error">{err}</Alert>}

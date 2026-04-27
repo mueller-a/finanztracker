@@ -11,6 +11,8 @@ import CloseIcon from '@mui/icons-material/Close';
 
 import { PageHeader, CurrencyField, ConfirmDialog } from '../components/mui';
 import { useFreistellungsauftraege } from '../hooks/useFreistellungsauftraege';
+import EntityIcon from '../components/EntityIcon';
+import EntityLogoPicker from '../components/EntityLogoPicker';
 
 // Sparerpauschbetrag (Single, Stand 2024+). Verheiratete: 2.000 €.
 const SPARER_PAUSCH = 1000;
@@ -51,6 +53,8 @@ function OrderDialog({ open, year, initial, onClose, onSave }) {
   const [allottedAmount,  setAllottedAmount]  = useState(initial?.allotted_amount ?? '');
   const [usedAmount,      setUsedAmount]      = useState(initial?.used_amount ?? '');
   const [note,            setNote]            = useState(initial?.note ?? '');
+  const [logoId,          setLogoId]          = useState(initial?.logo_id ?? null);
+  const [logoPickerOpen,  setLogoPickerOpen]  = useState(false);
   const [busy,            setBusy]            = useState(false);
   const [err,             setErr]             = useState('');
 
@@ -64,6 +68,7 @@ function OrderDialog({ open, year, initial, onClose, onSave }) {
     setAllottedAmount(initial?.allotted_amount ?? '');
     setUsedAmount(initial?.used_amount ?? '');
     setNote(initial?.note ?? '');
+    setLogoId(initial?.logo_id ?? null);
     setErr('');
   }, [open, initial]);
 
@@ -72,6 +77,7 @@ function OrderDialog({ open, year, initial, onClose, onSave }) {
     setAllottedAmount(initial?.allotted_amount ?? '');
     setUsedAmount(initial?.used_amount ?? '');
     setNote(initial?.note ?? '');
+    setLogoId(initial?.logo_id ?? null);
     setErr('');
   }
 
@@ -90,6 +96,7 @@ function OrderDialog({ open, year, initial, onClose, onSave }) {
         allotted_amount: all,
         used_amount:     used,
         note:            note.trim() || null,
+        logo_id:         logoId || null,
       });
       reset();
       onClose();
@@ -143,6 +150,39 @@ function OrderDialog({ open, year, initial, onClose, onSave }) {
             onChange={(e) => setNote(e.target.value)}
             fullWidth size="small" multiline rows={2}
           />
+          <Box>
+            <Typography variant="caption" sx={{
+              display: 'block', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase',
+              letterSpacing: '0.06em', mb: 0.75,
+            }}>
+              Logo
+            </Typography>
+            <Stack direction="row" alignItems="center" spacing={1.5}>
+              <EntityIcon
+                logoId={logoId}
+                fallbackIconName="account_balance"
+                size={40}
+                bgcolor="accent.positiveSurface"
+                color="primary.dark"
+                borderRadius="10px"
+              />
+              <Button variant="outlined" size="small" onClick={() => setLogoPickerOpen(true)}>
+                {logoId ? 'Logo ändern' : 'Logo wählen'}
+              </Button>
+              {logoId && (
+                <Button size="small" color="inherit" onClick={() => setLogoId(null)}>
+                  Entfernen
+                </Button>
+              )}
+            </Stack>
+            <EntityLogoPicker
+              open={logoPickerOpen}
+              onClose={() => setLogoPickerOpen(false)}
+              onSelect={(id) => { setLogoId(id); setLogoPickerOpen(false); }}
+              currentLogoId={logoId}
+              defaultName={provider}
+            />
+          </Box>
           {err && <Alert severity="error">{err}</Alert>}
         </Stack>
       </DialogContent>
@@ -312,16 +352,14 @@ export default function FreistellungsauftraegePage() {
                       },
                     }}>
                       <Stack direction="row" alignItems="center" spacing={2}>
-                        <Box sx={{
-                          width: 40, height: 40, borderRadius: '10px',
-                          bgcolor: 'accent.positiveSurface', color: 'primary.dark',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          flexShrink: 0,
-                        }}>
-                          <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 22 }}>
-                            account_balance
-                          </Box>
-                        </Box>
+                        <EntityIcon
+                          logoId={o.logo_id}
+                          fallbackIconName="account_balance"
+                          size={40}
+                          bgcolor="accent.positiveSurface"
+                          color="primary.dark"
+                          borderRadius="10px"
+                        />
                         <Box sx={{ flex: 1, minWidth: 0 }}>
                           <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
                             {o.provider}

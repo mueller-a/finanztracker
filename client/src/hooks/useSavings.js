@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 function cleanGoalPayload({
   name, target_amount, monthly_soll, color_code,
   kategorie, zinssatz, nominalwert, kupon, faelligkeitsdatum, kupon_intervall, etf_id,
+  logo_id,
 }) {
   return {
     name,
@@ -17,6 +18,7 @@ function cleanGoalPayload({
     faelligkeitsdatum: faelligkeitsdatum || null,
     kupon_intervall:  kupon_intervall || 'jährlich',
     etf_id:           etf_id || null,
+    logo_id:          logo_id || null,
   };
 }
 

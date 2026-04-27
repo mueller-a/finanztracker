@@ -26,6 +26,8 @@ import {
   getTotalInterest, getPaidInterest, buildDebtChart, buildAnnualInterest,
 } from '../utils/debtCalc';
 import { PageHeader, SectionCard, CurrencyField, DateField, ConfirmDialog } from '../components/mui';
+import EntityIcon from '../components/EntityIcon';
+import EntityLogoPicker from '../components/EntityLogoPicker';
 
 const TODAY = new Date();
 const TODAY_KEY = `${TODAY.getFullYear()}-${String(TODAY.getMonth() + 1).padStart(2, '0')}`;
@@ -248,16 +250,14 @@ function DebtCard({ debt, schedule, onEdit, onDelete, onAddPayment, onSimulate, 
           {/* Spalte 1: Icon + Name + Chip + Subtitle + Aktionen darunter */}
           <Stack spacing={1.75} sx={{ minWidth: 0 }}>
             <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
-              <Box sx={{
-                width: 48, height: 48, bgcolor: 'surface.highest',
-                borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                <Box component="span" className="material-symbols-outlined"
-                  sx={{ fontSize: 24, color: 'text.primary' }}>
-                  {rev ? 'credit_card' : 'account_balance'}
-                </Box>
-              </Box>
+              <EntityIcon
+                logoId={debt.logo_id}
+                fallbackIconName={rev ? 'credit_card' : 'account_balance'}
+                size={48}
+                bgcolor="surface.highest"
+                color="text.primary"
+                borderRadius="12px"
+              />
               <Box sx={{ minWidth: 0 }}>
                 <Stack direction="row" alignItems="center" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 0.5 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.25 }}>
@@ -364,21 +364,14 @@ function DebtCard({ debt, schedule, onEdit, onDelete, onAddPayment, onSimulate, 
       {/* Header: Icon + Name/Ref + Zinssatz-Chip + Actions */}
       <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 4 }}>
         <Stack direction="row" alignItems="center" spacing={2} sx={{ minWidth: 0 }}>
-          <Box sx={{
-            width: 48, height: 48,
-            bgcolor: 'surface.highest',
-            borderRadius: 2,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
-          }}>
-            <Box
-              component="span"
-              className="material-symbols-outlined"
-              sx={{ fontSize: 24, color: 'text.primary' }}
-            >
-              {rev ? 'credit_card' : 'account_balance'}
-            </Box>
-          </Box>
+          <EntityIcon
+            logoId={debt.logo_id}
+            fallbackIconName={rev ? 'credit_card' : 'account_balance'}
+            size={48}
+            bgcolor="surface.highest"
+            color="text.primary"
+            borderRadius={2}
+          />
           <Box sx={{ minWidth: 0 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
               {debt.name}
@@ -615,16 +608,18 @@ function RevolvingSimModal({ debt, payments, onClose }) {
 const EMPTY_DEBT = {
   name: '', total_amount: '', interest_rate: '', monthly_rate: '',
   start_date: '', color_code: '#ef4444', note: '',
-  debt_type: 'annuity', credit_limit: '',
+  debt_type: 'annuity', credit_limit: '', logo_id: null,
 };
 
 export function DebtForm({ initial, onSave, onCancel }) {
   const [form, setForm] = useState(initial ?? EMPTY_DEBT);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
+  const [logoPickerOpen, setLogoPickerOpen] = useState(false);
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })); }
   const isRev = form.debt_type === 'revolving';
+  const fallbackIcon = isRev ? 'credit_card' : 'account_balance';
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -733,6 +728,41 @@ export function DebtForm({ initial, onSave, onCancel }) {
 
           <TextField label="Notiz (optional)" size="small" fullWidth value={form.note}
             onChange={(e) => set('note', e.target.value)} placeholder="z.B. ING Rahmenkredit" />
+
+          {/* Logo */}
+          <Box>
+            <Typography variant="caption" sx={{
+              display: 'block', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase',
+              letterSpacing: '0.06em', mb: 0.75,
+            }}>
+              Logo
+            </Typography>
+            <Stack direction="row" alignItems="center" spacing={1.5}>
+              <EntityIcon
+                logoId={form.logo_id}
+                fallbackIconName={fallbackIcon}
+                size={48}
+                bgcolor="surface.highest"
+                color="text.primary"
+                borderRadius="12px"
+              />
+              <Button variant="outlined" size="small" onClick={() => setLogoPickerOpen(true)}>
+                {form.logo_id ? 'Logo ändern' : 'Logo wählen'}
+              </Button>
+              {form.logo_id && (
+                <Button size="small" color="inherit" onClick={() => set('logo_id', null)}>
+                  Entfernen
+                </Button>
+              )}
+            </Stack>
+            <EntityLogoPicker
+              open={logoPickerOpen}
+              onClose={() => setLogoPickerOpen(false)}
+              onSelect={(id) => { set('logo_id', id); setLogoPickerOpen(false); }}
+              currentLogoId={form.logo_id}
+              defaultName={form.name}
+            />
+          </Box>
 
           {err && <Alert severity="error">{err}</Alert>}
 
