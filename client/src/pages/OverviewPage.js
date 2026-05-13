@@ -27,6 +27,7 @@ import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined
 import { useDashboard } from '../hooks/useDashboard';
 import { useModules } from '../context/ModuleContext';
 import { useAppModules } from '../context/AppModulesContext';
+import { KpiCardPrimary } from '../components/mui';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmt2 = (n) => Number(n).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -54,89 +55,7 @@ function estimateNextDue(insEntries) {
   return first.toISOString().split('T')[0];
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Primary KPI Card — Editorial Navy Style (siehe design-KPIs.md)
-// ─────────────────────────────────────────────────────────────────────────────
-// Für die 3 Financial-Health-Kennzahlen oben im Dashboard. Status wird über
-// (a) Decorative-Icon und (b) Badge-Ton kommuniziert.
-// eslint-disable-next-line no-unused-vars
-function KpiCardPrimary({ label, value, sub, icon, badge, tone = 'positive' }) {
-  const badgeStyles = {
-    positive: { bg: 'accent.positiveSurface', fg: 'primary.dark' },
-    warning:  { bg: 'warning.main',           fg: 'warning.contrastText' },
-    error:    { bg: 'error.main',             fg: 'error.contrastText' },
-  }[tone] ?? { bg: 'accent.positiveSurface', fg: 'primary.dark' };
-
-  return (
-    <Paper sx={(t) => ({
-      position: 'relative',
-      overflow: 'hidden',
-      bgcolor: 'primary.dark',
-      color: 'primary.contrastText',
-      borderRadius: '12px',
-      p: { xs: 2, sm: 2.25 },
-      minWidth: 0,
-      height: '100%',
-      '&::before': {
-        content: '""',
-        position: 'absolute',
-        inset: 0,
-        background: `linear-gradient(135deg, ${t.palette.primary.dark} 0%, ${t.palette.primary.main} 100%)`,
-        opacity: 0.5,
-        pointerEvents: 'none',
-      },
-    })}>
-      {icon && (
-        <Box component="span" className="material-symbols-outlined" sx={{
-          position: 'absolute', right: -16, bottom: -20,
-          fontSize: 140, color: 'accent.positiveSurface', opacity: 0.1,
-          pointerEvents: 'none', userSelect: 'none', lineHeight: 1, zIndex: 0,
-        }}>
-          {icon}
-        </Box>
-      )}
-      <Box sx={{ position: 'relative', zIndex: 1 }}>
-        <Typography variant="overline" sx={{
-          color: 'primary.light', display: 'block',
-          fontSize: '0.625rem', letterSpacing: '0.08em',
-          lineHeight: 1.15, mb: 1,
-        }}>
-          {label}
-        </Typography>
-        <Typography sx={{
-          fontFamily: '"Manrope", sans-serif',
-          fontWeight: 800, letterSpacing: '-0.01em', lineHeight: 1.1,
-          fontSize: { xs: '1.5rem', sm: '1.75rem' },
-          color: 'primary.contrastText',
-          mb: (badge || sub) ? 1.5 : 0,
-        }}>
-          {value}
-        </Typography>
-        {(badge || sub) && (
-          <Stack direction="row" alignItems="center" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 0.5 }}>
-            {badge && (
-              <Box sx={{
-                px: 1.25, py: 0.5, borderRadius: 99,
-                bgcolor: badgeStyles.bg, color: badgeStyles.fg,
-                fontWeight: 700, fontSize: '0.72rem',
-                letterSpacing: '0.01em', lineHeight: 1, whiteSpace: 'nowrap',
-              }}>
-                {badge}
-              </Box>
-            )}
-            {sub && (
-              <Typography variant="caption" sx={{
-                color: 'primary.light', lineHeight: 1.3, fontSize: '0.72rem',
-              }}>
-                {sub}
-              </Typography>
-            )}
-          </Stack>
-        )}
-      </Box>
-    </Paper>
-  );
-}
+// Primary KPI Card → siehe [components/mui/KpiCardPrimary.js].
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Secondary KPI Card — Surface Style (siehe design-KPIs.md)
@@ -277,10 +196,9 @@ function FinancialPulseBar({ insights, loading }) {
       gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
       gap: 2,
     }}>
-      {items.map(({ label, value, icon, tone, badge, sub }) => (
+      {items.map(({ label, value, tone, badge, sub }) => (
         <KpiCardPrimary
           key={label}
-          icon={icon}
           label={label}
           value={value ?? '–'}
           badge={badge}

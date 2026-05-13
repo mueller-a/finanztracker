@@ -4,6 +4,8 @@ import { Card, CardContent, Stack, Typography } from '@mui/material';
  * KpiCard — kompakte Kennzahlen-Karte für das 188px-min KPI-Grid (siehe Skill "design-system").
  * Title oben in Caption-Optik, große Wertanzeige darunter, optionales Sublabel.
  *
+ * Für Hero-/Editorial-Hervorhebung (dunkles Navy + weiße Schrift) → `KpiCardPrimary`.
+ *
  * Props:
  *   title    — Label oben (uppercase caption)
  *   value    — Hauptwert (string oder ReactNode, z. B. <MoneyDisplay/>)

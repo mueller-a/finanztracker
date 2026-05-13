@@ -1,9 +1,9 @@
 ---
 name: domain-gehalt
-description: Gehaltsrechner Deutschland 2026 — Lohnsteuer-Tarifzonen, Sozialversicherung mit BBG, Vorsorgepauschale-Günstigerprüfung, PKV-Integration, Gehaltshistorie mit Inflationsbereinigung. Lies diese Skill bei jeder Berechnung von Brutto→Netto, Tarif-Zone, Soli, Real-Lohn-Analyse.
+description: Gehaltsrechner Deutschland 2026/2027 — Lohnsteuer-Tarifzonen, Sozialversicherung mit BBG, Vorsorgepauschale-Günstigerprüfung, PKV-Integration, Gehaltshistorie mit Inflationsbereinigung. Lies diese Skill bei jeder Berechnung von Brutto→Netto, Tarif-Zone, Soli, Real-Lohn-Analyse.
 ---
 
-# Gehaltsrechner & Lohnsteuer-Logik (Deutschland 2026)
+# Gehaltsrechner & Lohnsteuer-Logik (Deutschland 2026 / 2027-Projektion)
 
 Größtes Berechnungs-Modul des Repos. Pflichten: Lohnsteuer **exakt** nach BMF-Schema, Sozialversicherung mit BBG-Deckelung, Vorsorgepauschale mit Günstigerprüfung, PKV-Integration für Privatversicherte.
 
@@ -33,6 +33,34 @@ Bei Brutto **7.352,93 €** (≈ 88.235 € p. a.) muss zvE bei **≈ 71.800 €
 - **Kinderfreibetrag:** **3.414 €** pro Elternteil (gesamt 6.828 €) — wichtig für Günstigerprüfung Kindergeld vs. Freibetrag.
 
 Detail-Spec → [`steuern-de`](../steuern-de/SKILL.md).
+
+## Geplante Tarifänderungen ab 2027 (Projektion)
+
+Konfiguration in [client/src/utils/taxConfigs.js](../../../client/src/utils/taxConfigs.js) mit `validFrom: '2027-01-01'`. Wird automatisch geladen, sobald der User im Frontend ein Datum ab Januar 2027 wählt. Die 2026er Werte bleiben unverändert.
+
+### 1. Einkommensteuer-Tarif §32a EStG (2027)
+- **Grundfreibetrag:** **13.348 €** (Ledige) / 26.696 € (Verheiratete via Splitting)
+- **Zone-2-Ende:** unverändert **17.799 €** (Eingangssteuersatz 14 %)
+- **Spitzensteuersatz 42 %:** greift ab zvE **85.000 €** (vorher 69.878 €)
+- **Reichensteuersatz: 47,5 %** (vorher 45 %), Schwelle abgesenkt auf zvE **210.000 €** (vorher 277.825 €)
+- **Polynom-Koeffizienten Zone 2/3:** mathematisch aus Zonengrenzen hergeleitet (Stetigkeit + Differenzierbarkeit). Ersetzen, sobald offizielles BMF-PAP UPTAB27 publiziert wird.
+
+### 2. Solidaritätszuschlag — Komplette Abschaffung
+- `soliSatz: 0`, `soliFreigrenze: 999.999.999` → der if-Zweig in `calcLohnsteuer2025()` greift nie, SOLI bleibt immer 0.
+
+### 3. Sozialversicherung & BBG (vorerst 2026-Niveau)
+Platzhalter, bis offizielle Verordnung kommt:
+- BBG KV/PV: 69.750 € (5.812,50 € mtl.)
+- BBG RV/AV (West): 101.400 €
+- Beitragssätze und PV-Logik unverändert
+- KVZ-Default: 2,5 % (wie 2026)
+
+### 4. Kinderfreibetrag (vorerst 2026-Niveau)
+- `kfbProKindStkl4: 4.878 €`, `kfbProKindSonst: 9.756 €`
+
+### 5. BMF-Validierung
+- Endpunkt: `https://www.bmf-steuerrechner.de/interface/2027Version1.xhtml` (Schema; URL existiert noch nicht — BMF veröffentlicht das PAP üblicherweise im Herbst des Vorjahres).
+- Codes: `LSt2027std` / `LSt2027ext`.
 
 ## Vorsorgepauschale (§ 39b EStG)
 

@@ -9,7 +9,7 @@ const borderRadius = 12;  // --radius-xl (0.75rem = 12px)
 
 // "The Fiscal Gallery" palette (DESIGN-SYSTEM.md §2)
 const TOKENS = {
-  surface:                  '#f8f9ff',
+  surface:                  '#f2f5f9',
   surfaceContainerLowest:   '#ffffff',
   surfaceContainerLow:      '#eff4ff',
   surfaceContainer:         '#e5eeff',

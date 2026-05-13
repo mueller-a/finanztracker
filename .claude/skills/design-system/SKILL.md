@@ -75,6 +75,7 @@ Begründung: Single-Source-of-Truth für Light/Dark-Konsistenz. Wer Hex hartkodi
 
 [client/src/components/mui/](../../../client/src/components/mui/):
 - `KpiCard` — kompakte Kennzahl-Karte für das 188-px-Raster.
+- `KpiCardPrimary` — Hero-/Editorial-KPI im Navy-Look (dunkler Background, Gradient-Overlay, weiße Schrift, optionale Badge-Pill). Maximal **eine** pro Page. Zwei Größen: `size='compact'` (default, KPI-Grid-Tile) und `size='hero'` (dominante Summary-Bar mit optionalen Side-`metrics` und `valueIcon`). **Kein Watermark** — bewusste Designentscheidung.
 - `SectionCard` — Card mit Titel-Header.
 - `PageHeader` — einheitlicher Page-Top mit Titel + Subtitle + Actions.
 - `CurrencyField` — `<TextField type="number">` mit € Adornment.

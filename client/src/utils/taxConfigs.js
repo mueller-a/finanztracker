@@ -97,6 +97,61 @@ export const TAX_CONFIGS = [
     bmfCodeStd:      'LSt2026std',
     bmfCodeExt:      'LSt2026ext',
   },
+
+  // ────── Steuerrecht 2027 (GEPLANT / PROJEKTION) ────────
+  // Quelle: Reformentwurf 2027 (Stand 2026-05). Wesentliche Änderungen:
+  //   • Grundfreibetrag-Anhebung 12.348 → 13.348 €
+  //   • Spitzensteuersatz (42 %) ab 85.000 € (vorher 69.878 €)
+  //   • Reichensteuer-Schwelle abgesenkt 277.825 → 210.000 €,
+  //     gleichzeitig Anhebung 45 % → 47,5 %
+  //   • Solidaritätszuschlag entfällt komplett (soliSatz = 0)
+  // Polynomkoeffizienten Zone 2/3 mathematisch hergeleitet
+  // (Stetigkeit + Differenzierbarkeit an Zonen-Grenzen), bis offizielles
+  // BMF-PAP UPTAB27 erscheint. Zone-2-Ende unverändert wie 2026.
+  // BBG KV/PV und BBG RV/AV vorerst auf 2026-Niveau (Platzhalter).
+  {
+    validFrom:       '2027-01-01',
+    year:            2027,
+    label:           '2027 (geplant)',
+    // Tarif §32a EStG (Projektion 2027)
+    gfb:             13348,
+    zone2End:        17799,
+    zone3End:        85000,
+    zone4End:        210000,
+    tarifZ2a:        914.51,
+    tarifZ2b:        1400,
+    tarifZ3a:        147.76,
+    tarifZ3b:        2214.10,
+    tarifZ3c:        804.32,
+    tarifZ4Satz:     0.42,
+    tarifZ4Abzug:    13343.90,
+    tarifZ5Satz:     0.475,
+    tarifZ5Abzug:    24893.90,
+    // Pauschbeträge (Platzhalter 2026-Niveau)
+    anp:             1230,
+    sap:             36,
+    kfbProKindStkl4: 4878,
+    kfbProKindSonst: 9756,
+    // SV-AN-Anteile (unverändert)
+    rvANRate:        0.093,
+    avANRate:        0.013,
+    pvANRate:        0.018,
+    pvKinderlosZuschlag: 0.006,
+    kvANRateAllgemein: 0.073,
+    kvANRateErmaessigt: 0.07,
+    kvZusatzDurchschnitt: 2.5,
+    // Beitragsbemessungsgrenzen (Platzhalter 2026-Niveau)
+    bbgKvPvJahr:     69750,
+    bbgRvAlvJahr:    101400,
+    // Soli abgeschafft: hoher Freigrenzen-Wert sorgt dafür, dass der
+    // if-Zweig in calcLohnsteuer2025() nie greift.
+    soliSatz:        0,
+    soliFreigrenze:  999999999,
+    // BMF-PAP-Endpoint (Schema 2027; offizielle URL existiert noch nicht)
+    bmfUrl:          'https://www.bmf-steuerrechner.de/interface/2027Version1.xhtml',
+    bmfCodeStd:      'LSt2027std',
+    bmfCodeExt:      'LSt2027ext',
+  },
 ];
 
 // ─────────────────────────────────────────────────────────

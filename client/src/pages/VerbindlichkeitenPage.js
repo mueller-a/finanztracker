@@ -25,7 +25,7 @@ import {
   getCurrentBalance, getPayoffDate,
   getTotalInterest, getPaidInterest, buildDebtChart, buildAnnualInterest,
 } from '../utils/debtCalc';
-import { PageHeader, SectionCard, CurrencyField, DateField, ConfirmDialog } from '../components/mui';
+import { PageHeader, SectionCard, CurrencyField, DateField, ConfirmDialog, KpiCardPrimary } from '../components/mui';
 import EntityIcon from '../components/EntityIcon';
 import EntityLogoPicker from '../components/EntityLogoPicker';
 
@@ -58,71 +58,22 @@ function TotalWidget({ debts, schedulesMap }) {
       gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' },
       gap: 3,
     }}>
-      {/* Editorial Navy Block — Gesamtverbindlichkeiten (kompakt) */}
-      <Paper sx={(t) => ({
-        position: 'relative',
-        overflow: 'hidden',
-        bgcolor: 'primary.dark',
-        color: 'primary.contrastText',
-        p: { xs: 3, sm: 3.5 },
-        borderRadius: '16px',
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          inset: 0,
-          background: `linear-gradient(135deg, ${t.palette.primary.dark} 0%, ${t.palette.primary.main} 100%)`,
-          opacity: 0.5,
-          pointerEvents: 'none',
-        },
-      })}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} alignItems={{ sm: 'center' }}
-          justifyContent="space-between" sx={{ position: 'relative', zIndex: 1 }}>
-          <Box>
-            <Typography variant="overline" sx={{ color: 'primary.light', display: 'block', mb: 0.5 }}>
-              Gesamtverbindlichkeiten
-            </Typography>
-            <Stack direction="row" alignItems="baseline" spacing={1}>
-              <Typography sx={{
-                fontFamily: '"Manrope", sans-serif',
-                fontWeight: 900,
-                letterSpacing: '-0.02em',
-                lineHeight: 1,
-                fontSize: { xs: '1.75rem', sm: '2rem', md: '2.25rem' },
-              }}>
-                − {fmt0(totalDebt)} €
-              </Typography>
-              <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 22, color: 'error.light' }}>
-                trending_down
-              </Box>
-            </Stack>
-            <Typography variant="caption" sx={{ color: 'primary.light', mt: 0.25, display: 'block' }}>
-              {paidPct}% von {fmt0(totalOriginal)} € abbezahlt · {debts.length} Kredit{debts.length !== 1 ? 'e' : ''}
-            </Typography>
+      {/* Editorial Navy Block — Gesamtverbindlichkeiten */}
+      <KpiCardPrimary
+        size="hero"
+        label="Gesamtverbindlichkeiten"
+        value={`− ${fmt0(totalDebt)} €`}
+        valueIcon={
+          <Box component="span" className="material-symbols-outlined" sx={{ fontSize: 22, color: 'error.light' }}>
+            trending_down
           </Box>
-
-          <Stack direction="row" spacing={3}>
-            {[
-              { label: 'Rate / Monat',   val: totalMonthly },
-              { label: 'Zinsen (Proj.)', val: totalInterest },
-            ].map(({ label, val }) => (
-              <Box key={label}>
-                <Typography variant="caption" sx={{ color: 'primary.light', display: 'block', fontSize: '0.625rem' }}>
-                  {label}
-                </Typography>
-                <Typography sx={{
-                  fontFamily: '"Manrope", sans-serif',
-                  fontWeight: 700,
-                  fontSize: '1.05rem',
-                  lineHeight: 1.2,
-                  mt: 0.25,
-                }}>
-                  {fmt2(val)} €
-                </Typography>
-              </Box>
-            ))}
-          </Stack>
-        </Stack>
-      </Paper>
+        }
+        sub={`${paidPct}% von ${fmt0(totalOriginal)} € abbezahlt · ${debts.length} Kredit${debts.length !== 1 ? 'e' : ''}`}
+        metrics={[
+          { label: 'Rate / Monat',   value: `${fmt2(totalMonthly)} €` },
+          { label: 'Zinsen (Proj.)', value: `${fmt2(totalInterest)} €` },
+        ]}
+      />
 
       {/* Side card — Tilgungsfortschritt (kompakt) */}
       <Paper sx={{

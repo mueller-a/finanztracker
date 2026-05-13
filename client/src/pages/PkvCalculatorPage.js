@@ -30,7 +30,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import dayjs from 'dayjs';
 import 'dayjs/locale/de';
-import { PageHeader, SectionCard, DateField } from '../components/mui';
+import { PageHeader, SectionCard, DateField, KpiCard, KpiCardPrimary } from '../components/mui';
 
 // ─── Chart colors — Fiscal Gallery palette ───────────────────────────────────
 // Recharts needs raw CSS values; these mirror the theme palette + design
@@ -286,103 +286,8 @@ function SectionLabel({ children }) {
   );
 }
 
-// Local KpiCard — Editorial Navy-Style analog Verbindlichkeiten mit
-// Emerald-Highlights (accent.positiveSurface = Icon-Hintergrundfarbe).
-//   - `icon`:  optionaler Material-Symbol-Name (dezente Deko rechts unten)
-//   - `badge`: optionales emerald-Label vor dem Sub-Text
-//   - `color`: legacy (wird ignoriert, alle Karten einheitlich)
-// eslint-disable-next-line no-unused-vars
-function KpiCard({ label, value, sub, icon, badge, color }) {
-  return (
-    <Paper sx={(t) => ({
-      position: 'relative',
-      overflow: 'hidden',
-      bgcolor: 'primary.dark',
-      color: 'primary.contrastText',
-      borderRadius: '12px',
-      p: { xs: 2, sm: 2.25 },
-      minWidth: 0,
-      '&::before': {
-        content: '""',
-        position: 'absolute',
-        inset: 0,
-        background: `linear-gradient(135deg, ${t.palette.primary.dark} 0%, ${t.palette.primary.main} 100%)`,
-        opacity: 0.5,
-        pointerEvents: 'none',
-      },
-    })}>
-      {/* Decorative background icon — emerald-getönt, sehr subtil */}
-      {icon && (
-        <Box
-          component="span"
-          className="material-symbols-outlined"
-          sx={{
-            position: 'absolute',
-            right: -16, bottom: -20,
-            fontSize: 140,
-            color: 'accent.positiveSurface',
-            opacity: 0.1,
-            pointerEvents: 'none',
-            userSelect: 'none',
-            lineHeight: 1,
-            zIndex: 0,
-          }}
-        >
-          {icon}
-        </Box>
-      )}
-
-      <Box sx={{ position: 'relative', zIndex: 1 }}>
-        <Typography variant="overline" sx={{
-          color: 'primary.light', display: 'block',
-          fontSize: '0.625rem', letterSpacing: '0.08em',
-          lineHeight: 1.15, mb: 1,
-        }}>
-          {label}
-        </Typography>
-        <Typography sx={{
-          fontFamily: '"Manrope", sans-serif',
-          fontWeight: 800,
-          letterSpacing: '-0.01em',
-          lineHeight: 1.1,
-          fontSize: { xs: '1.5rem', sm: '1.75rem' },
-          color: 'primary.contrastText',
-          mb: (badge || sub) ? 1.5 : 0,
-        }}>
-          {value}
-        </Typography>
-        {(badge || sub) && (
-          <Stack direction="row" alignItems="center" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 0.5 }}>
-            {badge && (
-              <Box sx={{
-                px: 1.25, py: 0.5,
-                borderRadius: 99,
-                bgcolor: 'accent.positiveSurface',
-                color: 'primary.dark',
-                fontWeight: 700,
-                fontSize: '0.72rem',
-                letterSpacing: '0.01em',
-                lineHeight: 1,
-                whiteSpace: 'nowrap',
-              }}>
-                {badge}
-              </Box>
-            )}
-            {sub && (
-              <Typography variant="caption" sx={{
-                color: 'primary.light',
-                lineHeight: 1.3,
-                fontSize: '0.72rem',
-              }}>
-                {sub}
-              </Typography>
-            )}
-          </Stack>
-        )}
-      </Box>
-    </Paper>
-  );
-}
+// KPI cards → shared wrappers [components/mui/KpiCard.js] + KpiCardPrimary.
+// Lokale Implementation entfernt zugunsten der Single-Source-of-Truth.
 
 // ─── Chart components ─────────────────────────────────────────────────────────
 // Zwei Darstellungen:
@@ -1388,40 +1293,31 @@ export default function PkvCalculatorPage({ isDark = false }) {
               alignItems: 'stretch',
               mb: 3,
             }}>
-              <KpiCard
-                icon="payments"
+              <KpiCardPrimary
                 label={pkv.employmentStatus === 'angestellt' && kpis.first?.agZuschuss > 0 ? `Mtl. Netto-Aufwand AN ${kpis.first?.year}` : `Mtl. Beitrag ${kpis.first?.year}`}
                 value={pkv.employmentStatus === 'angestellt' && kpis.first?.agZuschuss > 0 ? fmt(kpis.first?.nettoMonthly, 2) : fmt(kpis.first?.monthly, 2)}
                 badge={pkv.employmentStatus === 'angestellt' && kpis.first?.agZuschuss > 0 ? `Brutto ${fmt(kpis.first?.monthly, 0)}` : null}
                 sub={pkv.employmentStatus === 'angestellt' && kpis.first?.agZuschuss > 0 ? 'Nach AG-Zuschuss' : `davon GZ: ${fmt(kpis.first?.gz, 2)}`}
               />
               <KpiCard
-                icon="health_and_safety"
-                label="Gesamtkosten Lebenszeit"
+                title="Gesamtkosten Lebenszeit"
                 value={fmt(kpis.last?.cumulative, 0)}
-                badge={`${pkvData.length} Jahre`}
-                sub="Kumulierter Beitrag"
+                sub={`Kumulierter Beitrag · ${pkvData.length} Jahre`}
               />
               <KpiCard
-                icon="savings"
-                label="BRK kumuliert"
+                title="BRK kumuliert"
                 value={kpis.totalBrk > 0 ? fmt(kpis.totalBrk, 0) : '—'}
-                badge={kpis.brkCount > 0 ? `${kpis.brkCount} Jahre` : null}
-                sub={kpis.brkCount > 0 ? 'Beitragsrückerstattung' : 'Noch keine eingetragen'}
+                sub={kpis.brkCount > 0 ? `Beitragsrückerstattung · ${kpis.brkCount} Jahre` : 'Noch keine eingetragen'}
               />
               <KpiCard
-                icon="elderly"
-                label="Beitrag bei Renteneintritt"
+                title="Beitrag bei Renteneintritt"
                 value={fmt(kpis.renteD?.monthly, 2)}
-                badge={`Alter ${pkv.rzFromAge}`}
-                sub={`im Jahr ${kpis.renteD?.year ?? '—'}`}
+                sub={`Alter ${pkv.rzFromAge} · im Jahr ${kpis.renteD?.year ?? '—'}`}
               />
               <KpiCard
-                icon="trending_up"
-                label="Beitragsanstieg gesamt"
+                title="Beitragsanstieg gesamt"
                 value={(kpis.anstieg >= 0 ? '+' : '') + (kpis.anstieg?.toFixed(0) ?? '—') + ' %'}
-                badge={`${fmt(kpis.first?.monthly, 0)} → ${fmt(kpis.last?.monthly, 0)}`}
-                sub="über gesamte Laufzeit"
+                sub={`${fmt(kpis.first?.monthly, 0)} → ${fmt(kpis.last?.monthly, 0)} · über gesamte Laufzeit`}
               />
             </Box>
           )}
