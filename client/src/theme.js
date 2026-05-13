@@ -18,7 +18,7 @@ const TOKENS = {
   onSurface:                '#0b1c30',
   onSurfaceVariant:         '#45464d',
   outlineVariant:           '#c6c6cd',
-  primary:                  '#1b2335',
+  primary:                  '#131B2E',
   primaryContainer:         '#131b2e',
   onPrimary:                '#ffffff',
   onPrimaryContainer:       '#7c839b',
