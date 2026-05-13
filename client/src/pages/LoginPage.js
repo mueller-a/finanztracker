@@ -44,7 +44,7 @@ export default function LoginPage() {
       <Paper sx={(t) => ({
         position: 'relative',
         overflow: 'hidden',
-        bgcolor: 'primary.dark',           // #000 (Fiscal Gallery primary)
+        bgcolor: 'primary.dark',
         color: 'primary.contrastText',
         borderRadius: 0,
         display: { xs: 'none', md: 'flex' },
