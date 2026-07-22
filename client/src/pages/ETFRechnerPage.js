@@ -3,7 +3,7 @@ import {
   Slider, Box, Button, IconButton, Stack, Typography, Chip,
   Dialog, DialogTitle, DialogContent, DialogActions, Card, CardContent,
   Alert, TextField, ToggleButton, ToggleButtonGroup, Switch, Paper,
-  Table, TableBody, LinearProgress, Tooltip as MuiTooltip,
+  Table, TableBody, LinearProgress, Tooltip as MuiTooltip, Autocomplete,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
@@ -764,6 +764,18 @@ function DepotSidebar({ params, onChange, color, isDark }) {
 function HoldingsEditor({ holdings, onChange }) {
   const [editing, setEditing] = useState(null); // null | { idx?, ...holding }
 
+  // Bereits erfasste Positionen (für Autocomplete beim Sparplan-Nachkauf) —
+  // dedupliziert nach ISIN (fallback Name), jeweils die zuletzt erfasste Fassung.
+  const knownPositions = useMemo(() => {
+    const byKey = new Map();
+    for (const h of holdings) {
+      if (!h.name?.trim()) continue;
+      const key = h.isin || h.name.trim().toLowerCase();
+      byKey.set(key, { name: h.name, isin: h.isin || '', symbol: h.symbol || '' });
+    }
+    return [...byKey.values()];
+  }, [holdings]);
+
   // Live-Quotes via Yahoo (Edge Function get-quote, 15-min-Cache)
   const quoteItems = useMemo(
     () => holdings
@@ -953,6 +965,7 @@ function HoldingsEditor({ holdings, onChange }) {
 
       {editing && (
         <HoldingDialog initial={editing}
+          knownPositions={knownPositions}
           onSave={handleSave}
           onClose={() => setEditing(null)} />
       )}
@@ -961,11 +974,19 @@ function HoldingsEditor({ holdings, onChange }) {
 }
 
 // ─── Holding-Dialog (Add/Edit eine ETF/Aktien-Position) ──────────────────────
-function HoldingDialog({ initial, onSave, onClose }) {
+function HoldingDialog({ initial, knownPositions = [], onSave, onClose }) {
   const [form, setForm] = useState(initial);
   const [err,  setErr]  = useState('');
 
   function set(field, value) { setForm((f) => ({ ...f, [field]: value })); }
+
+  // Auswahl einer bereits erfassten Position (Sparplan-Nachkauf) übernimmt
+  // Name/ISIN/Symbol zusammen — Anteile & Kaufpreis bleiben für den neuen Kauf leer.
+  function applyKnownPosition(pos) {
+    if (pos && typeof pos === 'object') {
+      setForm((f) => ({ ...f, name: pos.name, isin: pos.isin, symbol: pos.symbol }));
+    }
+  }
 
   function submit(e) {
     e.preventDefault();
@@ -987,18 +1008,36 @@ function HoldingDialog({ initial, onSave, onClose }) {
       </DialogTitle>
       <DialogContent dividers sx={{ pt: 2 }}>
         <Stack spacing={2}>
-          <TextField
-            label="Name" size="small" autoFocus required fullWidth
-            value={form.name} onChange={(e) => set('name', e.target.value)}
-            placeholder="z.B. iShares Core MSCI World"
+          <Autocomplete
+            freeSolo
+            options={knownPositions}
+            getOptionLabel={(opt) => (typeof opt === 'string' ? opt : opt.name)}
+            value={form.name}
+            onChange={(e, val) => (typeof val === 'object' ? applyKnownPosition(val) : set('name', val || ''))}
+            onInputChange={(e, val, reason) => { if (reason !== 'reset') set('name', val); }}
+            renderInput={(params) => (
+              <TextField {...params}
+                label="Name" size="small" autoFocus required fullWidth
+                placeholder="z.B. iShares Core MSCI World"
+              />
+            )}
           />
           <Stack direction="row" spacing={1.5}>
-            <TextField
-              label="ISIN" size="small" fullWidth
+            <Autocomplete
+              freeSolo
+              fullWidth
+              options={knownPositions}
+              getOptionLabel={(opt) => (typeof opt === 'string' ? opt : opt.isin)}
               value={form.isin}
-              onChange={(e) => set('isin', e.target.value)}
-              placeholder="IE00B4L5Y983"
-              helperText="für Live-Preis-API"
+              onChange={(e, val) => (typeof val === 'object' ? applyKnownPosition(val) : set('isin', val || ''))}
+              onInputChange={(e, val, reason) => { if (reason !== 'reset') set('isin', val); }}
+              renderInput={(params) => (
+                <TextField {...params}
+                  label="ISIN" size="small" fullWidth
+                  placeholder="IE00B4L5Y983"
+                  helperText="für Live-Preis-API"
+                />
+              )}
             />
             <TextField
               label="Symbol" size="small" fullWidth
@@ -1014,14 +1053,14 @@ function HoldingDialog({ initial, onSave, onClose }) {
               type="number"
               value={form.shares}
               onChange={(e) => set('shares', e.target.value)}
-              inputProps={{ min: 0, step: 0.0001 }}
+              inputProps={{ min: 0, step: 0.0000001 }}
             />
             <CurrencyField
               label="Ø Kaufpreis"
               value={form.avg_buy_price}
               onChange={(v) => set('avg_buy_price', v === '' ? '' : v)}
               fullWidth
-              decimals={2}
+              decimals={6}
               size="small"
               helperText="pro Anteil"
             />
