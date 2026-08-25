@@ -14,8 +14,10 @@ import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
 import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined';
 import MoreHorizOutlinedIcon from '@mui/icons-material/MoreHorizOutlined';
 import { PageHeader, SectionCard, KpiCard, MoneyDisplay, CurrencyField, ConfirmDialog } from '../components/mui';
-import { useModules } from '../context/ModuleContext';
-import { useLearningBudgetItems, useLearningBudgetStats } from '../hooks/useLearningBudget';
+import {
+  useLearningBudgetItems, useLearningBudgetStats, useLearningBudgetYearLimits,
+  effectiveLimitForYear, hasExplicitLimit,
+} from '../hooks/useLearningBudget';
 
 // ── Kategorien ──────────────────────────────────────────────────
 const CATEGORIES = [
@@ -30,11 +32,13 @@ function ymd(d) { return d.toISOString().slice(0, 10); }
 
 // ═══════════════════════════════════════════════════════════════
 export default function LearningBudgetPage() {
-  const { learningBudgetLimit, setLearningBudgetLimit } = useModules();
   const { items, loading, addItem, updateItem, deleteItem } = useLearningBudgetItems();
+  const { yearLimits, setYearLimit } = useLearningBudgetYearLimits();
 
   const [year, setYear] = useState(new Date().getFullYear());
-  const stats = useLearningBudgetStats(items, learningBudgetLimit, year);
+  const effectiveLimit = effectiveLimitForYear(year, yearLimits);
+  const isExplicitLimit = hasExplicitLimit(year, yearLimits);
+  const stats = useLearningBudgetStats(items, effectiveLimit, year);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -108,14 +112,14 @@ export default function LearningBudgetPage() {
               sx={{ height: 12, borderRadius: 99, bgcolor: 'action.hover' }}
             />
             <Typography variant="caption" color="text.secondary">
-              <MoneyDisplay value={stats.spent} decimals={2} /> von <MoneyDisplay value={learningBudgetLimit} decimals={0} /> ausgegeben ({stats.percentUsed.toFixed(0)} %)
+              <MoneyDisplay value={stats.spent} decimals={2} /> von <MoneyDisplay value={effectiveLimit} decimals={0} /> ausgegeben ({stats.percentUsed.toFixed(0)} %)
             </Typography>
           </Stack>
         </SectionCard>
 
         {/* KPI-Grid */}
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(188px, 1fr))' }, gap: 2 }}>
-          <KpiCard title="Jahreslimit" value={<MoneyDisplay value={learningBudgetLimit} decimals={0} variant="h5" bold />} />
+          <KpiCard title="Jahreslimit" value={<MoneyDisplay value={effectiveLimit} decimals={0} variant="h5" bold />} />
           <KpiCard title="Ausgegeben" value={<MoneyDisplay value={stats.spent} decimals={2} variant="h5" bold />} accent="error" />
           <KpiCard title="Verfügbar" value={<MoneyDisplay value={stats.available} decimals={2} variant="h5" bold />} accent={stats.severity} />
         </Box>
@@ -145,20 +149,12 @@ export default function LearningBudgetPage() {
           )}
         </SectionCard>
 
-        <SectionCard title="Jahreslimit anpassen">
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
-            <CurrencyField
-              size="small"
-              label="Jahreslimit"
-              value={learningBudgetLimit}
-              onChange={(v) => setLearningBudgetLimit(Number(v) || 0)}
-              sx={{ maxWidth: 220 }}
-            />
-            <Typography variant="caption" color="text.secondary">
-              Gilt für alle Jahre — Änderung wirkt sich rückwirkend auf die Verfügbar-Berechnung aus.
-            </Typography>
-          </Stack>
-        </SectionCard>
+        <YearLimitEditor
+          year={year}
+          effectiveLimit={effectiveLimit}
+          isExplicit={isExplicitLimit}
+          onSave={(value) => setYearLimit(year, value)}
+        />
       </Stack>
 
       <EntryDialog
@@ -176,6 +172,46 @@ export default function LearningBudgetPage() {
         onCancel={() => setDeleteTarget(null)}
       />
     </Box>
+  );
+}
+
+// ─── Jahreslimit-Editor ─────────────────────────────────────────
+// Speichert das Limit ausschließlich für `year` — andere Jahre bleiben
+// unberührt. Zukünftige Jahre ohne eigenen Eintrag zeigen den vom Vorjahr
+// übernommenen Wert an, bis er hier explizit für dieses Jahr geändert wird.
+function YearLimitEditor({ year, effectiveLimit, isExplicit, onSave }) {
+  const [value, setValue] = useState(effectiveLimit);
+
+  useEffect(() => { setValue(effectiveLimit); }, [year, effectiveLimit]);
+
+  function handleBlur() {
+    const n = Number(value) || 0;
+    if (n !== effectiveLimit) onSave(n);
+  }
+
+  return (
+    <SectionCard title={`Jahreslimit ${year} anpassen`}>
+      <Stack spacing={1.5}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
+          <CurrencyField
+            size="small"
+            label={`Jahreslimit ${year}`}
+            value={value}
+            onChange={setValue}
+            onBlur={handleBlur}
+            sx={{ maxWidth: 220 }}
+          />
+          <Typography variant="caption" color="text.secondary">
+            {isExplicit
+              ? `Individuell für ${year} gesetzt.`
+              : `Übernommen von einem Vorjahr (Standard ${effectiveLimit.toLocaleString('de-DE')} €) — wird erst für ${year} gespeichert, wenn du den Wert änderst.`}
+          </Typography>
+        </Stack>
+        <Typography variant="caption" color="text.secondary">
+          Änderungen wirken sich nur auf {year} aus, nie auf vergangene Jahre. Kommende Jahre ohne eigenen Wert übernehmen automatisch diesen Betrag.
+        </Typography>
+      </Stack>
+    </SectionCard>
   );
 }
 

@@ -19,14 +19,19 @@ Einzelnutzer-Modul zum Tracken von Ausgaben gegen ein jährliches Arbeitgeber-Bu
 | `description` | text | Freitext (optional) |
 | `occurred_at` | date | Datum der Ausgabe — das Jahr wird daraus abgeleitet (`occurred_at.slice(0,4)`), kein separates `year`-Feld |
 
-### Jahreslimit
-- `user_module_settings.learning_budget_annual_limit` (Default 1200) — **ein** Wert, gilt für alle Jahre. Änderung wirkt sich auf die Verfügbar-Berechnung aller Jahre aus (keine Jahres-spezifischen Overrides — bewusst nicht gebaut, da nicht gefordert).
-- Verwaltung über `ModuleContext` (`learningBudgetLimit` / `setLearningBudgetLimit`), analog zu `steuerSatzAlter`.
+### Jahreslimit (pro Jahr, NICHT global)
+- `learning_budget_year_limits` (`user_id`, `year`, `annual_limit`, UNIQUE `(user_id, year)`) — ein Eintrag pro Jahr. **Kein** globales Limit-Feld mehr (ein früherer Entwurf hatte `user_module_settings.learning_budget_annual_limit` — bewusst wieder entfernt, siehe unten "Warum kein globales Limit").
+- Fallback-Kette pro Jahr (`effectiveLimitForYear` in `useLearningBudget.js`): eigener Eintrag → sonst rückwärts das nächste gesetzte Vorjahr → sonst `DEFAULT_ANNUAL_LIMIT` (1200).
+- Editieren eines Jahres (`setYearLimit(year, value)`) schreibt **ausschließlich** die Zeile für genau dieses Jahr — vergangene und zukünftige Jahre bleiben unverändert.
+
+### Warum kein globales Limit
+Ein einzelner `annual_limit`-Wert für alle Jahre hätte bedeutet: Ändert man das Budget fürs laufende Jahr (z. B. Gehaltserhöhung, neues PD-Budget), würde sich die Verfügbar-Berechnung rückwirkend auch für vergangene, bereits abgeschlossene Jahre ändern — fachlich falsch. Stattdessen: jedes Jahr hat sein eigenes Limit; neue Jahre übernehmen automatisch das zuletzt gesetzte Vorjahres-Limit als Startwert, bis man es explizit für das neue Jahr ändert.
 
 ## Jahres-Logik
 
 - Kein separater "Reset"-Mechanismus nötig: Restbetrag wird immer für das aktuell gewählte Jahr aus den Items dieses Jahres berechnet.
 - Jahres-Umschalter (Chevron links/rechts) in `LearningBudgetPage.js`, Default = laufendes Kalenderjahr. Zukünftige Jahre sind gesperrt (`disabled` auf "nächstes Jahr"-Button).
+- `YearLimitEditor` in `LearningBudgetPage.js` zeigt an, ob das Limit für das gewählte Jahr explizit gesetzt wurde (`hasExplicitLimit`) oder vom Vorjahr übernommen ist — und materialisiert erst beim Speichern einen eigenen Eintrag für dieses Jahr.
 
 ## Berechnung (`useLearningBudgetStats`)
 

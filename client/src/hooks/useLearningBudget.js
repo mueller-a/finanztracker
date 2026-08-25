@@ -6,6 +6,10 @@ function ymd(d) {
   return d.toISOString().slice(0, 10);
 }
 
+// Standard-Jahreslimit, falls für ein Jahr (und alle Vorjahre) noch nie ein
+// Wert gesetzt wurde — siehe Skill "domain-weiterbildungsbudget".
+export const DEFAULT_ANNUAL_LIMIT = 1200;
+
 // ── Hook: alle Weiterbildungsbudget-Einträge des Users (CRUD) ─────────────
 export function useLearningBudgetItems() {
   const { user } = useAuth();
@@ -70,6 +74,60 @@ export function useLearningBudgetItems() {
   }, []);
 
   return { items, loading, addItem, updateItem, deleteItem, refetch: fetchAll };
+}
+
+// ── Hook: Jahres-spezifische Limits (CRUD) ─────────────────────────────────
+// Ein Limit-Wert pro Jahr. Ein Jahr ohne eigenen Eintrag übernimmt den Wert
+// des zuletzt gesetzten Vorjahres (siehe effectiveLimitForYear) — Änderungen
+// an einem Jahr wirken sich NIE auf andere Jahre aus, weil pro Jahr eine
+// eigene Zeile geschrieben wird.
+export function useLearningBudgetYearLimits() {
+  const { user } = useAuth();
+  const [yearLimits, setYearLimits] = useState([]); // [{ year, annual_limit }], absteigend sortiert
+  const [loading,    setLoading]    = useState(true);
+
+  const fetchAll = useCallback(async () => {
+    if (!user) { setYearLimits([]); setLoading(false); return; }
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('learning_budget_year_limits')
+      .select('year, annual_limit')
+      .eq('user_id', user.id)
+      .order('year', { ascending: false });
+    if (!error) setYearLimits(data ?? []);
+    setLoading(false);
+  }, [user]);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const setYearLimit = useCallback(async (year, value) => {
+    if (!user) throw new Error('Not ready');
+    const annual_limit = Number(value) || 0;
+    const { error } = await supabase
+      .from('learning_budget_year_limits')
+      .upsert({ user_id: user.id, year, annual_limit }, { onConflict: 'user_id,year' });
+    if (error) throw error;
+    setYearLimits((prev) => {
+      const next = prev.filter((r) => r.year !== year);
+      next.push({ year, annual_limit });
+      return next.sort((a, b) => b.year - a.year);
+    });
+  }, [user]);
+
+  return { yearLimits, loading, setYearLimit, refetch: fetchAll };
+}
+
+/** Effektives Limit für `year`: eigener Eintrag, sonst rückwärts das nächste
+ *  gesetzte Vorjahr, sonst DEFAULT_ANNUAL_LIMIT. `yearLimits` muss absteigend
+ *  nach Jahr sortiert sein (Standard-Rückgabe von useLearningBudgetYearLimits). */
+export function effectiveLimitForYear(year, yearLimits) {
+  const match = yearLimits.find((r) => r.year <= year);
+  return match ? Number(match.annual_limit) : DEFAULT_ANNUAL_LIMIT;
+}
+
+/** true, wenn für `year` explizit ein Wert gesetzt wurde (kein Vorjahres-Fallback). */
+export function hasExplicitLimit(year, yearLimits) {
+  return yearLimits.some((r) => r.year === year);
 }
 
 // ── Hook: Berechnung für ein gewähltes Jahr ────────────────────────────────
