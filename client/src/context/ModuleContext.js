@@ -12,6 +12,7 @@ const DEFAULTS = {
   show_retirement_plan: true,
   show_savings:         true,
   show_real_estate:     true,
+  show_learning_budget: true,
 };
 
 const ModuleContext = createContext({
@@ -20,6 +21,7 @@ const ModuleContext = createContext({
   isAdmin: false, birthday: null, setBirthday: () => {},
   isPkv: true, setIsPkv: () => {},
   steuerSatzAlter: 25, setSteuerSatzAlter: () => {},
+  learningBudgetLimit: 1200, setLearningBudgetLimit: () => {},
 });
 
 export function useModules() { return useContext(ModuleContext); }
@@ -41,6 +43,7 @@ export function ModuleProvider({ children }) {
   const [birthday, setBirthdayState] = useState(null);
   const [isPkv, setIsPkvState]       = useState(true);
   const [steuerSatzAlter, setSteuerSatzAlterState] = useState(25);
+  const [learningBudgetLimit, setLearningBudgetLimitState] = useState(1200);
   const [isAdmin, setIsAdmin]     = useState(false);
   const [loading, setLoading]     = useState(true);
   const debounceRef               = useRef(null);
@@ -48,7 +51,7 @@ export function ModuleProvider({ children }) {
 
   // ── Fetch on user change ──────────────────────────────────────────────────
   useEffect(() => {
-    if (!user) { setModules(DEFAULTS); setDarkModeState(null); setBirthdayState(null); setIsPkvState(true); setSteuerSatzAlterState(25); setIsAdmin(false); setLoading(false); return; }
+    if (!user) { setModules(DEFAULTS); setDarkModeState(null); setBirthdayState(null); setIsPkvState(true); setSteuerSatzAlterState(25); setLearningBudgetLimitState(1200); setIsAdmin(false); setLoading(false); return; }
     (async () => {
       setLoading(true);
       const { data, error } = await supabase
@@ -58,12 +61,13 @@ export function ModuleProvider({ children }) {
         .maybeSingle();
 
       if (!error && data) {
-        const { user_id, updated_at, dark_mode, role, birthday: bd, is_pkv, steuer_satz_alter, ...flags } = data;
+        const { user_id, updated_at, dark_mode, role, birthday: bd, is_pkv, steuer_satz_alter, learning_budget_annual_limit, ...flags } = data;
         setModules({ ...DEFAULTS, ...flags });
         if (dark_mode != null) setDarkModeState(dark_mode);
         if (bd) setBirthdayState(bd);
         if (is_pkv != null) setIsPkvState(is_pkv);
         if (steuer_satz_alter != null) setSteuerSatzAlterState(steuer_satz_alter);
+        if (learning_budget_annual_limit != null) setLearningBudgetLimitState(learning_budget_annual_limit);
         setIsAdmin(role === 'admin');
       }
       setLoading(false);
@@ -118,10 +122,17 @@ export function ModuleProvider({ children }) {
     supabase.from('user_module_settings').update({ steuer_satz_alter: value, updated_at: new Date().toISOString() }).eq('user_id', user.id).then();
   }, [user]);
 
+  const setLearningBudgetLimit = useCallback((value) => {
+    setLearningBudgetLimitState(value);
+    if (!user) return;
+    supabase.from('user_module_settings').update({ learning_budget_annual_limit: value, updated_at: new Date().toISOString() }).eq('user_id', user.id).then();
+  }, [user]);
+
   return (
     <ModuleContext.Provider value={{
       modules, setModule, loading, darkMode, setDarkMode, isAdmin,
       birthday, setBirthday, isPkv, setIsPkv, steuerSatzAlter, setSteuerSatzAlter,
+      learningBudgetLimit, setLearningBudgetLimit,
     }}>
       {children}
     </ModuleContext.Provider>

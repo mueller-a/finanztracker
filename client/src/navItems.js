@@ -33,6 +33,7 @@ export const navItems = [
       { label: 'Budget',         path: '/budget',            icon: 'budget',    appModuleKey: 'budget' },
       { label: 'Spar-Radar',     path: '/budget/optimizer',  icon: 'radar',     appModuleKey: 'optimizer' },
       { label: 'Wochenbudget',   path: '/budget/household',  icon: 'household', appModuleKey: 'household_budget' },
+      { label: 'Weiterbildungsbudget', path: '/budget/weiterbildung', icon: 'school', moduleKey: 'show_learning_budget', appModuleKey: 'learning_budget' },
     ],
   },
   {

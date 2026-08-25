@@ -28,6 +28,7 @@ const MODULE_CARDS = [
   { key: 'show_savings',         label: 'Guthaben / Asset-Manager',desc: 'Sparziele, Anleihen, Tagesgeld & ETF-Soft-Link',  icon: 'savings' },
   { key: 'show_retirement_plan', label: 'Ruhestandsplanung',       desc: 'Rentenrechner, DRV, bAV & Depot-Vergleich',       icon: 'trending_up' },
   { key: 'show_real_estate',     label: 'Immobilien',              desc: 'Portfolio, Tilgungspläne, AfA & Steuervorteil',   icon: 'home_work' },
+  { key: 'show_learning_budget', label: 'Weiterbildungsbudget',    desc: 'Jährliches Budget für Fachbücher, Konferenzen & Training', icon: 'school' },
 ];
 
 // Kleine Helper-Komponente für die Ghost-Box-Icons in den Settings-Karten

@@ -22,6 +22,7 @@ Diese Regeln gelten unabhängig vom konkreten Task — beim Bearbeiten jeder Dat
 4. **Steuer-Auswirkungen flaggen:** Wenn eine Änderung Brutto-/Netto-, Tarif- oder AfA-Logik berührt, im Commit-Message bzw. PR explizit darauf hinweisen.
 5. **Inline-Styles verboten:** Keine `style={{ ... }}`-Props oder Hex-Codes in JSX. Alle visuellen Entscheidungen über das MUI-Theme (`sx`-Prop mit Theme-Tokens). Siehe [`.claude/skills/design-system/SKILL.md`](.claude/skills/design-system/SKILL.md).
 6. **Modul-Workflow respektieren:** Neue Hauptmodule durchlaufen die Reihenfolge SQL → ModuleContext → Settings-UI → fachliche Logik. Siehe [`.claude/skills/architecture/SKILL.md`](.claude/skills/architecture/SKILL.md).
+7. Antworte immer auf Deutsch, auch wenn meine gestellt Frage auf Englisch ist. 
 
 ## Skill-Verzeichnis
 
@@ -41,6 +42,7 @@ Die fachlichen + technischen Detailregeln sind in `.claude/skills/<topic>/SKILL.
 | [domain-gehalt](.claude/skills/domain-gehalt/SKILL.md) | Gehaltsrechner + Historie + Real-Lohn | Tarifzonen 2026, Vorsorgepauschale, BBG-Deckelung, Inflations-Bereinigung via Destatis VPI |
 | [domain-immobilien](.claude/skills/domain-immobilien/SKILL.md) | Immobilien-Modul | LTV, AfA linear/degressiv, 15 %-Grenze Instandhaltung, 10-Jahres-Haltefrist |
 | [domain-haushaltsbuch](.claude/skills/domain-haushaltsbuch/SKILL.md) | Wochen-Budget Gemeinschaftskonto | Burn-Rate, Tages-Budget, Ampel-UI, Quick-Add mobile |
+| [domain-weiterbildungsbudget](.claude/skills/domain-weiterbildungsbudget/SKILL.md) | Weiterbildungsbudget (Personal Development Budget) | Jahres-Deckel, Restbetrag-Berechnung, Ampel-UI, `learning_budget_items` |
 
 ### Agents
 
