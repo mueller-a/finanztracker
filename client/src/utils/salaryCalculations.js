@@ -135,6 +135,24 @@ export function calcAgZuschuss(pkvBrutto, brutto, zusatzPct, cfg) {
 // Quellen: BMF-PAP UPTAB25 / UPTAB26
 //   https://www.bmf-steuerrechner.de/javax.faces.resource/daten/xmls/Lohnsteuer{Jahr}.xml.xhtml
 
+/**
+ * Tarifliche Einkommensteuer nach § 32a EStG (Grundtarif) für ein zvE.
+ * Zone 6 (z. B. 47 % ab 2027) greift nur, wenn `cfg.zone5End` gesetzt ist.
+ * Splitting (Stkl 3 / Zusammenveranlagung): tarifEst(zvE / 2) × 2.
+ * @param {number} zve zu versteuerndes Einkommen (Jahr, €)
+ * @param {object} cfg Config aus taxConfigs.js, z. B. getTaxConfig(2027, 1)
+ * @returns {number} ungerundete Jahressteuer (€)
+ */
+export function tarifEst(zve, cfg) {
+  cfg = cfg || LATEST_TAX_CONFIG;
+  if (zve <= cfg.gfb)         return 0;
+  if (zve <= cfg.zone2End)    { var y = (zve - cfg.gfb)      / 10000; return (cfg.tarifZ2a * y + cfg.tarifZ2b) * y; }
+  if (zve <= cfg.zone3End)    { var z = (zve - cfg.zone2End) / 10000; return (cfg.tarifZ3a * z + cfg.tarifZ3b) * z + cfg.tarifZ3c; }
+  if (zve <= cfg.zone4End)    return cfg.tarifZ4Satz * zve - cfg.tarifZ4Abzug;
+  if (cfg.zone5End == null || zve <= cfg.zone5End) return cfg.tarifZ5Satz * zve - cfg.tarifZ5Abzug;
+  return cfg.tarifZ6Satz * zve - cfg.tarifZ6Abzug;
+}
+
 export function calcLohnsteuer2025(brutto, stkl, kinderFB, sonderausgaben, jahresfreibetrag, cfg) {
   cfg = cfg || LATEST_TAX_CONFIG;
   sonderausgaben = sonderausgaben || 0;
@@ -148,13 +166,7 @@ export function calcLohnsteuer2025(brutto, stkl, kinderFB, sonderausgaben, jahre
 
   var GFB  = { 1: cfg.gfb, 2: cfg.gfb, 3: cfg.gfb * 2, 4: cfg.gfb, 5: 0, 6: 0 };
 
-  function lstFormula(zve) {
-    if (zve <= cfg.gfb)         return 0;
-    if (zve <= cfg.zone2End)    { var y = (zve - cfg.gfb)      / 10000; return (cfg.tarifZ2a * y + cfg.tarifZ2b) * y; }
-    if (zve <= cfg.zone3End)    { var z = (zve - cfg.zone2End) / 10000; return (cfg.tarifZ3a * z + cfg.tarifZ3b) * z + cfg.tarifZ3c; }
-    if (zve <= cfg.zone4End)    return cfg.tarifZ4Satz * zve - cfg.tarifZ4Abzug;
-    return cfg.tarifZ5Satz * zve - cfg.tarifZ5Abzug;
-  }
+  function lstFormula(zve) { return tarifEst(zve, cfg); }
 
   var ST;
   if (stkl === 3) {

@@ -98,40 +98,46 @@ export const TAX_CONFIGS = [
     bmfCodeExt:      'LSt2026ext',
   },
 
-  // ────── Steuerrecht 2027 (GEPLANT / PROJEKTION) ────────
-  // Quelle: Reformentwurf 2027 (Stand 2026-05). Wesentliche Änderungen:
-  //   • Grundfreibetrag-Anhebung 12.348 → 13.348 €
-  //   • Spitzensteuersatz (42 %) ab 85.000 € (vorher 69.878 €)
-  //   • Reichensteuer-Schwelle abgesenkt 277.825 → 210.000 €,
-  //     gleichzeitig Anhebung 45 % → 47,5 %
-  //   • Solidaritätszuschlag entfällt komplett (soliSatz = 0)
-  // Polynomkoeffizienten Zone 2/3 mathematisch hergeleitet
-  // (Stetigkeit + Differenzierbarkeit an Zonen-Grenzen), bis offizielles
-  // BMF-PAP UPTAB27 erscheint. Zone-2-Ende unverändert wie 2026.
-  // BBG KV/PV und BBG RV/AV vorerst auf 2026-Niveau (Platzhalter).
+  // ────── Steuerrecht 2027 (GEPLANT — Regierungsentwurf) ─
+  // Quelle: Regierungsentwurf „Einkommensteuerreformgesetz 2027“, Stufe 1.
+  // Wesentliche Änderungen ggü. 2026:
+  //   • Grundfreibetrag 12.348 → 12.564 €
+  //   • Spitzensteuersatz (42 %) ab 70.600 € (vorher 69.878 €)
+  //   • 45 % bereits ab 250.000 € (vorher 277.826 €)
+  //   • NEU: 47 %-Stufe ab 280.000 € (Zone 6)
+  //   • Arbeitnehmer-Pauschbetrag 1.230 → 1.430 €
+  //   • Kinderfreibetrag gesamt 9.756 → 10.056 € pro Kind
+  // Polynomkoeffizienten Zone 2/3 nach BMF-Konvention hergeleitet
+  // (Stetigkeit, Grenzsteuersatz 23,97 % am Zone-2-Ende, 42 % am Zone-3-Ende);
+  // reproduziert UPTAB26 auf wenige Cent. Ersetzen, sobald UPTAB27 erscheint.
+  // Zone-2-Ende, Soli-Freigrenze und BBG vorerst auf 2026-Niveau (Platzhalter —
+  // der Entwurf enthält dazu keine Angaben).
   {
     validFrom:       '2027-01-01',
     year:            2027,
     label:           '2027 (geplant)',
     // Tarif §32a EStG (Projektion 2027)
-    gfb:             13348,
+    gfb:             12564,
     zone2End:        17799,
-    zone3End:        85000,
-    zone4End:        210000,
-    tarifZ2a:        914.51,
+    zone3End:        70600,
+    zone4End:        250000,
+    zone5End:        280000,
+    tarifZ2a:        952.24,
     tarifZ2b:        1400,
-    tarifZ3a:        147.76,
-    tarifZ3b:        2214.10,
-    tarifZ3c:        804.32,
+    tarifZ3a:        170.74,
+    tarifZ3b:        2397,
+    tarifZ3c:        993.86,
     tarifZ4Satz:     0.42,
-    tarifZ4Abzug:    13343.90,
-    tarifZ5Satz:     0.475,
-    tarifZ5Abzug:    24893.90,
-    // Pauschbeträge (Platzhalter 2026-Niveau)
-    anp:             1230,
+    tarifZ4Abzug:    11241.60,
+    tarifZ5Satz:     0.45,
+    tarifZ5Abzug:    18741.60,
+    tarifZ6Satz:     0.47,
+    tarifZ6Abzug:    24341.60,
+    // Pauschbeträge
+    anp:             1430,
     sap:             36,
-    kfbProKindStkl4: 4878,
-    kfbProKindSonst: 9756,
+    kfbProKindStkl4: 5028,
+    kfbProKindSonst: 10056,
     // SV-AN-Anteile (unverändert)
     rvANRate:        0.093,
     avANRate:        0.013,
@@ -143,14 +149,65 @@ export const TAX_CONFIGS = [
     // Beitragsbemessungsgrenzen (Platzhalter 2026-Niveau)
     bbgKvPvJahr:     69750,
     bbgRvAlvJahr:    101400,
-    // Soli abgeschafft: hoher Freigrenzen-Wert sorgt dafür, dass der
-    // if-Zweig in calcLohnsteuer2025() nie greift.
-    soliSatz:        0,
-    soliFreigrenze:  999999999,
+    // Soli (Platzhalter 2026-Niveau)
+    soliSatz:        0.055,
+    soliFreigrenze:  20350,
     // BMF-PAP-Endpoint (Schema 2027; offizielle URL existiert noch nicht)
     bmfUrl:          'https://www.bmf-steuerrechner.de/interface/2027Version1.xhtml',
     bmfCodeStd:      'LSt2027std',
     bmfCodeExt:      'LSt2027ext',
+  },
+
+  // ────── Steuerrecht 2028 (GEPLANT — Regierungsentwurf) ─
+  // Stufe 2 des Einkommensteuerreformgesetzes 2027:
+  //   • Grundfreibetrag 12.564 → 12.900 €
+  //   • Kinderfreibetrag gesamt 10.056 → 10.236 € pro Kind
+  // Tarifgrenzen (70.600 / 250.000 / 280.000 €) und alle übrigen Werte wie 2027
+  // — der Entwurf nennt für 2028 keine weitere Verschiebung.
+  {
+    validFrom:       '2028-01-01',
+    year:            2028,
+    label:           '2028 (geplant)',
+    // Tarif §32a EStG (Projektion 2028)
+    gfb:             12900,
+    zone2End:        17799,
+    zone3End:        70600,
+    zone4End:        250000,
+    zone5End:        280000,
+    tarifZ2a:        1017.55,
+    tarifZ2b:        1400,
+    tarifZ3a:        170.74,
+    tarifZ3b:        2397,
+    tarifZ3c:        930.07,
+    tarifZ4Satz:     0.42,
+    tarifZ4Abzug:    11305.39,
+    tarifZ5Satz:     0.45,
+    tarifZ5Abzug:    18805.39,
+    tarifZ6Satz:     0.47,
+    tarifZ6Abzug:    24405.39,
+    // Pauschbeträge
+    anp:             1430,
+    sap:             36,
+    kfbProKindStkl4: 5118,
+    kfbProKindSonst: 10236,
+    // SV-AN-Anteile (unverändert)
+    rvANRate:        0.093,
+    avANRate:        0.013,
+    pvANRate:        0.018,
+    pvKinderlosZuschlag: 0.006,
+    kvANRateAllgemein: 0.073,
+    kvANRateErmaessigt: 0.07,
+    kvZusatzDurchschnitt: 2.5,
+    // Beitragsbemessungsgrenzen (Platzhalter 2026-Niveau)
+    bbgKvPvJahr:     69750,
+    bbgRvAlvJahr:    101400,
+    // Soli (Platzhalter 2026-Niveau)
+    soliSatz:        0.055,
+    soliFreigrenze:  20350,
+    // BMF-PAP-Endpoint (Schema 2028; offizielle URL existiert noch nicht)
+    bmfUrl:          'https://www.bmf-steuerrechner.de/interface/2028Version1.xhtml',
+    bmfCodeStd:      'LSt2028std',
+    bmfCodeExt:      'LSt2028ext',
   },
 ];
 
