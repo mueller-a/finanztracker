@@ -63,7 +63,7 @@ Quelle: Regierungsentwurf „Einkommensteuerreformgesetz 2027“ (Stufe 1 ab 01.
 
 ### 4. Platzhalter (Entwurf enthält keine Angaben)
 - Soli: 5,5 %, Freigrenze 20.350 € (2026-Niveau) — die frühere Annahme „Soli entfällt“ ist nicht Teil des Entwurfs.
-- Beitragssätze und KVZ-Default 2,5 % unverändert.
+- Beitragssätze 2027/2028: siehe 4b.
 - BBG 2028: vorerst 2027-Niveau.
 
 ### 4a. SV-Rechengrößen 2027 (Referentenentwurf)
@@ -80,6 +80,27 @@ Quelle: Regierungsentwurf „Einkommensteuerreformgesetz 2027“ (Stufe 1 ab 01.
 
 ### 5. BMF-Validierung
 - Endpunkte `…/interface/2027Version1.xhtml` / `2028Version1.xhtml`, Codes `LSt2027std`/`LSt2028std` — existieren noch nicht (BMF veröffentlicht das PAP üblicherweise im Herbst/Winter des Vorjahres).
+
+### 4b. Beitragssätze 2027 / 2028
+| Zweig | 2026 | 2027 | 2028 | Deckel |
+|---|---|---|---|---|
+| RV (AN/AG je) | 9,3 % | 9,3 % | **9,95 %** | BBG RV |
+| AV (AN/AG je) | 1,3 % | 1,3 % | 1,3 % | BBG RV |
+| KV allg. (AN/AG je) | 7,3 % | 7,3 % | 7,3 % | BBG KV |
+| Ø-Zusatzbeitrag (`kvZusatzDurchschnitt`) | 2,5 % | **2,9 %** | 2,9 % (Platzhalter) | BBG KV |
+| PV (AN/AG je) | 1,8 % | 1,8 % | 1,8 % | BBG KV |
+
+- **PV bewusst 3,6 % gesamt**, nicht 3,4 % wie in der Vorlage vom Sept. 2026 — 3,4 % war der Satz bis Ende 2024; seit 01.01.2025 gilt 3,6 %.
+- Kinderlosen-Zuschlag (+0,6 %, nur AN) wird aus `ghKinder === 0` abgeleitet (`pvSatzByKinder`), kein separates `is_childless`-Flag. Altersgrenze 23 Jahre ist nicht modelliert.
+- Der Zusatzbeitrag des Users (`ghGkvZusatz`) bleibt individuell einstellbar; `kvZusatzDurchschnitt` wirkt nur auf den AG-Zuschuss-Deckel bei PKV.
+
+## Arbeitgeberkosten (AG-Anteile)
+
+`calcGehaltResult` liefert zusätzlich `agRv`, `agAv`, `agKv`, `agPv`, `agGesamt`, `arbeitgeberkosten` (= Brutto + AG-Anteile), alle monatlich.
+- GKV: AG zahlt dieselben Sätze wie AN bis zur BBG, bei PV nur den Basissatz (Zuschlag/Abschläge trägt der AN).
+- PKV: `agKv` = AG-Zuschuss § 257 SGB V, `agPv` = 0.
+- Nicht enthalten: Umlagen U1/U2/U3, Insolvenzgeldumlage, Unfallversicherung, Sachsen-PV-Sonderregel.
+- UI: Karte „Arbeitgeberkosten“ in `SalaryPage.js` unter „Abzüge im Überblick“.
 
 ## Vorsorgepauschale (§ 39b EStG)
 

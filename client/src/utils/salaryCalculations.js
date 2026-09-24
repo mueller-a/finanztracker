@@ -309,6 +309,17 @@ export function calcGehaltResult(gh, pkvMonthly, pkvSteuerMonthly) {
   var gesamtAbzug = lstMo + soliMo + kistMo + kvAN + pvAN + rv + av;
   var netto = brutto - gesamtAbzug;
 
+  // ── AG-Anteile (Lohnnebenkosten) ────────────────────────
+  // Paritätisch bis zur jeweiligen BBG. Kinderlosen-Zuschlag und
+  // Kinder-Abschläge der PV trägt allein der AN → AG zahlt den Basissatz.
+  // PKV: AG zahlt statt KV/PV den Zuschuss nach § 257 SGB V.
+  // Nicht enthalten: Umlagen U1/U2/U3, Unfallversicherung, Sachsen-PV-Sonderregel.
+  var agRv = rv;
+  var agAv = av;
+  var agKv = ghKvType === 'gkv' ? svBase * (cfg.kvANRateAllgemein + gkvZusatz / 200) : agZuschuss;
+  var agPv = ghKvType === 'gkv' ? svBase * cfg.pvANRate : 0;
+  var agGesamt = agRv + agAv + agKv + agPv;
+
   return {
     brutto: brutto, lstMo: lstMo, soliMo: soliMo, kistMo: kistMo,
     kvAN: kvAN, pvAN: pvAN, rv: rv, av: av,
@@ -317,6 +328,9 @@ export function calcGehaltResult(gh, pkvMonthly, pkvSteuerMonthly) {
     agZuschuss: agZuschuss, sonderausgabenJahr: sonderausgabenJahr, lstDetail: lstDetail,
     kistSatz: kistSatz, kistAktiv: kistAktiv, ghKvType: ghKvType, gkvZusatz: gkvZusatz,
     pkvBasis: pkvBasis, pkvAgZuschuss: agZuschuss,
+    // Arbeitgeber-Seite (monatlich)
+    agRv: agRv, agAv: agAv, agKv: agKv, agPv: agPv,
+    agGesamt: agGesamt, arbeitgeberkosten: brutto + agGesamt,
     // Vorsorgepauschale §39b Detail (BMF-PAP)
     vspRV:        Math.round(VSP_RV * 100) / 100,
     vspKVPVist:   Math.round(VSP_KVPV * 100) / 100,

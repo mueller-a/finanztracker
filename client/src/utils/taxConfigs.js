@@ -139,14 +139,14 @@ export const TAX_CONFIGS = [
     sap:             36,
     kfbProKindStkl4: 5028,
     kfbProKindSonst: 10056,
-    // SV-AN-Anteile (unverändert)
+    // SV-AN-Anteile (Sätze unverändert, Ø-Zusatzbeitrag 2,9 %)
     rvANRate:        0.093,
     avANRate:        0.013,
     pvANRate:        0.018,
     pvKinderlosZuschlag: 0.006,
     kvANRateAllgemein: 0.073,
     kvANRateErmaessigt: 0.07,
-    kvZusatzDurchschnitt: 2.5,
+    kvZusatzDurchschnitt: 2.9,  // Ø-Zusatzbeitrag 2027 lt. BMG
     // Beitragsbemessungsgrenzen (Referentenentwurf SV-Rechengrößen 2027)
     bbgKvPvJahr:     76500,     // 6.375 €/Monat
     bbgRvAlvJahr:    106200,    // 8.850 €/Monat, bundeseinheitlich
@@ -163,6 +163,7 @@ export const TAX_CONFIGS = [
   // Stufe 2 des Einkommensteuerreformgesetzes 2027:
   //   • Grundfreibetrag 12.564 → 12.900 €
   //   • Kinderfreibetrag gesamt 10.056 → 10.236 € pro Kind
+  //   • Rentenversicherung 18,6 % → 19,9 % (AN/AG je 9,95 %)
   // Tarifgrenzen (70.600 / 250.000 / 280.000 €), BBG und alle übrigen Werte
   // wie 2027 — für 2028 liegen dazu noch keine Angaben vor.
   {
@@ -191,14 +192,14 @@ export const TAX_CONFIGS = [
     sap:             36,
     kfbProKindStkl4: 5118,
     kfbProKindSonst: 10236,
-    // SV-AN-Anteile (unverändert)
-    rvANRate:        0.093,
+    // SV-AN-Anteile — RV steigt auf 19,9 % gesamt
+    rvANRate:        0.0995,
     avANRate:        0.013,
     pvANRate:        0.018,
     pvKinderlosZuschlag: 0.006,
     kvANRateAllgemein: 0.073,
     kvANRateErmaessigt: 0.07,
-    kvZusatzDurchschnitt: 2.5,
+    kvZusatzDurchschnitt: 2.9,  // Platzhalter 2027-Niveau
     // Beitragsbemessungsgrenzen (Platzhalter 2027-Niveau)
     bbgKvPvJahr:     76500,
     bbgRvAlvJahr:    106200,

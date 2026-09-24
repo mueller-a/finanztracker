@@ -816,6 +816,34 @@ export default function SalaryPage() {
             })()}
           </SectionCard>
 
+          {/* Arbeitgeberkosten (AG-Anteile SV) */}
+          <SectionCard title="Arbeitgeberkosten" subheader="AG-Anteile zur Sozialversicherung, gedeckelt an den BBG">
+            <Stack divider={<Divider flexItem />} spacing={0}>
+              {[
+                { label: 'Bruttogehalt',                         value: result.brutto, fw: 700 },
+                { label: '+ Rentenversicherung (AG)',            value: result.agRv },
+                { label: '+ Arbeitslosenversicherung (AG)',      value: result.agAv },
+                ...(gh.ghKvType === 'pkv'
+                  ? [{ label: '+ AG-Zuschuss private KV + PV',   value: result.agKv }]
+                  : [{ label: '+ Krankenversicherung (AG)',      value: result.agKv },
+                     { label: '+ Pflegeversicherung (AG)',       value: result.agPv }]),
+              ].map((r) => (
+                <Stack key={r.label} direction="row" justifyContent="space-between" alignItems="center" sx={{ py: 0.75 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: r.fw || 400 }}>{r.label}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: r.fw || 600, fontFamily: 'monospace' }}>{fmtE(r.value)}</Typography>
+                </Stack>
+              ))}
+            </Stack>
+            <Stack direction="row" justifyContent="space-between"
+              sx={{ py: 1, my: 0.5, borderTop: 2, borderBottom: 2, borderColor: 'divider' }}>
+              <Typography variant="body2" sx={{ fontWeight: 700 }}>= Gesamtkosten Arbeitgeber</Typography>
+              <Typography variant="body1" sx={{ fontWeight: 700, fontFamily: 'monospace' }}>{fmtE(result.arbeitgeberkosten)}</Typography>
+            </Stack>
+            <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', mt: 1.5 }}>
+              Lohnnebenkosten {fmtE(result.agGesamt)}{suf} · ohne Umlagen U1/U2/U3 und Unfallversicherung
+            </Typography>
+          </SectionCard>
+
           {/* PKV vs GKV netto comparison */}
           {(gh.ghKvType === 'pkv' && gh.ghPkvBeitrag > 0) && (
             <SectionCard title="PKV vs. GKV · Netto-Vergleich">
