@@ -63,7 +63,20 @@ Quelle: Regierungsentwurf „Einkommensteuerreformgesetz 2027“ (Stufe 1 ab 01.
 
 ### 4. Platzhalter (Entwurf enthält keine Angaben)
 - Soli: 5,5 %, Freigrenze 20.350 € (2026-Niveau) — die frühere Annahme „Soli entfällt“ ist nicht Teil des Entwurfs.
-- BBG KV/PV 69.750 €, BBG RV/AV 101.400 €; Beitragssätze und KVZ-Default 2,5 % unverändert.
+- Beitragssätze und KVZ-Default 2,5 % unverändert.
+- BBG 2028: vorerst 2027-Niveau.
+
+### 4a. SV-Rechengrößen 2027 (Referentenentwurf)
+| Größe | 2026 | 2027 |
+|---|---|---|
+| BBG KV/PV | 69.750 € (5.812,50 €/Mo) | **76.500 € (6.375 €/Mo)** |
+| BBG RV/AV (bundeseinheitlich) | 101.400 € (8.450 €/Mo) | **106.200 € (8.850 €/Mo)** |
+| JAEG (Versicherungspflichtgrenze) | — | 84.150 € |
+| Besondere JAEG (PKV-Bestand) | — | 92.250 € |
+
+- Deckelung erfolgt bereits über `Math.min(brutto, bbg…)` — Entgelt oberhalb der BBG bleibt beitragsfrei.
+- JAEG wird im Rechner (noch) nicht verwendet, daher kein Config-Feld.
+- Achtung: `GKV_BBG_KV`/`MAX_AG_ZUSCHUSS` in `salaryCalculations.js` lesen aus `LATEST_TAX_CONFIG` (= jüngste Config, aktuell 2028-Projektion).
 
 ### 5. BMF-Validierung
 - Endpunkte `…/interface/2027Version1.xhtml` / `2028Version1.xhtml`, Codes `LSt2027std`/`LSt2028std` — existieren noch nicht (BMF veröffentlicht das PAP üblicherweise im Herbst/Winter des Vorjahres).

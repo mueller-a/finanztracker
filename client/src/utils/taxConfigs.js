@@ -110,7 +110,8 @@ export const TAX_CONFIGS = [
   // Polynomkoeffizienten Zone 2/3 nach BMF-Konvention hergeleitet
   // (Stetigkeit, Grenzsteuersatz 23,97 % am Zone-2-Ende, 42 % am Zone-3-Ende);
   // reproduziert UPTAB26 auf wenige Cent. Ersetzen, sobald UPTAB27 erscheint.
-  // Zone-2-Ende, Soli-Freigrenze und BBG vorerst auf 2026-Niveau (Platzhalter —
+  // BBG KV/PV und RV/AV aus dem Referentenentwurf der SV-Rechengrößen 2027.
+  // Zone-2-Ende und Soli-Freigrenze vorerst auf 2026-Niveau (Platzhalter —
   // der Entwurf enthält dazu keine Angaben).
   {
     validFrom:       '2027-01-01',
@@ -146,9 +147,9 @@ export const TAX_CONFIGS = [
     kvANRateAllgemein: 0.073,
     kvANRateErmaessigt: 0.07,
     kvZusatzDurchschnitt: 2.5,
-    // Beitragsbemessungsgrenzen (Platzhalter 2026-Niveau)
-    bbgKvPvJahr:     69750,
-    bbgRvAlvJahr:    101400,
+    // Beitragsbemessungsgrenzen (Referentenentwurf SV-Rechengrößen 2027)
+    bbgKvPvJahr:     76500,     // 6.375 €/Monat
+    bbgRvAlvJahr:    106200,    // 8.850 €/Monat, bundeseinheitlich
     // Soli (Platzhalter 2026-Niveau)
     soliSatz:        0.055,
     soliFreigrenze:  20350,
@@ -162,8 +163,8 @@ export const TAX_CONFIGS = [
   // Stufe 2 des Einkommensteuerreformgesetzes 2027:
   //   • Grundfreibetrag 12.564 → 12.900 €
   //   • Kinderfreibetrag gesamt 10.056 → 10.236 € pro Kind
-  // Tarifgrenzen (70.600 / 250.000 / 280.000 €) und alle übrigen Werte wie 2027
-  // — der Entwurf nennt für 2028 keine weitere Verschiebung.
+  // Tarifgrenzen (70.600 / 250.000 / 280.000 €), BBG und alle übrigen Werte
+  // wie 2027 — für 2028 liegen dazu noch keine Angaben vor.
   {
     validFrom:       '2028-01-01',
     year:            2028,
@@ -198,9 +199,9 @@ export const TAX_CONFIGS = [
     kvANRateAllgemein: 0.073,
     kvANRateErmaessigt: 0.07,
     kvZusatzDurchschnitt: 2.5,
-    // Beitragsbemessungsgrenzen (Platzhalter 2026-Niveau)
-    bbgKvPvJahr:     69750,
-    bbgRvAlvJahr:    101400,
+    // Beitragsbemessungsgrenzen (Platzhalter 2027-Niveau)
+    bbgKvPvJahr:     76500,
+    bbgRvAlvJahr:    106200,
     // Soli (Platzhalter 2026-Niveau)
     soliSatz:        0.055,
     soliFreigrenze:  20350,
