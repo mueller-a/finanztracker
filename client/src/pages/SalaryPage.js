@@ -15,7 +15,7 @@ import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
   DEFAULT_GEHALT, STEUERKLASSEN, BUNDESLAENDER, AVAILABLE_YEARS, MONATE,
-  calcGehaltResult, calcNettoComparison, calcAgZuschuss, fmtEuro,
+  calcGehaltResult, calcNettoComparison, calcAgZuschuss, fmtEuro, getTaxConfig,
 } from '../utils/salaryCalculations';
 import { useSalarySettings } from '../hooks/useSalarySettings';
 import { useModules, calculateAge } from '../context/ModuleContext';
@@ -25,8 +25,22 @@ import SalaryHistoryTab from './SalaryHistoryTab';
 import SalaryForecastTab from './SalaryForecastTab';
 
 // ─── Lohnsteuer Tooltip Body ──────────────────────────────────────────────────
+// Formel der Tarifzone aus der Config des gewählten Jahres (§ 32a EStG)
+function tarifZoneText(zve, cfg) {
+  const n = (v, dec = 0) => v.toLocaleString('de-DE', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  const pct = (v) => n(v * 100, v * 100 % 1 ? 1 : 0) + ' %';
+  if (zve <= cfg.gfb) return `Zone 1: ZVE ≤ ${n(cfg.gfb)} (Grundfreibetrag) → Keine Steuer`;
+  if (zve <= cfg.zone2End) return `Zone 2: y = (ZVE−${n(cfg.gfb)})/10.000 → (${n(cfg.tarifZ2a, 2)}·y+${n(cfg.tarifZ2b)})·y`;
+  if (zve <= cfg.zone3End) return `Zone 3: z = (ZVE−${n(cfg.zone2End)})/10.000 → (${n(cfg.tarifZ3a, 2)}·z+${n(cfg.tarifZ3b)})·z+${n(cfg.tarifZ3c, 2)}`;
+  if (zve <= cfg.zone4End) return `Zone 4 (${pct(cfg.tarifZ4Satz)}): ${n(cfg.tarifZ4Satz, 2)}·ZVE − ${n(cfg.tarifZ4Abzug, 2)}`;
+  if (cfg.zone5End == null || zve <= cfg.zone5End) return `Zone 5 (${pct(cfg.tarifZ5Satz)}): ${n(cfg.tarifZ5Satz, 2)}·ZVE − ${n(cfg.tarifZ5Abzug, 2)}`;
+  return `Zone 6 (${pct(cfg.tarifZ6Satz)}): ${n(cfg.tarifZ6Satz, 2)}·ZVE − ${n(cfg.tarifZ6Abzug, 2)}`;
+}
+
 function LohnsteuerTooltipContent({ result, gh }) {
   const d = result.lstDetail;
+  const cfg = getTaxConfig(gh.ghYear || new Date().getFullYear(), gh.ghMonth || (new Date().getMonth() + 1));
+  const zveTarif = d.splittingActive ? Math.floor(d.ZVE / 2) : d.ZVE;
   const rows = [
     ['Jahresbrutto (JB)', fmtEuro(d.JB, 0)],
     ['− Arbeitnehmer-Pauschbetrag', fmtEuro(d.ANP, 0)],
@@ -120,11 +134,7 @@ function LohnsteuerTooltipContent({ result, gh }) {
 
       <Divider sx={{ my: 0.75 }} />
       <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', fontSize: '0.7rem', mb: 0.5 }}>
-        {d.ZVE <= 0 ? 'ZVE ≤ 0 → Keine Steuer'
-          : d.ZVE <= 17799 ? 'Zone 2: y = (ZVE−12.348)/10.000 → (979,18·y+1.400)·y'
-          : d.ZVE <= 68430 ? 'Zone 3: z = (ZVE−17.799)/10.000 → (192,59·z+2.397)·z+1.025,38'
-          : d.ZVE <= 277825 ? 'Zone 4: 0,42·ZVE − 10.602,13'
-          : 'Zone 5: 0,45·ZVE − 19.470,38'}
+        {tarifZoneText(zveTarif, cfg)}
       </Typography>
       {d.splittingActive && (
         <Typography variant="caption" sx={{ display: 'block', color: 'info.main', mb: 0.5 }}>
