@@ -304,6 +304,7 @@ export default function SalaryPage() {
 
   const result = useMemo(() => calcGehaltResult(gh, gh.ghPkvBeitrag, 0), [gh]);
   const comp   = useMemo(() => calcNettoComparison(gh, gh.ghPkvBeitrag), [gh]);
+  const cfg    = getTaxConfig(gh.ghYear || new Date().getFullYear(), gh.ghMonth || (new Date().getMonth() + 1));
 
   const mul  = gh.ghView === 'jahr' ? 12 : 1;
   const suf  = gh.ghView === 'jahr' ? ' / Jahr' : ' / Monat';
@@ -455,7 +456,7 @@ export default function SalaryPage() {
                   value={gh.ghYear ?? new Date().getFullYear()}
                   onChange={(e) => update({ ghYear: parseInt(e.target.value, 10) })}
                 >
-                  {AVAILABLE_YEARS.map((y) => <MenuItem key={y} value={y}>{y}</MenuItem>)}
+                  {AVAILABLE_YEARS.map((y) => <MenuItem key={y} value={y}>{getTaxConfig(y, 1).label}</MenuItem>)}
                 </TextField>
                 <TextField
                   select label="Monat" size="small" fullWidth
@@ -465,6 +466,14 @@ export default function SalaryPage() {
                   {MONATE.map((m) => <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>)}
                 </TextField>
               </Stack>
+              {cfg.entwurf && (
+                <Alert severity="warning" variant="outlined" sx={{ py: 0.5, fontSize: '0.78rem' }}>
+                  <AlertTitle sx={{ fontSize: '0.82rem', fontWeight: 700 }}>
+                    {cfg.year} basiert auf Entwürfen (Stand {cfg.entwurf.stand})
+                  </AlertTitle>
+                  {cfg.entwurf.hinweis}
+                </Alert>
+              )}
               <CurrencyField
                 label="Monatl. Freibetrag"
                 value={gh.ghFreibetragMo}
@@ -545,6 +554,9 @@ export default function SalaryPage() {
                 decimals={2}
                 inputProps={{ min: 0, max: 5, step: 0.01 }}
                 fullWidth
+                helperText={cfg.entwurf
+                  ? `Satz deiner Kasse. Ø ${cfg.year}: ${cfg.kvZusatzDurchschnitt.toLocaleString('de-DE', { minimumFractionDigits: 1 })} %`
+                  : undefined}
               />
             ) : (
               <Stack spacing={1.5}>
@@ -604,7 +616,9 @@ export default function SalaryPage() {
                     fullWidth
                     placeholder="0"
                     inputProps={{ step: 1, min: 0 }}
-                    helperText="Steuerfrei, max. 613,22 €/Mon (§257 SGB V)"
+                    helperText={cfg.rechengroessen
+                      ? `Steuerfrei, max. ${fmtEuro(cfg.rechengroessen.agHoechstzuschussKvMitKrankengeld + cfg.rechengroessen.agHoechstzuschussPpv, 2)}/Mon (§257 SGB V, Entwurf)`
+                      : 'Steuerfrei, max. 613,22 €/Mon (§257 SGB V)'}
                   />
                 </Box>
 
@@ -663,7 +677,7 @@ export default function SalaryPage() {
                 {fmtE(result.netto)}
               </Typography>
               <Typography variant="body2" sx={{ mt: 1, color: 'primary.light' }}>
-                nach allen Abzügen · Steuerrecht {gh.ghYear || new Date().getFullYear()}
+                nach allen Abzügen · Steuerrecht {cfg.label}
               </Typography>
             </Box>
           </Paper>

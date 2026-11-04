@@ -44,12 +44,13 @@ Quelle: Regierungsentwurf „Einkommensteuerreformgesetz 2027“ (Stufe 1 ab 01.
 | Grundfreibetrag | 12.348 € | **12.564 €** | **12.900 €** |
 | Zone-2-Ende (14 % → 23,97 %) | 17.799 € | 17.799 € (Platzhalter) | 17.799 € (Platzhalter) |
 | 42 % ab zvE | 69.879 € | **70.601 €** | 70.601 € |
-| 45 % ab zvE | 277.826 € | **250.001 €** | 250.001 € |
-| **47 % ab zvE (neue Zone 6)** | — | **280.001 €** | 280.001 € |
+| 45 % ab zvE | 277.826 € | **250.000 €** | 250.000 € |
+| **47 % ab zvE (neue Zone 6)** | — | **280.000 €** | 280.000 € |
 
 - Zone 6 ist optional: `zone5End`, `tarifZ6Satz`, `tarifZ6Abzug`. Fehlt `zone5End`, gilt Zone 5 unbegrenzt (2025/2026).
 - Tarifformel als eigene Funktion `tarifEst(zve, cfg)` in `salaryCalculations.js` (Grundtarif; Splitting = `tarifEst(zvE/2)·2`).
-- **Koeffizienten Zone 2/3** nach BMF-Konvention hergeleitet: Stetigkeit an allen Grenzen, Grenzsteuersatz 23,97 % am Zone-2-Ende und 42 % am Zone-3-Ende. Reproduziert UPTAB26 auf wenige Cent. Ersetzen, sobald BMF-PAP UPTAB27/28 publiziert wird.
+- **Koeffizienten 2027** aus dem Entwurf (Stand 04.11.2026), geprüft in `client/src/utils/salaryCalculations.2027.test.js`. **Koeffizienten und Abzüge 2028** aus der Stetigkeit an den Zonengrenzen hergeleitet, geprüft in `client/src/utils/salaryCalculations.2028.test.js`. Ersetzen, sobald BMF-PAP UPTAB27/28 endgültig vorliegt.
+- **Entwurfs-Kennzeichnung:** Configs mit `entwurf`-Feld lösen in `SalaryPage.js` einen Warnhinweis aus. Offene Werte stehen in `entwurf.offeneParameter`.
 
 ### 2. Pauschalen & Familienleistungen
 - **Arbeitnehmer-Pauschbetrag:** 1.230 € → **1.430 €** (ab 2027)
@@ -66,16 +67,17 @@ Quelle: Regierungsentwurf „Einkommensteuerreformgesetz 2027“ (Stufe 1 ab 01.
 - Beitragssätze 2027/2028: siehe 4b.
 - BBG 2028: vorerst 2027-Niveau.
 
-### 4a. SV-Rechengrößen 2027 (Referentenentwurf)
+### 4a. SV-Rechengrößen 2027 (Kabinett 07.10.2026, Bundesrat offen)
 | Größe | 2026 | 2027 |
 |---|---|---|
 | BBG KV/PV | 69.750 € (5.812,50 €/Mo) | **76.500 € (6.375 €/Mo)** |
 | BBG RV/AV (bundeseinheitlich) | 101.400 € (8.450 €/Mo) | **106.200 € (8.850 €/Mo)** |
 | JAEG (Versicherungspflichtgrenze) | — | 84.150 € |
-| Besondere JAEG (PKV-Bestand) | — | 92.250 € |
+| Besondere JAEG § 6 Abs. 7 SGB V (Bestandsschutz 2002) | — | 72.900 € |
+| JAEG § 6 Abs. 8 SGB V (neu ab 2027) | — | 80.550 € |
 
 - Deckelung erfolgt bereits über `Math.min(brutto, bbg…)` — Entgelt oberhalb der BBG bleibt beitragsfrei.
-- JAEG wird im Rechner (noch) nicht verwendet, daher kein Config-Feld.
+- JAEG, Minijob, Midijob, Knappschaft und Sachsen-PV stehen 2027 in `cfg.rechengroessen`, die Engine nutzt sie noch nicht.
 - Achtung: `GKV_BBG_KV`/`MAX_AG_ZUSCHUSS` in `salaryCalculations.js` lesen aus `LATEST_TAX_CONFIG` (= jüngste Config, aktuell 2028-Projektion).
 
 ### 5. BMF-Validierung
@@ -91,7 +93,7 @@ Quelle: Regierungsentwurf „Einkommensteuerreformgesetz 2027“ (Stufe 1 ab 01.
 | PV (AN/AG je) | 1,8 % | 1,8 % | 1,8 % | BBG KV |
 
 - **PV bewusst 3,6 % gesamt**, nicht 3,4 % wie in der Vorlage vom Sept. 2026 — 3,4 % war der Satz bis Ende 2024; seit 01.01.2025 gilt 3,6 %.
-- Kinderlosen-Zuschlag (+0,6 %, nur AN) wird aus `ghKinder === 0` abgeleitet (`pvSatzByKinder`), kein separates `is_childless`-Flag. Altersgrenze 23 Jahre ist nicht modelliert.
+- Kinderlosen-Zuschlag (+0,6 %, ab 2027 lt. Entwurf +0,9 %, 2028 Platzhalter, nur AN) wird aus `ghKinder === 0` abgeleitet (`pvSatzByKinder`), kein separates `is_childless`-Flag. Altersgrenze 23 Jahre ist nicht modelliert.
 - Der Zusatzbeitrag des Users (`ghGkvZusatz`) bleibt individuell einstellbar; `kvZusatzDurchschnitt` wirkt nur auf den AG-Zuschuss-Deckel bei PKV.
 
 ## Arbeitgeberkosten (AG-Anteile)

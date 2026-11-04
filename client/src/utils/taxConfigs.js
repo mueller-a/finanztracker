@@ -98,95 +98,141 @@ export const TAX_CONFIGS = [
     bmfCodeExt:      'LSt2026ext',
   },
 
-  // ────── Steuerrecht 2027 (GEPLANT — Regierungsentwurf) ─
-  // Quelle: Regierungsentwurf „Einkommensteuerreformgesetz 2027“, Stufe 1.
+  // ────── Steuerrecht 2027 (ENTWURF, Stand 04.11.2026) ──
+  // NICHT beschlossen. Quellen: Einkommensteuerreformgesetz 2027 (Kabinett
+  // 02.09.2026, Bundesrat hat am 16.10.2026 Änderungen gefordert, 2./3. Lesung
+  // offen), BMF-PAP-Entwurf 2027 (08.10.2026), SV-Rechengrößenverordnung 2027
+  // (Kabinett 07.10.2026, Bundesrat offen), Pflegeneuordnungsgesetz (Kabinett
+  // 30.09.2026). Der Progressionsbericht kann Grund- und Kinderfreibetrag noch
+  // leicht ändern.
   // Wesentliche Änderungen ggü. 2026:
   //   • Grundfreibetrag 12.348 → 12.564 €
-  //   • Spitzensteuersatz (42 %) ab 70.600 € (vorher 69.878 €)
-  //   • 45 % bereits ab 250.000 € (vorher 277.826 €)
-  //   • NEU: 47 %-Stufe ab 280.000 € (Zone 6)
+  //   • 42 % ab 70.601 € (vorher 69.879 €)
+  //   • 45 % ab 250.000 € (vorher 277.826 €)
+  //   • NEU: 47 % ab 280.000 € (Zone 6)
   //   • Arbeitnehmer-Pauschbetrag 1.230 → 1.430 €
   //   • Kinderfreibetrag gesamt 9.756 → 10.056 € pro Kind
-  // Polynomkoeffizienten Zone 2/3 nach BMF-Konvention hergeleitet
-  // (Stetigkeit, Grenzsteuersatz 23,97 % am Zone-2-Ende, 42 % am Zone-3-Ende);
-  // reproduziert UPTAB26 auf wenige Cent. Ersetzen, sobald UPTAB27 erscheint.
-  // BBG KV/PV und RV/AV aus dem Referentenentwurf der SV-Rechengrößen 2027.
-  // Zone-2-Ende und Soli-Freigrenze vorerst auf 2026-Niveau (Platzhalter —
-  // der Entwurf enthält dazu keine Angaben).
+  //   • PV-Kinderlosenzuschlag 0,6 → 0,9 %
+  // Ersetzen, sobald UPTAB27 endgültig vorliegt.
   {
     validFrom:       '2027-01-01',
     year:            2027,
-    label:           '2027 (geplant)',
-    // Tarif §32a EStG (Projektion 2027)
+    label:           '2027 – Entwurf',
+    entwurf: {
+      stand:   '04.11.2026',
+      hinweis: 'Das Einkommensteuerreformgesetz 2027 ist noch nicht beschlossen, die SV-Rechengrößen brauchen noch die Zustimmung des Bundesrats. Die Werte können sich ändern. Die Soli-Freigrenze 2027 ist noch nicht bekannt, gerechnet wird vorläufig mit dem Wert von 2026.',
+      offeneParameter: ['soliFreigrenze'],
+    },
+    // Tarif §32a EStG (Entwurf)
     gfb:             12564,
     zone2End:        17799,
     zone3End:        70600,
-    zone4End:        250000,
-    zone5End:        280000,
+    zone4End:        249999,    // 45 % gilt ab 250.000 € inklusive
+    zone5End:        279999,    // 47 % gilt ab 280.000 € inklusive
     tarifZ2a:        952.24,
     tarifZ2b:        1400,
     tarifZ3a:        170.74,
     tarifZ3b:        2397,
     tarifZ3c:        993.86,
     tarifZ4Satz:     0.42,
-    tarifZ4Abzug:    11241.60,
+    tarifZ4Abzug:    11241.73,
     tarifZ5Satz:     0.45,
-    tarifZ5Abzug:    18741.60,
+    tarifZ5Abzug:    18741.70,
     tarifZ6Satz:     0.47,
-    tarifZ6Abzug:    24341.60,
+    tarifZ6Abzug:    24341.68,
     // Pauschbeträge
     anp:             1430,
     sap:             36,
     kfbProKindStkl4: 5028,
     kfbProKindSonst: 10056,
-    // SV-AN-Anteile (Sätze unverändert, Ø-Zusatzbeitrag 2,9 %)
+    // SV-AN-Anteile (Ø-Zusatzbeitrag 2,9 %, PV-Kinderlosenzuschlag 0,9 %)
     rvANRate:        0.093,
     avANRate:        0.013,
     pvANRate:        0.018,
-    pvKinderlosZuschlag: 0.006,
+    pvKinderlosZuschlag: 0.009,
     kvANRateAllgemein: 0.073,
     kvANRateErmaessigt: 0.07,
     kvZusatzDurchschnitt: 2.9,  // Ø-Zusatzbeitrag 2027 lt. BMG
-    // Beitragsbemessungsgrenzen (Referentenentwurf SV-Rechengrößen 2027)
+    // Beitragsbemessungsgrenzen (Kabinettsfassung SV-Rechengrößen 2027)
     bbgKvPvJahr:     76500,     // 6.375 €/Monat
     bbgRvAlvJahr:    106200,    // 8.850 €/Monat, bundeseinheitlich
-    // Soli (Platzhalter 2026-Niveau)
+    // Soli: Freigrenze 2027 noch offen (siehe entwurf.offeneParameter),
+    // Platzhalter auf 2026-Niveau
     soliSatz:        0.055,
     soliFreigrenze:  20350,
     // BMF-PAP-Endpoint (Schema 2027; offizielle URL existiert noch nicht)
     bmfUrl:          'https://www.bmf-steuerrechner.de/interface/2027Version1.xhtml',
     bmfCodeStd:      'LSt2027std',
     bmfCodeExt:      'LSt2027ext',
+    // Weitere Rechengrößen. Die Engine nutzt sie noch nicht: Minijob, Midijob,
+    // Knappschaft und die Sachsen-PV sind im Rechner nicht abgebildet.
+    rechengroessen: {
+      bbgKnappschaftJahr:   130800,  // 10.900 €/Monat
+      jaegJahr:             84150,   // § 6 Abs. 6 SGB V
+      jaegBesondereAbs7Jahr: 72900,  // § 6 Abs. 7 SGB V (Bestandsschutz 2002)
+      jaegBesondereAbs8Jahr: 80550,  // § 6 Abs. 8 SGB V (neu ab 2027)
+      bezugsgroesseMonat:   4130,
+      minijobGrenzeMonat:   633,
+      midijobObergrenzeMonat: 2000,  // Übergangsbereich ab 633,01 €
+      midijobFaktorF:       0.7683,
+      minijobKvPauschaleAG: 0.175,
+      mindestlohnStunde:    14.60,
+      pvANRateSachsen:      0.023,
+      pvAGRateSachsen:      0.013,
+      agHoechstzuschussKvMitKrankengeld:  557.81,
+      agHoechstzuschussKvOhneKrankengeld: 538.69,
+      agHoechstzuschussPpv: 114.75,
+      agHoechstzuschussPpvSachsen: 82.88,
+      kindergeldMonat:      267,
+      entlastungsbetragAlleinerziehende: 4260,
+      // Aufteilung des Kinderfreibetrags nicht bestätigt, vermutlich sächlich
+      // 7.128 € und BEA 2.928 €. Die Engine braucht nur die Summe.
+    },
+    // Vom Bundesrat abgelehnt und damit besonders unsicher. Im Rechner nicht
+    // abgebildet.
+    unsicher: {
+      minijobPauschsteuer:  0.05,
+      handwerkerSatz:       0.15,
+      handwerkerMax:        900,
+      sfnGrundlohnGrenzeStunde: 75,  // Sonn-/Feiertag, Nacht bleibt 50 €
+    },
   },
 
-  // ────── Steuerrecht 2028 (GEPLANT — Regierungsentwurf) ─
+  // ────── Steuerrecht 2028 (ENTWURF, Stand 04.11.2026) ──
   // Stufe 2 des Einkommensteuerreformgesetzes 2027:
   //   • Grundfreibetrag 12.564 → 12.900 €
   //   • Kinderfreibetrag gesamt 10.056 → 10.236 € pro Kind
   //   • Rentenversicherung 18,6 % → 19,9 % (AN/AG je 9,95 %)
-  // Tarifgrenzen (70.600 / 250.000 / 280.000 €), BBG und alle übrigen Werte
-  // wie 2027 — für 2028 liegen dazu noch keine Angaben vor.
+  // Tarifgrenzen (70.600 / 250.000 / 280.000 €), BBG, PV-Kinderlosenzuschlag
+  // und alle übrigen Werte wie 2027 — für 2028 liegen dazu noch keine Angaben
+  // vor. Koeffizienten Zone 2/3 und Abzugsbeträge sind aus der Stetigkeit an den
+  // Zonengrenzen hergeleitet, nicht amtlich.
   {
     validFrom:       '2028-01-01',
     year:            2028,
-    label:           '2028 (geplant)',
+    label:           '2028 – Entwurf',
+    entwurf: {
+      stand:   '04.11.2026',
+      hinweis: 'Projektion: Grundfreibetrag und Kinderfreibetrag stammen aus dem Regierungsentwurf, viele andere Werte sind Platzhalter. Die Werte können sich ändern.',
+      offeneParameter: ['soliFreigrenze'],
+    },
     // Tarif §32a EStG (Projektion 2028)
     gfb:             12900,
     zone2End:        17799,
     zone3End:        70600,
-    zone4End:        250000,
-    zone5End:        280000,
+    zone4End:        249999,    // 45 % gilt ab 250.000 € inklusive
+    zone5End:        279999,    // 47 % gilt ab 280.000 € inklusive
     tarifZ2a:        1017.55,
     tarifZ2b:        1400,
     tarifZ3a:        170.74,
     tarifZ3b:        2397,
     tarifZ3c:        930.07,
     tarifZ4Satz:     0.42,
-    tarifZ4Abzug:    11305.39,
+    tarifZ4Abzug:    11305.52,
     tarifZ5Satz:     0.45,
-    tarifZ5Abzug:    18805.39,
+    tarifZ5Abzug:    18805.49,
     tarifZ6Satz:     0.47,
-    tarifZ6Abzug:    24405.39,
+    tarifZ6Abzug:    24405.47,
     // Pauschbeträge
     anp:             1430,
     sap:             36,
@@ -196,7 +242,7 @@ export const TAX_CONFIGS = [
     rvANRate:        0.0995,
     avANRate:        0.013,
     pvANRate:        0.018,
-    pvKinderlosZuschlag: 0.006,
+    pvKinderlosZuschlag: 0.009,  // Platzhalter 2027-Niveau
     kvANRateAllgemein: 0.073,
     kvANRateErmaessigt: 0.07,
     kvZusatzDurchschnitt: 2.9,  // Platzhalter 2027-Niveau
@@ -210,6 +256,12 @@ export const TAX_CONFIGS = [
     bmfUrl:          'https://www.bmf-steuerrechner.de/interface/2028Version1.xhtml',
     bmfCodeStd:      'LSt2028std',
     bmfCodeExt:      'LSt2028ext',
+    rechengroessen: {
+      kindergeldMonat: 272,
+      // Platzhalter 2027-Niveau, folgen aus BBG und Ø-Zusatzbeitrag
+      agHoechstzuschussKvMitKrankengeld: 557.81,
+      agHoechstzuschussPpv: 114.75,
+    },
   },
 ];
 
