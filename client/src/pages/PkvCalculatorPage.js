@@ -88,11 +88,20 @@ const DEFAULT_GKV = {
 
 // ─── Pure calculation functions (pvSatzByKinder, calcAgZuschuss → salaryCalculations.js) ──
 
-function getEffectiveTarife(yearOverrides, baseTarife, year, startYear) {
+// Liefert die gültigen Tarife eines Jahres plus das Ankerjahr, ab dem die
+// Beitragssteigerung zählt. Manuell eingetragene Jahre sind Ist-Werte:
+// Im Ankerjahr selbst greift keine Steigerung, erst ab dem Folgejahr.
+// Ohne manuelle Eintragung ist der Versicherungsbeginn der Anker.
+function getTarifeWithAnchor(yearOverrides, baseTarife, year, startYear) {
   for (let y = year; y >= startYear; y--) {
-    if (yearOverrides[y]) return yearOverrides[y];
+    if (yearOverrides[y]) return { tarife: yearOverrides[y], anchorYear: y };
   }
-  return baseTarife;
+  return { tarife: baseTarife, anchorYear: startYear };
+}
+
+// Wachstumsfaktor relativ zum Ankerjahr.
+function growthFactor(growthRate, year, anchorYear) {
+  return Math.pow(1 + growthRate / 100, Math.max(0, year - anchorYear));
 }
 
 // Brutto-PKV-Beitrag pro Monat:  Σ(Tarif × (1+GZ)) − Senkungen.
@@ -148,7 +157,6 @@ function calcPkvData(pkv) {
   const todayYear     = CURRENT_YEAR;
   const birthYear     = birthdate ? new Date(birthdate).getFullYear() : (todayYear - currentAge);
   const startAge      = startYear - birthYear;
-  const growthRateDec = growthRate / 100;
   const years         = maxAge - startAge + 1;
   if (years <= 0) return [];
 
@@ -160,9 +168,8 @@ function calcPkvData(pkv) {
   for (let i = 0; i < years; i++) {
     const year = startYear + i;
     const age  = startAge + i;
-    const gf   = Math.pow(1 + growthRateDec, i);
-
-    const yTarife = getEffectiveTarife(yearOverrides, tarife, year, startYear);
+    const { tarife: yTarife, anchorYear } = getTarifeWithAnchor(yearOverrides, tarife, year, startYear);
+    const gf   = growthFactor(growthRate, year, anchorYear);
     const hasYearOverride = !!yearOverrides[year];
 
     let monthly;
@@ -522,13 +529,13 @@ export default function PkvCalculatorPage({ isDark = false }) {
       // ── PKV projection for Ruhestandsplanung ──────────────────────────────
       // Netto-PKV-Beitrag bei Rentenbeginn = Brutto-Beitrag minus KVdR-Zuschuss.
       // (AG-Zuschuss entfällt im Rentenalter ohnehin.)
+      // Dieselbe Rechnung wie die Jahrestabelle (calcPkvData), damit Ankerjahre,
+      // manuelle Beiträge und Steigerung identisch behandelt werden.
       try {
-        const yearsToRente    = Math.max(0, (pkv.rzFromAge || 67) - (pkv.currentAge || 45));
-        const gfAtRente       = Math.pow(1 + (pkv.growthRate || 5) / 100, yearsToRente);
-        const retirementYear  = CURRENT_YEAR + yearsToRente;
-        const yTarifeAtRente  = getEffectiveTarife(pkv.yearOverrides, pkv.tarife, retirementYear, CURRENT_YEAR);
-        const atAge           = pkv.rzFromAge || 67;
-        const bruttoMonatlich = getMonthlyAtAgeFor(atAge, gfAtRente, yTarifeAtRente, pkv.senkungen);
+        const atAge     = pkv.rzFromAge || 67;
+        const renteRow  = calcPkvData(pkv).find((r) => r.age === atAge);
+        if (!renteRow) throw new Error('Rentenalter außerhalb des Prognosezeitraums');
+        const bruttoMonatlich = renteRow.monthly;
         const rzAtRente       = getRentenzuschuss(atAge, bruttoMonatlich, pkv.rzActive, atAge, pkv.rzRente || 0);
         const nettoMonatlich  = Math.max(0, bruttoMonatlich - rzAtRente);
         savePkvProjection({
@@ -1117,8 +1124,22 @@ export default function PkvCalculatorPage({ isDark = false }) {
 
   function YearExpandPanel({ d }) {
     const startYear = new Date(pkv.startDate || CURRENT_YEAR + '-01-01').getFullYear();
-    const yo = pkv.yearOverrides[d.year] ?? getEffectiveTarife(pkv.yearOverrides, pkv.tarife, d.year, startYear);
     const hasOverride = !!pkv.yearOverrides[d.year];
+    // Ohne Eintrag: Tarife des letzten Ankerjahres (echte Beträge ohne Steigerung).
+    // Bearbeitungen kopieren genau diese Werte in den neuen Eintrag, sodass
+    // unveränderte Tarife beim alten Preis bleiben.
+    const yo = hasOverride
+      ? pkv.yearOverrides[d.year]
+      : getTarifeWithAnchor(pkv.yearOverrides, pkv.tarife, d.year, startYear).tarife;
+    // Angezeigter Betrag: Ist-Wert bei Eintrag, sonst Prognose (wie Tabellenzeile).
+    const shownAmount = (t) => (hasOverride ? t.amount : Math.round(t.amount * d.gf * 100) / 100);
+    // Prognose ohne den Eintrag dieses Jahres, als Vergleich zum Ist-Wert.
+    const prev = getTarifeWithAnchor(pkv.yearOverrides, pkv.tarife, d.year - 1, startYear);
+    const prevGf = growthFactor(pkv.growthRate, d.year, prev.anchorYear);
+    const forecastFor = (t, origIdx) => {
+      const match = prev.tarife.find((p) => p.id != null && p.id === t.id) ?? (t.id == null ? prev.tarife[origIdx] : undefined);
+      return match ? match.amount * prevGf : null;
+    };
     const brkVal  = pkv.brkAmounts[d.year] || 0;
     const freeVal = pkv.freeMonths[d.year] || 0;
 
@@ -1179,6 +1200,12 @@ export default function PkvCalculatorPage({ isDark = false }) {
               </Stack>
             </div>
 
+            <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mb: 1 }}>
+              {hasOverride
+                ? `Ist-Werte für ${d.year}: keine Steigerung in diesem Jahr, die ${pkv.growthRate} % greifen ab ${d.year + 1} auf Basis dieser Beträge.`
+                : `Prognose mit ${pkv.growthRate} % Steigerung. Beim Bearbeiten werden die letzten echten Beträge übernommen; trage dann die neuen Werte aus dem Anpassungsschreiben ein.`}
+            </Typography>
+
             {/* Tarif rows */}
             <Stack spacing={0.75} sx={{ mb: 1.75 }}>
               {/* Column headers */}
@@ -1202,9 +1229,15 @@ export default function PkvCalculatorPage({ isDark = false }) {
                     onChange={(e) => updateTarif(origIdx, 'name', e.target.value)}
                   />
                   <TextField
-                    size="small" type="number" value={t.amount}
-                    inputProps={{ inputMode: 'decimal', step: 0.01, style: { textAlign: 'right' } }}
+                    size="small" type="number" value={shownAmount(t)}
+                    inputProps={{ inputMode: 'decimal', step: 0.01, style: { textAlign: 'right' }, 'aria-label': `Betrag ${t.name} ${d.year}` }}
                     onChange={(e) => updateTarif(origIdx, 'amount', parseFloat(e.target.value) || 0)}
+                    helperText={(() => {
+                      if (!hasOverride) return undefined;
+                      const f = forecastFor(t, origIdx);
+                      return f !== null ? `Prognose ${fmt(f, 2)}` : 'Neu';
+                    })()}
+                    FormHelperTextProps={{ sx: { textAlign: 'right', mx: 0, fontSize: '0.62rem' } }}
                   />
                   <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                     <Checkbox
