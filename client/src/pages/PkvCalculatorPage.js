@@ -1131,8 +1131,9 @@ export default function PkvCalculatorPage({ isDark = false }) {
     const yo = hasOverride
       ? pkv.yearOverrides[d.year]
       : getTarifeWithAnchor(pkv.yearOverrides, pkv.tarife, d.year, startYear).tarife;
-    // Angezeigter Betrag: Ist-Wert bei Eintrag, sonst Prognose (wie Tabellenzeile).
-    const shownAmount = (t) => (hasOverride ? t.amount : Math.round(t.amount * d.gf * 100) / 100);
+    // Eingabefelder zeigen immer echte Beträge (Eintrag oder letztes Ankerjahr),
+    // nie die Prognose. Sonst würde beim Bearbeiten eines Feldes der
+    // hochgerechnete Wert unbemerkt zum Ist-Wert.
     // Prognose ohne den Eintrag dieses Jahres, als Vergleich zum Ist-Wert.
     const prev = getTarifeWithAnchor(pkv.yearOverrides, pkv.tarife, d.year - 1, startYear);
     const prevGf = growthFactor(pkv.growthRate, d.year, prev.anchorYear);
@@ -1203,7 +1204,7 @@ export default function PkvCalculatorPage({ isDark = false }) {
             <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mb: 1 }}>
               {hasOverride
                 ? `Ist-Werte für ${d.year}: keine Steigerung in diesem Jahr, die ${pkv.growthRate} % greifen ab ${d.year + 1} auf Basis dieser Beträge.`
-                : `Prognose mit ${pkv.growthRate} % Steigerung. Beim Bearbeiten werden die letzten echten Beträge übernommen; trage dann die neuen Werte aus dem Anpassungsschreiben ein.`}
+                : `Die Tabellenzeile ist eine Prognose mit ${pkv.growthRate} % Steigerung. Die Felder zeigen die letzten echten Beträge, darunter die Prognose. Trage die neuen Werte aus dem Anpassungsschreiben ein; unveränderte Tarife bleiben beim alten Preis.`}
             </Typography>
 
             {/* Tarif rows */}
@@ -1229,13 +1230,15 @@ export default function PkvCalculatorPage({ isDark = false }) {
                     onChange={(e) => updateTarif(origIdx, 'name', e.target.value)}
                   />
                   <TextField
-                    size="small" type="number" value={shownAmount(t)}
+                    size="small" type="number" value={t.amount}
                     inputProps={{ inputMode: 'decimal', step: 0.01, style: { textAlign: 'right' }, 'aria-label': `Betrag ${t.name} ${d.year}` }}
                     onChange={(e) => updateTarif(origIdx, 'amount', parseFloat(e.target.value) || 0)}
                     helperText={(() => {
-                      if (!hasOverride) return undefined;
                       const f = forecastFor(t, origIdx);
-                      return f !== null ? `Prognose ${fmt(f, 2)}` : 'Neu';
+                      if (f === null) return hasOverride ? 'Neu' : undefined;
+                      // Ohne Abweichung (z. B. im Startjahr) kein Hinweis.
+                      if (!hasOverride && Math.abs(f - t.amount) < 0.005) return undefined;
+                      return `Prognose ${fmt(f, 2)}`;
                     })()}
                     FormHelperTextProps={{ sx: { textAlign: 'right', mx: 0, fontSize: '0.62rem' } }}
                   />
